@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  Card, Row, Col, Radio, Select, DatePicker, Button, Table, Typography,
-  Statistic, Space, Tag, Tooltip, App,
+  Card, Row, Col, Radio, Select, DatePicker, Button, Table, Typography, Space, Tag, Tooltip, App,
 } from 'antd';
 import type { RadioChangeEvent } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -34,11 +33,11 @@ const { RangePicker } = DatePicker;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CURRENT_WEEK  = dayjs().isoWeek();
+const CURRENT_WEEK = dayjs().isoWeek();
 const CURRENT_MONTH = dayjs().month() + 1;
-const CURRENT_YEAR  = dayjs().year();
+const CURRENT_YEAR = dayjs().year();
 
-const WEEK_OPTIONS  = Array.from({ length: 52 }, (_, i) => ({ value: i + 1, label: `Tuần ${i + 1}` }));
+const WEEK_OPTIONS = Array.from({ length: 52 }, (_, i) => ({ value: i + 1, label: `Tuần ${i + 1}` }));
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `Tháng ${i + 1}` }));
 const QUARTER_OPTIONS = [
   { value: 1, label: 'Quý 1 (Jan–Mar)' },
@@ -74,7 +73,7 @@ const CustomBarTooltip = ({ active, payload, label }: any) => {
 
 // ─── Custom Pie Label ─────────────────────────────────────────────────────────
 
-const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, category }: any) => {
+const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
   if (percent < 0.05) return null;
   const RADIAN = Math.PI / 180;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
@@ -123,9 +122,8 @@ const KpiCard: React.FC<KpiCardProps> = ({
       <span className="text-xs text-gray-400 ml-1">{secondaryLabel}</span>
     </div>
     {trendText && (
-      <div className={`text-xs font-medium flex items-center gap-1 ${
-        trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : 'text-gray-400'
-      }`}>
+      <div className={`text-xs font-medium flex items-center gap-1 ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : 'text-gray-400'
+        }`}>
         {trend === 'up' ? <ArrowUpOutlined /> : trend === 'down' ? <ArrowDownOutlined /> : null}
         {trendText}
       </div>
@@ -213,22 +211,22 @@ export const ReportsPage: React.FC = () => {
   const { message } = App.useApp();
 
   const [mode, setMode] = useState<ReportMode>('month');
-  const [selectedWeek, setSelectedWeek]     = useState<number>(CURRENT_WEEK);
-  const [selectedMonth, setSelectedMonth]   = useState<number>(CURRENT_MONTH);
+  const [selectedWeek, setSelectedWeek] = useState<number>(CURRENT_WEEK);
+  const [selectedMonth, setSelectedMonth] = useState<number>(CURRENT_MONTH);
   const [selectedQuarter, setSelectedQuarter] = useState<number>(Math.ceil(CURRENT_MONTH / 3));
-  const [selectedYear, setSelectedYear]     = useState<number>(CURRENT_YEAR);
-  const [customRange, setCustomRange]       = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
+  const [customRange, setCustomRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
   const filter: ReportFilter = useMemo(() => {
     switch (mode) {
-      case 'week':    return { mode, singleValue: selectedWeek };
-      case 'month':   return { mode, singleValue: selectedMonth };
+      case 'week': return { mode, singleValue: selectedWeek };
+      case 'month': return { mode, singleValue: selectedMonth };
       case 'quarter': return { mode, singleValue: selectedQuarter };
-      case 'year':    return { mode, singleValue: selectedYear };
-      case 'custom':  return {
+      case 'year': return { mode, singleValue: selectedYear };
+      case 'custom': return {
         mode,
         startDate: customRange?.[0]?.format('YYYY-MM-DD'),
-        endDate:   customRange?.[1]?.format('YYYY-MM-DD'),
+        endDate: customRange?.[1]?.format('YYYY-MM-DD'),
       };
       default: return { mode: 'month', singleValue: selectedMonth };
     }
@@ -243,10 +241,10 @@ export const ReportsPage: React.FC = () => {
   // Period label for page title
   const periodLabel = (() => {
     switch (mode) {
-      case 'week':    return `Tuần ${selectedWeek} / ${selectedYear}`;
-      case 'month':   return `Tháng ${selectedMonth} / ${selectedYear}`;
+      case 'week': return `Tuần ${selectedWeek} / ${selectedYear}`;
+      case 'month': return `Tháng ${selectedMonth} / ${selectedYear}`;
       case 'quarter': return `Quý ${selectedQuarter} / ${selectedYear}`;
-      case 'year':    return `Năm ${selectedYear}`;
+      case 'year': return `Năm ${selectedYear}`;
       case 'custom':
         return customRange?.[0] && customRange?.[1]
           ? `${customRange[0].format('DD/MM/YYYY')} – ${customRange[1].format('DD/MM/YYYY')}`
@@ -535,8 +533,8 @@ export const ReportsPage: React.FC = () => {
                   ))}
                 </Pie>
                 <RechartTooltip
-                  formatter={(value: number, name: string) => [
-                    `${value.toLocaleString('vi-VN')} kg`,
+                  formatter={(value: any, name: any) => [
+                    `${Number(value || 0).toLocaleString('vi-VN')} kg`,
                     name,
                   ]}
                 />
@@ -585,7 +583,7 @@ export const ReportsPage: React.FC = () => {
           size="small"
           rowClassName={(_, index) => index < 3 ? 'bg-amber-50 dark:bg-amber-900/10' : ''}
           summary={(rows) => {
-            const totalIn  = rows.reduce((s, r) => s + r.inboundKg, 0);
+            const totalIn = rows.reduce((s, r) => s + r.inboundKg, 0);
             const totalOut = rows.reduce((s, r) => s + r.outboundKg, 0);
             const totalStock = rows.reduce((s, r) => s + r.stockKg, 0);
             const totalVal = rows.reduce((s, r) => s + r.stockValue, 0);

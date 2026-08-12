@@ -5,7 +5,6 @@ import {
   MenuUnfoldOutlined,
   DashboardOutlined,
   DatabaseOutlined,
-  AlertOutlined,
   SettingOutlined,
   SunOutlined,
   MoonOutlined,
@@ -49,73 +48,73 @@ export const MainLayout: React.FC = () => {
     },
     ...(user?.roles.some((r) => r === 'Admin' || r === 'Thukho')
       ? [
-          {
-            key: '/inventory',
-            icon: <DatabaseOutlined />,
-            label: 'Quản lý kho',
-            children: [
-              {
-                key: '/inventory/inbound',
-                label: <Link to="/inventory/inbound">Nhập kho hải sản</Link>,
-              },
-              {
-                key: '/inventory/inbound-history',
-                label: <Link to="/inventory/inbound-history">Lịch sử nhập kho</Link>,
-              },
-              {
-                key: '/inventory/outbound',
-                label: <Link to="/inventory/outbound">Xuất kho hải sản</Link>,
-              },
-              {
-                key: '/inventory/outbound-history',
-                label: <Link to="/inventory/outbound-history">Lịch sử xuất kho</Link>,
-              },
-              {
-                key: '/inventory/wastage',
-                label: <Link to="/inventory/wastage">Hao hụt & Phân loại</Link>,
-              },
-            ],
-          },
-          {
-            key: '/master-data/packaging',
-            icon: <InboxOutlined />,
-            label: <Link to="/master-data/packaging">Danh mục bao bì</Link>,
-          },
-          {
-            key: '/master-data/products',
-            icon: <AppstoreOutlined />,
-            label: <Link to="/master-data/products">Danh mục hải sản</Link>,
-          },
-          {
-            key: '/reports',
-            icon: <BarChartOutlined />,
-            label: 'Báo Cáo & Phân Tích',
-            children: [
-              {
-                key: '/reports/summary',
-                label: <Link to="/reports/summary">Thống kê Tổng hợp</Link>,
-              },
-              {
-                key: '/reports/alerts',
-                label: <Link to="/reports/alerts">Cảnh báo & Hao hụt</Link>,
-              },
-            ],
-          },
-        ]
+        {
+          key: '/inventory',
+          icon: <DatabaseOutlined />,
+          label: 'Quản lý kho',
+          children: [
+            {
+              key: '/inventory/inbound',
+              label: <Link to="/inventory/inbound">Nhập kho hải sản</Link>,
+            },
+            {
+              key: '/inventory/inbound-history',
+              label: <Link to="/inventory/inbound-history">Lịch sử nhập kho</Link>,
+            },
+            {
+              key: '/inventory/outbound',
+              label: <Link to="/inventory/outbound">Xuất kho hải sản</Link>,
+            },
+            {
+              key: '/inventory/outbound-history',
+              label: <Link to="/inventory/outbound-history">Lịch sử xuất kho</Link>,
+            },
+            {
+              key: '/inventory/wastage',
+              label: <Link to="/inventory/wastage">Hao hụt & Phân loại</Link>,
+            },
+          ],
+        },
+        {
+          key: '/master-data/packaging',
+          icon: <InboxOutlined />,
+          label: <Link to="/master-data/packaging">Danh mục bao bì</Link>,
+        },
+        {
+          key: '/master-data/products',
+          icon: <AppstoreOutlined />,
+          label: <Link to="/master-data/products">Danh mục hải sản</Link>,
+        },
+        {
+          key: '/reports',
+          icon: <BarChartOutlined />,
+          label: 'Báo Cáo & Phân Tích',
+          children: [
+            {
+              key: '/reports/summary',
+              label: <Link to="/reports/summary">Thống kê Tổng hợp</Link>,
+            },
+            {
+              key: '/reports/alerts',
+              label: <Link to="/reports/alerts">Cảnh báo & Hao hụt</Link>,
+            },
+          ],
+        },
+      ]
       : []),
     ...(user?.roles.includes('Admin')
       ? [
-          {
-            key: '/admin/users',
-            icon: <UserOutlined />,
-            label: <Link to="/admin/users">Quản lý nhân viên</Link>,
-          },
-          {
-            key: '/settings',
-            icon: <SettingOutlined />,
-            label: <Link to="/settings">Cài đặt</Link>,
-          },
-        ]
+        {
+          key: '/admin/users',
+          icon: <UserOutlined />,
+          label: <Link to="/admin/users">Quản lý nhân viên</Link>,
+        },
+        {
+          key: '/settings',
+          icon: <SettingOutlined />,
+          label: <Link to="/settings">Cài đặt</Link>,
+        },
+      ]
       : []),
   ];
 
