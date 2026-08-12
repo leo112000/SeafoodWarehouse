@@ -1,6 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
-import { Dashboard } from '../pages/Dashboard';
+import { DashboardPage } from '../pages/dashboard/DashboardPage';
 import { Placeholder } from '../components/Placeholder';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { UsersPage } from '../pages/admin/UsersPage';
@@ -12,6 +12,10 @@ import { OutboundPage } from '../pages/inventory/OutboundPage';
 import { WastagePage } from '../pages/inventory/WastagePage';
 import OutboundHistoryPage from '../pages/inventory/OutboundHistoryPage';
 import AlertsPage from '../pages/reports/AlertsPage';
+import ReportsPage from '../pages/reports/ReportsPage';
+import PackagingPage from '../pages/master-data/PackagingPage';
+import PackagingReturnPage from '../pages/inventory/PackagingReturnPage';
+import ProductsPage from '../pages/master-data/ProductsPage';
 
 export const router = createBrowserRouter([
   {
@@ -28,7 +32,11 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '',
-        element: <Dashboard />,
+        element: <DashboardPage />,
+      },
+      {
+        path: 'dashboard',
+        element: <DashboardPage />,
       },
       {
         path: 'inventory',
@@ -79,10 +87,59 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'inventory/packaging-return',
+        element: (
+          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+            <PackagingReturnPage />
+          </RoleGuard>
+        ),
+      },
+      {
         path: 'alerts',
         element: (
           <RoleGuard allowedRoles={['Admin', 'Thukho']}>
             <AlertsPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+            <ReportsPage />
+          </RoleGuard>
+        ),
+      },
+      // Canonical report sub-paths (used by sidebar menu)
+      {
+        path: 'reports/summary',
+        element: (
+          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+            <ReportsPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'reports/alerts',
+        element: (
+          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+            <AlertsPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'master-data/packaging',
+        element: (
+          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+            <PackagingPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: 'master-data/products',
+        element: (
+          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+            <ProductsPage />
           </RoleGuard>
         ),
       },

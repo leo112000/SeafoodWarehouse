@@ -283,11 +283,11 @@ export const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { data: Inv
           <thead>
             <tr>
               <th style={{ width: '3%' }}>STT</th>
-              <th style={{ width: '18%' }}>Mã Lô (Batch)</th>
-              <th style={{ width: '16%' }}>Tên Hải Sản</th>
-              <th style={{ width: '10%' }}>Bảo quản</th>
+              <th style={{ width: '16%' }}>Mã Lô (Batch)</th>
+              <th style={{ width: '14%' }}>Tên Hải Sản</th>
+              <th style={{ width: '9%' }}>Bảo quản</th>
               <th style={{ width: '7%' }}>Cân thô (kg)</th>
-              <th style={{ width: '7%' }}>Bì (kg)</th>
+              <th style={{ width: '12%' }}>Bì / Khay</th>
               <th style={{ width: '7%' }}>Thực (kg)</th>
               <th style={{ width: '10%' }}>Hạn SD</th>
               <th style={{ width: '11%' }}>Đơn giá (đ)</th>
@@ -302,7 +302,11 @@ export const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { data: Inv
                 <td><strong>{item.productName}</strong></td>
                 <td className="text-center">{item.storageType}</td>
                 <td className="text-right">{item.grossWeight.toFixed(1)}</td>
-                <td className="text-right">{item.tareWeight.toFixed(1)}</td>
+                <td className="text-right" style={{ fontSize: '9pt', color: '#555' }}>
+                  {item.packagingCode && item.packagingQty
+                    ? `${item.packagingQty} cái · ${item.tareWeight.toFixed(1)} kg`
+                    : item.tareWeight.toFixed(1)}
+                </td>
                 <td className="text-right"><strong>{item.netWeight.toFixed(1)}</strong></td>
                 <td className="text-center" style={{ fontSize: '9pt' }}>{item.expiryDate}</td>
                 <td className="text-right">{item.unitPrice.toLocaleString('vi-VN')}</td>

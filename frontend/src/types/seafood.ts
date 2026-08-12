@@ -8,6 +8,8 @@ export interface InvoiceItem {
   expiryDate: string;
   unitPrice: number;
   totalAmount: number;
+  packagingCode?: string; // Mã bao bì
+  packagingQty?: number;  // Số lượng bao bì
 }
 
 export interface InvoicePrintData {
@@ -22,3 +24,33 @@ export interface InvoicePrintData {
   totalAmount: number;      // Tổng tiền
   storageLocation?: string; // Optional field for warehouse layout compatibility
 }
+
+export interface PackagingType {
+  id: string;
+  code: string;           // Mã vật tư (VD: SOT-RED, THUNG-30KG)
+  name: string;           // Tên (VD: Sọt nhựa đỏ, Thùng xốp lớn 30kg)
+  category: 'CONTAINER' | 'CONSUMABLE'; // Vật chứa tái sử dụng OR Vật tư dùng 1 lần
+  defaultTareWeight: number; // Trọng lượng bì chuẩn (Kg)
+  unit: string;           // Cái / Chiếc / Thùng
+  stockQuantity: number;  // Tồn kho hiện tại của vật tư này
+  note?: string;
+}
+
+export interface Product {
+  id: string;
+  code: string;               // Mã hàng (VD: HS-CA-CAHOI)
+  name: string;               // Tên hải sản
+  categoryId: string;         // ID Danh mục (Cá, Tôm, Cua, Mực...)
+  categoryName?: string;
+  unit: string;               // Đơn vị tính (Kg, Con, Thùng...)
+  storageType: 'ALIVE' | 'FRESH' | 'FROZEN' | 'DRY'; // Sống / Ướp đá / Cấp đông / Khô
+  targetTemperature: number;  // Nhiệt độ bảo quản chuẩn (°C)
+  warningDaysBeforeExpiry: number; // Cảnh báo cận date trước X ngày
+  minStock: number;           // Mức tồn kho tối thiểu
+  maxStock: number;           // Mức tồn kho tối đa
+  referencePrice: number;     // Đơn giá tham chiếu (VNĐ)
+  status: 'ACTIVE' | 'INACTIVE';
+  note?: string;
+}
+
+

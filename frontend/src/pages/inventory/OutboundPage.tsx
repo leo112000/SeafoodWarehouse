@@ -21,6 +21,13 @@ const SEAFOOD_OPTIONS = [
   { label: 'Mực Lá Đại', value: 'MUCLA', name: 'Mực Lá Đại' },
 ];
 
+const PACKAGING_TYPES = [
+  { code: 'SOT-RED',    name: 'Sọt nhựa đỏ tiêu chuẩn',    defaultTareWeight: 1.8 },
+  { code: 'SOT-BLUE',   name: 'Sọt nhựa xanh dương lớn',    defaultTareWeight: 2.2 },
+  { code: 'THUNG-30KG', name: 'Thùng xốp lớn 30kg',         defaultTareWeight: 0.5 },
+  { code: 'THUNG-10KG', name: 'Thùng carton chống ẩm 10kg', defaultTareWeight: 0.3 },
+];
+
 export const OutboundPage: React.FC = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -91,6 +98,19 @@ export const OutboundPage: React.FC = () => {
     }
   };
 
+  // Recalculate tare when packaging type or qty changes
+  const handlePackagingChange = (index: number) => {
+    const items = form.getFieldValue('items') || [];
+    const item = items[index];
+    if (!item) return;
+    const pkg = PACKAGING_TYPES.find((p) => p.code === item.packagingCode);
+    if (pkg) {
+      const pkgQty = Number(item.packagingQty) || 0;
+      item.tareWeight = pkgQty * pkg.defaultTareWeight;
+      form.setFieldsValue({ items });
+    }
+  };
+
   const onFinish = (values: any) => {
     const items = values.items || [];
     if (items.length === 0) {
@@ -109,16 +129,23 @@ export const OutboundPage: React.FC = () => {
     // Build InvoicePrintData directly
     const invoiceItems = items.map((item: any) => {
       const batchDetails = batches.find((b) => b.batchCode === item.batchCode);
+      const pkg = PACKAGING_TYPES.find((p) => p.code === item.packagingCode);
+      const pkgQty = Number(item.packagingQty) || 0;
+      const tareWeight = pkg ? pkgQty * pkg.defaultTareWeight : Number(item.tareWeight) || 0;
+      const grossWeight = (item.quantity || 0) + tareWeight;
+      const netWeight = item.quantity || 0;
       return {
         batchCode: item.batchCode,
         productName: batchDetails?.seafoodName ?? 'Chưa rõ',
-        storageType: 'Cấp đông',   // outbound doesn't carry this field; use sensible default
-        grossWeight: item.quantity,       // outbound records net qty directly
-        tareWeight: 0,
-        netWeight: item.quantity,
+        storageType: 'Cấp đông',
+        grossWeight,
+        tareWeight,
+        netWeight,
         expiryDate: item.expiryDate ?? batchDetails?.expiryDate ?? '',
         unitPrice: item.unitPrice ?? 0,
         totalAmount: item.totalPrice ?? 0,
+        packagingCode: item.packagingCode,
+        packagingQty: pkgQty,
       };
     });
 
@@ -252,8 +279,8 @@ export const OutboundPage: React.FC = () => {
                         )
                       }
                     >
-                      <Row gutter={[12, 12]}>
-                        <Col xs={24} md={6}>
+                    <Row gutter={[12, 12]}>
+                        <Col xs={24} md={5}>
                           <Form.Item
                             {...restField}
                             name={[name, 'seafoodCode']}
@@ -272,7 +299,7 @@ export const OutboundPage: React.FC = () => {
                             </Select>
                           </Form.Item>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col xs={24} md={7}>
                           <Form.Item
                             {...restField}
                             name={[name, 'batchCode']}
@@ -292,7 +319,49 @@ export const OutboundPage: React.FC = () => {
                             </Select>
                           </Form.Item>
                         </Col>
-                        <Col xs={12} md={5}>
+                        <Col xs={24} md={5}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'packagingCode']}
+                            label="Loại Khay/Sật/Bì"
+                          >
+                            <Select
+                              placeholder="Chọn loại bao bì"
+                              allowClear
+                              onChange={() => handlePackagingChange(name)}
+                            >
+                              {PACKAGING_TYPES.map((pkg) => (
+                                <Select.Option key={pkg.code} value={pkg.code}>
+                                  {pkg.name} ({pkg.defaultTareWeight} kg/cái)
+                                </Select.Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col xs={12} md={2}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'packagingQty']}
+                            label="SL Bì"
+                          >
+                            <InputNumber
+                              min={0}
+                              precision={0}
+                              className="w-full"
+                              onChange={() => handlePackagingChange(name)}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={12} md={2}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'tareWeight']}
+                            label="Bì (kg)"
+                          >
+                            <InputNumber min={0} precision={1} className="w-full" />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={12} md={4}>
                           <Form.Item
                             {...restField}
                             name={[name, 'quantity']}
@@ -322,7 +391,7 @@ export const OutboundPage: React.FC = () => {
                             />
                           </Form.Item>
                         </Col>
-                        <Col xs={12} md={5}>
+                        <Col xs={12} md={3}>
                           <Form.Item
                             {...restField}
                             name={[name, 'totalPrice']}

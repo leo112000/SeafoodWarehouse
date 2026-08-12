@@ -11,6 +11,9 @@ import {
   MoonOutlined,
   UserOutlined,
   LogoutOutlined,
+  InboxOutlined,
+  AppstoreOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
@@ -74,9 +77,29 @@ export const MainLayout: React.FC = () => {
             ],
           },
           {
-            key: '/alerts',
-            icon: <AlertOutlined />,
-            label: <Link to="/alerts">Cảnh báo tồn kho</Link>,
+            key: '/master-data/packaging',
+            icon: <InboxOutlined />,
+            label: <Link to="/master-data/packaging">Danh mục bao bì</Link>,
+          },
+          {
+            key: '/master-data/products',
+            icon: <AppstoreOutlined />,
+            label: <Link to="/master-data/products">Danh mục hải sản</Link>,
+          },
+          {
+            key: '/reports',
+            icon: <BarChartOutlined />,
+            label: 'Báo Cáo & Phân Tích',
+            children: [
+              {
+                key: '/reports/summary',
+                label: <Link to="/reports/summary">Thống kê Tổng hợp</Link>,
+              },
+              {
+                key: '/reports/alerts',
+                label: <Link to="/reports/alerts">Cảnh báo & Hao hụt</Link>,
+              },
+            ],
           },
         ]
       : []),
@@ -117,6 +140,7 @@ export const MainLayout: React.FC = () => {
           theme="dark"
           mode="inline"
           selectedKeys={[location.pathname]}
+          defaultOpenKeys={location.pathname.startsWith('/reports') ? ['/reports'] : []}
           items={menuItems}
         />
       </Sider>
