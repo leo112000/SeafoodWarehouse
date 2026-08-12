@@ -308,6 +308,7 @@ export const PackagingPage: React.FC = () => {
           rowKey="id"
           pagination={{ pageSize: 10 }}
           className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden"
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 

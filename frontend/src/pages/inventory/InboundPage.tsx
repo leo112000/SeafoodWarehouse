@@ -455,6 +455,7 @@ export const InboundPage: React.FC = () => {
         footer={null}
         destroyOnClose
         width={560}
+        style={{ maxWidth: '95vw' }}
       >
         <p className="text-slate-500 text-sm mb-4">
           Điền thông tin cơ bản — sản phẩm sẽ được tự động chọn ngay vào dòng nhập kho hiện tại.
@@ -466,12 +467,12 @@ export const InboundPage: React.FC = () => {
           initialValues={{ storageType: 'FROZEN', unit: 'Kg', warningDaysBeforeExpiry: 3, targetTemperature: -18 }}
         >
           <Row gutter={12}>
-            <Col span={9}>
+            <Col xs={24} sm={9}>
               <Form.Item name="code" label="Mã Hàng" rules={[{ required: true, message: 'Nhập mã!' }]}>
                 <Input placeholder="VD: HS-CA-CAHOI" className="font-mono" />
               </Form.Item>
             </Col>
-            <Col span={15}>
+            <Col xs={24} sm={15}>
               <Form.Item name="name" label="Tên Sản Phẩm" rules={[{ required: true, message: 'Nhập tên!' }]}>
                 <Input placeholder="VD: Cá Chẽm tươi sống" />
               </Form.Item>
@@ -479,17 +480,17 @@ export const InboundPage: React.FC = () => {
           </Row>
 
           <Row gutter={12}>
-            <Col span={10}>
+            <Col xs={24} sm={10}>
               <Form.Item name="categoryId" label="Danh Mục" rules={[{ required: true, message: 'Chọn danh mục!' }]}>
                 <Select options={QUICK_ADD_CATEGORIES.map((c) => ({ value: c.id, label: c.name }))} placeholder="Danh mục" />
               </Form.Item>
             </Col>
-            <Col span={7}>
+            <Col xs={12} sm={7}>
               <Form.Item name="unit" label="Đơn Vị" rules={[{ required: true }]}>
                 <Input placeholder="Kg / Con" />
               </Form.Item>
             </Col>
-            <Col span={7}>
+            <Col xs={12} sm={7}>
               <Form.Item name="storageType" label="Bảo Quản" rules={[{ required: true }]}>
                 <Select options={[
                   { value: 'ALIVE',  label: 'Tươi sống' },
@@ -502,12 +503,12 @@ export const InboundPage: React.FC = () => {
           </Row>
 
           <Row gutter={12}>
-            <Col span={12}>
+            <Col xs={12} sm={12}>
               <Form.Item name="targetTemperature" label="Nhiệt Độ Bảo Quản (°C)" rules={[{ required: true }]}>
                 <InputNumber style={{ width: '100%' }} placeholder="-18" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={12} sm={12}>
               <Form.Item name="warningDaysBeforeExpiry" label="Cảnh Báo HSD (ngày)" rules={[{ required: true }]}>
                 <InputNumber min={1} precision={0} style={{ width: '100%' }} />
               </Form.Item>

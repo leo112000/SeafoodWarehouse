@@ -43,6 +43,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ open, data, onClose 
       open={open}
       onCancel={onClose}
       width={900}
+      style={{ maxWidth: '95vw' }}
       centered
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -97,10 +98,12 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ open, data, onClose 
             background: '#fff',
             boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
             borderRadius: 6,
-            overflow: 'hidden',
+            overflowX: 'auto',
           }}
         >
-          <InvoicePrintTemplate ref={printRef} data={data} />
+          <div style={{ minWidth: '700px' }}>
+            <InvoicePrintTemplate ref={printRef} data={data} />
+          </div>
         </div>
       )}
     </Modal>

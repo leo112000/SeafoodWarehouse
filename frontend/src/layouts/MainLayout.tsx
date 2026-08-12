@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Layout, Menu, Button, theme, Tag, Space } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, Button, theme, Tag, Space, Drawer, Dropdown, Avatar } from 'antd';
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -13,6 +13,7 @@ import {
   InboxOutlined,
   AppstoreOutlined,
   BarChartOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
@@ -22,6 +23,8 @@ const { Header, Sider, Content } = Layout;
 
 export const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const {
@@ -33,6 +36,21 @@ export const MainLayout: React.FC = () => {
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+
+  // Responsive check
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close drawer on path change
+  useEffect(() => {
+    setDrawerVisible(false);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -129,28 +147,80 @@ export const MainLayout: React.FC = () => {
     }
   };
 
+  const userDropdownItems = [
+    {
+      key: 'info',
+      label: (
+        <div style={{ padding: '4px 8px' }}>
+          <div className="font-semibold">{user?.name}</div>
+          <div className="text-xs text-gray-400 mt-1">
+            {user?.roles.map((r) => getRoleLabel(r).label).join(', ')}
+          </div>
+        </div>
+      ),
+    },
+    {
+      type: 'divider' as const,
+    },
+    {
+      key: 'logout',
+      danger: true,
+      icon: <LogoutOutlined />,
+      label: 'Đăng xuất',
+      onClick: handleLogout,
+    },
+  ];
+
   return (
     <Layout className="min-h-screen">
-      <Sider trigger={null} collapsible collapsed={collapsed} theme="dark">
-        <div className="p-4 text-white text-center font-bold text-lg overflow-hidden whitespace-nowrap">
-          {collapsed ? '🚢' : '🚢 KHO HẢI SẢN'}
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          defaultOpenKeys={location.pathname.startsWith('/reports') ? ['/reports'] : []}
-          items={menuItems}
-        />
-      </Sider>
+      {!isMobile ? (
+        <Sider trigger={null} collapsible collapsed={collapsed} theme="dark">
+          <div className="p-4 text-white text-center font-bold text-lg overflow-hidden whitespace-nowrap">
+            {collapsed ? '🚢' : '🚢 KHO HẢI SẢN'}
+          </div>
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[location.pathname]}
+            defaultOpenKeys={location.pathname.startsWith('/reports') ? ['/reports'] : []}
+            items={menuItems}
+          />
+        </Sider>
+      ) : (
+        <Drawer
+          title="🚢 KHO HẢI SẢN"
+          placement="left"
+          onClose={() => setDrawerVisible(false)}
+          open={drawerVisible}
+          bodyStyle={{ padding: 0 }}
+          width={250}
+        >
+          <Menu
+            theme="light"
+            mode="inline"
+            selectedKeys={[location.pathname]}
+            defaultOpenKeys={location.pathname.startsWith('/reports') ? ['/reports'] : []}
+            items={menuItems}
+          />
+        </Drawer>
+      )}
       <Layout>
         <Header className="p-0 flex items-center justify-between" style={{ background: colorBgContainer }}>
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-lg w-16 h-16"
-          />
+          {isMobile ? (
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              onClick={() => setDrawerVisible(true)}
+              className="text-lg w-16 h-16"
+            />
+          ) : (
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed(!collapsed)}
+              className="text-lg w-16 h-16"
+            />
+          )}
           <div className="flex items-center gap-4 pr-6">
             <Button
               type="text"
@@ -160,35 +230,43 @@ export const MainLayout: React.FC = () => {
             />
             {user && (
               <div className="flex items-center gap-4 border-l border-gray-200 dark:border-gray-700 pl-4">
-                <Space direction="vertical" size={0} className="text-right">
-                  <span className={`font-semibold text-sm leading-tight block ${currentTheme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
-                    {user.name}
-                  </span>
-                  <Space size={4}>
-                    {user.roles.map((role) => {
-                      const { label, color } = getRoleLabel(role);
-                      return (
-                        <Tag color={color} key={role} style={{ margin: 0 }} className="text-[10px] py-0 px-1 font-medium">
-                          {label}
-                        </Tag>
-                      );
-                    })}
-                  </Space>
-                </Space>
-                <Button
-                  type="text"
-                  danger
-                  icon={<LogoutOutlined />}
-                  onClick={handleLogout}
-                  className="flex items-center justify-center w-10 h-10 hover:bg-red-50 dark:hover:bg-red-950"
-                  title="Đăng xuất"
-                />
+                {!isMobile ? (
+                  <>
+                    <Space direction="vertical" size={0} className="text-right">
+                      <span className={`font-semibold text-sm leading-tight block ${currentTheme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
+                        {user.name}
+                      </span>
+                      <Space size={4}>
+                        {user.roles.map((role) => {
+                          const { label, color } = getRoleLabel(role);
+                          return (
+                            <Tag color={color} key={role} style={{ margin: 0 }} className="text-[10px] py-0 px-1 font-medium">
+                              {label}
+                            </Tag>
+                          );
+                        })}
+                      </Space>
+                    </Space>
+                    <Button
+                      type="text"
+                      danger
+                      icon={<LogoutOutlined />}
+                      onClick={handleLogout}
+                      className="flex items-center justify-center w-10 h-10 hover:bg-red-50 dark:hover:bg-red-950"
+                      title="Đăng xuất"
+                    />
+                  </>
+                ) : (
+                  <Dropdown menu={{ items: userDropdownItems }} trigger={['click']}>
+                    <Avatar icon={<UserOutlined />} className="cursor-pointer bg-sky-500" />
+                  </Dropdown>
+                )}
               </div>
             )}
           </div>
         </Header>
         <Content
-          className="m-6 p-6 min-h-[280px]"
+          className="m-3 md:m-6 p-4 md:p-6 min-h-[280px]"
           style={{
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
@@ -201,3 +279,4 @@ export const MainLayout: React.FC = () => {
   );
 };
 export default MainLayout;
+

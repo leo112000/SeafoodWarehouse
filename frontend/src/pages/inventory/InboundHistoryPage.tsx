@@ -91,16 +91,18 @@ export const InboundHistoryPage: React.FC = () => {
       key: 'supplier',
       render: (text: string) => <span className="font-semibold text-gray-800 dark:text-gray-100">{text}</span>,
     },
-    {
+     {
       title: 'Ngày nhập kho',
       dataIndex: 'inboundDate',
       key: 'inboundDate',
       render: (dateStr: string) => formatDate(dateStr).split(' ')[0],
+      responsive: ['sm'] as any,
     },
     {
       title: 'Kho nhận',
       dataIndex: 'storageLocation',
       key: 'storageLocation',
+      responsive: ['md'] as any,
     },
     {
       title: 'Tổng thành tiền',
@@ -158,6 +160,7 @@ export const InboundHistoryPage: React.FC = () => {
         if (cond === 'Cấp đông') color = 'purple';
         return <Tag color={color}>{cond}</Tag>;
       },
+      responsive: ['sm'] as any,
     },
     {
       title: 'Khối lượng thực',
@@ -170,6 +173,7 @@ export const InboundHistoryPage: React.FC = () => {
       dataIndex: 'unitPrice',
       key: 'unitPrice',
       render: (price: number) => formatCurrency(price),
+      responsive: ['md'] as any,
     },
     {
       title: 'Thành tiền',
@@ -230,6 +234,7 @@ export const InboundHistoryPage: React.FC = () => {
           columns={columns}
           rowKey="id"
           pagination={{ pageSize: 5 }}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 
@@ -292,6 +297,7 @@ export const InboundHistoryPage: React.FC = () => {
                 rowKey="batchCode"
                 pagination={false}
                 size="small"
+                scroll={{ x: 'max-content' }}
               />
             </div>
           </div>

@@ -213,7 +213,7 @@ export const UsersPage: React.FC = () => {
       </div>
 
       <Card className="shadow-sm">
-        <Table dataSource={users} columns={columns} rowKey="id" pagination={{ pageSize: 5 }} />
+        <Table dataSource={users} columns={columns} rowKey="id" pagination={{ pageSize: 5 }} scroll={{ x: 'max-content' }} />
       </Card>
 
       <Modal

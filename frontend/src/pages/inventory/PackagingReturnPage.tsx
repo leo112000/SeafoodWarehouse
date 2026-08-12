@@ -354,6 +354,7 @@ const PackagingReturnPage: React.FC = () => {
                       return '';
                     }}
                     className="rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800"
+                    scroll={{ x: 'max-content' }}
                   />
                 </div>
               ),
@@ -373,7 +374,7 @@ const PackagingReturnPage: React.FC = () => {
                   rowKey="id"
                   pagination={{ pageSize: 10 }}
                   locale={{ emptyText: 'Chưa có lịch sử trả vỏ nào.' }}
-                  className="rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800"
+                  scroll={{ x: 'max-content' }}
                 />
               ),
             },

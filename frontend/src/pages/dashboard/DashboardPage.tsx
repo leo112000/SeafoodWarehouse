@@ -55,6 +55,7 @@ export const DashboardPage: React.FC = () => {
       title: 'Thời Gian',
       dataIndex: 'time',
       key: 'time',
+      responsive: ['sm'] as any,
     },
     {
       title: 'Đối Tác',
@@ -72,6 +73,7 @@ export const DashboardPage: React.FC = () => {
       dataIndex: 'amount',
       key: 'amount',
       render: (val: number) => formatCurrency(val),
+      responsive: ['md'] as any,
     },
   ];
 
@@ -332,6 +334,7 @@ export const DashboardPage: React.FC = () => {
               rowKey="id"
               pagination={false}
               size="middle"
+              scroll={{ x: 'max-content' }}
             />
           </Card>
         </Col>

@@ -296,6 +296,7 @@ export const WastagePage: React.FC = () => {
               rowKey="month"
               pagination={false}
               size="small"
+              scroll={{ x: 'max-content' }}
             />
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-slate-900 border border-yellow-100 dark:border-gray-800 text-xs text-gray-500 rounded">
               * Tỷ lệ hao hụt an toàn tiêu chuẩn của kho hải sản được khuyến nghị ở mức <strong>&lt; 1.5%</strong>. Nếu vượt quá, vui lòng rà soát lại kỹ quy trình bảo quản và nhiệt độ tủ đông.
@@ -305,7 +306,7 @@ export const WastagePage: React.FC = () => {
       </Row>
 
       <Card title="Lịch sử nhật ký hao hụt & chuyển đổi phân loại" className="shadow-sm mt-6">
-        <Table dataSource={logs} columns={logColumns} rowKey="id" pagination={{ pageSize: 5 }} />
+        <Table dataSource={logs} columns={logColumns} rowKey="id" pagination={{ pageSize: 5 }} scroll={{ x: 'max-content' }} />
       </Card>
     </div>
   );

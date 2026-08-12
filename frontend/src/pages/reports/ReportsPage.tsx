@@ -581,6 +581,7 @@ export const ReportsPage: React.FC = () => {
           rowKey="name"
           pagination={false}
           size="small"
+          scroll={{ x: 'max-content' }}
           rowClassName={(_, index) => index < 3 ? 'bg-amber-50 dark:bg-amber-900/10' : ''}
           summary={(rows) => {
             const totalIn = rows.reduce((s, r) => s + r.inboundKg, 0);

@@ -215,6 +215,7 @@ export const AlertsPage: React.FC = () => {
             pagination={false}
             size="small"
             locale={{ emptyText: 'Không có lô hàng nào sắp hết hạn.' }}
+            scroll={{ x: 'max-content' }}
           />
         </Card>
 
@@ -236,6 +237,7 @@ export const AlertsPage: React.FC = () => {
                 pagination={false}
                 size="small"
                 locale={{ emptyText: 'Đầy đủ trữ lượng hàng trong kho.' }}
+                scroll={{ x: 'max-content' }}
               />
             </Card>
           </Col>
@@ -256,6 +258,7 @@ export const AlertsPage: React.FC = () => {
                 rowKey="id"
                 pagination={false}
                 size="small"
+                scroll={{ x: 'max-content' }}
               />
             </Card>
           </Col>

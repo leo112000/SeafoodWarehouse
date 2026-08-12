@@ -61,12 +61,12 @@ const OutboundHistoryPage: React.FC = () => {
 
   const columns = [
     { title: 'Mã phiếu xuất', dataIndex: 'id', key: 'id' },
-    { title: 'Ngày xuất kho', dataIndex: 'date', key: 'date', render: (d: string) => formatDate(d) },
+    { title: 'Ngày xuất kho', dataIndex: 'date', key: 'date', render: (d: string) => formatDate(d), responsive: ['sm'] as any },
     { title: 'Khách hàng', dataIndex: 'customerName', key: 'customerName' },
-    { title: 'Lý do xuất', dataIndex: 'reason', key: 'reason' },
+    { title: 'Lý do xuất', dataIndex: 'reason', key: 'reason', responsive: ['md'] as any },
     { title: 'Tổng khối lượng (Kg)', dataIndex: 'totalWeightKg', key: 'totalWeightKg', render: (w: number) => formatWeight(w) },
     { title: 'Tổng giá trị (VNĐ)', dataIndex: 'totalAmount', key: 'totalAmount', render: (a: number) => formatCurrency(a) },
-    { title: 'Người lập phiếu', dataIndex: 'createdBy', key: 'createdBy' },
+    { title: 'Người lập phiếu', dataIndex: 'createdBy', key: 'createdBy', responsive: ['md'] as any },
     {
       title: 'Hành động',
       key: 'action',
@@ -99,24 +99,24 @@ const OutboundHistoryPage: React.FC = () => {
     { title: 'Mã lô', dataIndex: 'batchCode', key: 'batchCode' },
     { title: 'Loại hải sản', dataIndex: 'species', key: 'species' },
     { title: 'Số kg', dataIndex: 'quantityKg', key: 'quantityKg', render: (v: number) => formatWeight(v) },
-    { title: 'Hạn sử dụng', dataIndex: 'expiryDate', key: 'expiryDate', render: (d: string) => formatDate(d) },
-    { title: 'Đơn giá (VNĐ)', dataIndex: 'unitPrice', key: 'unitPrice', render: (p: number) => formatCurrency(p) },
+    { title: 'Hạn sử dụng', dataIndex: 'expiryDate', key: 'expiryDate', render: (d: string) => formatDate(d), responsive: ['sm'] as any },
+    { title: 'Đơn giá (VNĐ)', dataIndex: 'unitPrice', key: 'unitPrice', render: (p: number) => formatCurrency(p), responsive: ['md'] as any },
     { title: 'Thành tiền (VNĐ)', dataIndex: 'amount', key: 'amount', render: (a: number) => formatCurrency(a) },
   ];
 
   return (
     <div>
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={12} md={6}>
           <RangePicker style={{ width: '100%' }} />
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={12} md={6}>
           <Select placeholder="Khách hàng / Đại lý" style={{ width: '100%' }} allowClear />
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={12} md={6}>
           <Input placeholder="Mã phiếu / Mã lô" style={{ width: '100%' }} />
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={12} md={6}>
           <Input.Search
             placeholder="Tìm kiếm..."
             allowClear
@@ -126,7 +126,7 @@ const OutboundHistoryPage: React.FC = () => {
           />
         </Col>
       </Row>
-      <Table rowKey="id" dataSource={filtered} columns={columns} pagination={{ pageSize: 10 }} />
+      <Table rowKey="id" dataSource={filtered} columns={columns} pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
 
       {/* Detail modal */}
       <Modal
@@ -137,7 +137,7 @@ const OutboundHistoryPage: React.FC = () => {
         width={800}
       >
         {selectedTx && (
-          <Table rowKey="batchCode" dataSource={selectedTx.batches} columns={batchColumns} pagination={false} />
+          <Table rowKey="batchCode" dataSource={selectedTx.batches} columns={batchColumns} pagination={false} scroll={{ x: 'max-content' }} />
         )}
       </Modal>
 
