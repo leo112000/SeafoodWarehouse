@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatCurrency } from '../../utils/format';
-import type { InvoicePrintData, InvoiceItem } from '../../types';
+import type { InvoicePrintData } from '../../types';
 
 
 /* =============================================
@@ -9,11 +9,11 @@ import type { InvoicePrintData, InvoiceItem } from '../../types';
 const numberToVietnamese = (amount: number): string => {
   // Simplified Vi-VN number to words for amounts up to hundreds of millions
   if (amount === 0) return 'Không đồng';
-  
+
   const units = ['', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
   const teens = ['mười', 'mười một', 'mười hai', 'mười ba', 'mười bốn', 'mười lăm',
     'mười sáu', 'mười bảy', 'mười tám', 'mười chín'];
-  
+
   const hundreds = (n: number): string => {
     if (n === 0) return '';
     const h = Math.floor(n / 100);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Row, Col, DatePicker, Select, Input, Button, Modal } from 'antd';
-import { SearchOutlined, PrinterOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { PrinterOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import type { OutboundTransaction } from '../../stores/useOutboundStore';
 import InvoiceModal from '../../components/invoice/InvoiceModal';
 import { formatCurrency, formatWeight, formatDate } from '../../utils/format';

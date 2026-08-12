@@ -107,6 +107,25 @@ export const OutboundPage: React.FC = () => {
     const outboundDate = (values.outboundDate as dayjs.Dayjs).format('YYYY-MM-DD');
 
     // Build InvoicePrintData directly
+    const invoiceItems = items.map((item: any) => {
+      const batchDetails = batches.find((b) => b.batchCode === item.batchCode);
+      return {
+        batchCode: item.batchCode,
+        productName: batchDetails?.seafoodName ?? 'Chưa rõ',
+        storageType: 'Cấp đông',   // outbound doesn't carry this field; use sensible default
+        grossWeight: item.quantity,       // outbound records net qty directly
+        tareWeight: 0,
+        netWeight: item.quantity,
+        expiryDate: item.expiryDate ?? batchDetails?.expiryDate ?? '',
+        unitPrice: item.unitPrice ?? 0,
+        totalAmount: item.totalPrice ?? 0,
+      };
+    });
+
+    const totalNetWeight = invoiceItems.reduce((sum: number, item: any) => sum + item.netWeight, 0);
+    const totalAmount = invoiceItems.reduce((sum: number, item: any) => sum + item.totalAmount, 0);
+
+    // Build InvoicePrintData directly
     const printData: InvoicePrintData = {
       type: 'OUTBOUND',
       invoiceNo: receiptId,
@@ -114,20 +133,9 @@ export const OutboundPage: React.FC = () => {
       partnerName: values.customer,
       warehouseStaff: user?.name ?? 'Thủ kho',
       note: `Lý do xuất: ${values.reason}`,
-      items: items.map((item: any) => {
-        const batchDetails = batches.find((b) => b.batchCode === item.batchCode);
-        return {
-          batchCode: item.batchCode,
-          seafoodName: batchDetails?.seafoodName ?? 'Chưa rõ',
-          storageCondition: 'Cấp đông',   // outbound doesn't carry this field; use sensible default
-          totalWeight: item.quantity,       // outbound records net qty directly
-          tareWeight: 0,
-          netWeight: item.quantity,
-          expiryDate: item.expiryDate ?? batchDetails?.expiryDate ?? '',
-          unitPrice: item.unitPrice ?? 0,
-          totalPrice: item.totalPrice ?? 0,
-        };
-      }),
+      items: invoiceItems,
+      totalNetWeight,
+      totalAmount,
     };
 
     setInvoiceData(printData);
