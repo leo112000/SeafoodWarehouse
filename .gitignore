@@ -1,0 +1,43 @@
+# Build & Binaries (.NET)
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+.idea/
+
+# Node.js / Frontend
+node_modules/
+**/node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment & Sensitive Files
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Production.json
+*.pem
+*.key
+*.pfx
+
+# Executables & Tools
+*.exe
+cloudflared*
+
+# Logs & Databases
+*.log
+logs/
+*.db
+*.sqlite
+*.mdf
+*.ldf
+
+# OS files
+.DS_Store
+Thumbs.db

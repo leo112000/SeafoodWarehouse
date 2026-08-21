@@ -53,4 +53,41 @@ export interface Product {
   note?: string;
 }
 
+export interface Category {
+  id: string;
+  code: string;           // Mã danh mục (VD: CA, TOM, CUA)
+  name: string;           // Tên danh mục (VD: Cá, Tôm, Cua)
+  description?: string;   // Mô tả
+  productCount: number;   // Số sản phẩm thuộc danh mục
+  createdAt: string;      // Ngày tạo
+}
 
+export interface Permission {
+  code: string;        // Mã quyền (VD: Pages.Products.Create)
+  displayName: string; // Tên hiển thị (VD: Tạo mới sản phẩm)
+  category: string;    // Nhóm quyền (Danh mục, Kho, Báo cáo, Hệ thống)
+}
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  userName: string;
+  userRole: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'PRINT';
+  module: string;
+  description: string;
+  ipAddress: string;
+  browser: string;
+  status: 'SUCCESS' | 'FAILED';
+  executionDurationMs?: number;
+  oldValues?: string;
+  newValues?: string;
+}
+
+export interface Role {
+  id: string;
+  name: string;        // Tên role (Admin, Manager, Stockkeeper, Sales)
+  description: string;
+  isSystemDefault?: boolean;
+  permissions: string[]; // Danh sách mã permission code được gán
+}

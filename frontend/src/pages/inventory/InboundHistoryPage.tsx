@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography } from 'antd';
-import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { useInboundStore } from '../../stores/useInboundStore';
+import { exportToExcel } from '../../utils/exportUtils';
 import type { InboundReceipt } from '../../stores/useInboundStore';
 import { formatCurrency, formatWeight, formatDate } from '../../utils/format';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
@@ -42,8 +43,12 @@ const toInvoiceData = (receipt: InboundReceipt, staffName: string): InvoicePrint
 };
 
 export const InboundHistoryPage: React.FC = () => {
-  const receipts = useInboundStore((state) => state.receipts);
+  const { receipts, fetchReceipts } = useInboundStore();
   const user = useAuthStore((state) => state.user);
+
+  React.useEffect(() => {
+    fetchReceipts();
+  }, [fetchReceipts]);
 
   const [selectedReceipt, setSelectedReceipt] = useState<InboundReceipt | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -69,6 +74,44 @@ export const InboundHistoryPage: React.FC = () => {
   const handleResetFilters = () => {
     setSupplierQuery('');
     setFilterDate(null);
+  };
+
+  const handleExportExcel = () => {
+    const exportData = filteredReceipts.flatMap((r) =>
+      r.items.map((item) => ({
+        id: r.id,
+        supplier: r.supplier,
+        inboundDate: formatDate(r.inboundDate),
+        storageLocation: r.storageLocation || 'Chưa rõ',
+        seafoodName: item.seafoodName,
+        batchCode: item.batchCode,
+        storageCondition: item.storageCondition,
+        totalWeight: item.totalWeight,
+        tareWeight: item.tareWeight,
+        netWeight: item.netWeight,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+      }))
+    );
+
+    exportToExcel(
+      exportData,
+      [
+        { header: 'Mã Phiếu', key: 'id', width: 20 },
+        { header: 'Nhà Cung Cấp', key: 'supplier', width: 25 },
+        { header: 'Ngày Nhập', key: 'inboundDate', width: 15 },
+        { header: 'Kho Lưu', key: 'storageLocation', width: 18 },
+        { header: 'Tên Hải Sản', key: 'seafoodName', width: 22 },
+        { header: 'Mã Lô (Batch)', key: 'batchCode', width: 20 },
+        { header: 'Bảo Quản', key: 'storageCondition', width: 15 },
+        { header: 'Tổng Kg (Gross)', key: 'totalWeight', width: 15 },
+        { header: 'Kg Bì (Tare)', key: 'tareWeight', width: 15 },
+        { header: 'Kg Thực (Net)', key: 'netWeight', width: 15 },
+        { header: 'Đơn Giá (VNĐ)', key: 'unitPrice', width: 15, formatter: (val) => formatCurrency(val) },
+        { header: 'Thành Tiền (VNĐ)', key: 'totalPrice', width: 18, formatter: (val) => formatCurrency(val) },
+      ],
+      'LichSu_NhapKho_HaiSan'
+    );
   };
 
   // Filter receipt list
@@ -215,13 +258,19 @@ export const InboundHistoryPage: React.FC = () => {
             />
           </Col>
           <Col xs={24} md={8}>
-            <Space>
+            <Space className="w-full justify-end">
+              {(supplierQuery || filterDate) && (
+                <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
+                  Xóa lọc
+                </Button>
+              )}
               <Button
-                icon={<ReloadOutlined />}
-                onClick={handleResetFilters}
-                size="large"
+                type="primary"
+                icon={<FileExcelOutlined />}
+                className="bg-emerald-600 hover:bg-emerald-700 border-none"
+                onClick={handleExportExcel}
               >
-                Đặt lại
+                Xuất Excel (.xlsx)
               </Button>
             </Space>
           </Col>

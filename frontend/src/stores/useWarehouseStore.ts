@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import type { SeafoodProduct } from '../types';
+import { warehouseService, type WarehouseItem } from '../services/warehouseService';
 
 interface WarehouseState {
   products: SeafoodProduct[];
+  warehouses: WarehouseItem[];
   isLoading: boolean;
+  fetchWarehouses: () => Promise<void>;
   addProduct: (product: Omit<SeafoodProduct, 'id' | 'lastUpdated'>) => void;
   updateProduct: (id: string, updated: Partial<SeafoodProduct>) => void;
   deleteProduct: (id: string) => void;
@@ -52,7 +55,18 @@ export const useWarehouseStore = create<WarehouseState>((set) => ({
       lastUpdated: new Date().toISOString(),
     },
   ],
+  warehouses: [],
   isLoading: false,
+  fetchWarehouses: async () => {
+    try {
+      const data = await warehouseService.getAll();
+      if (data && data.length > 0) {
+        set({ warehouses: data });
+      }
+    } catch {
+      // Keep state on error
+    }
+  },
   addProduct: (product) =>
     set((state) => {
       const newProduct: SeafoodProduct = {

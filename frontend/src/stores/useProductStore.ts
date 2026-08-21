@@ -1,113 +1,52 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Product } from '../types/seafood';
+import { productService } from '../services/productService';
 
-// ── seed data (same as ProductsPage initial data) ───────────────────────────
-
-const INITIAL_PRODUCTS: Product[] = [
-  {
-    id: 'p-1',
-    code: 'HS-CA-CAHOI',
-    name: 'Cá Hồi Na Uy',
-    categoryId: 'CA',
-    categoryName: 'Cá',
-    unit: 'Kg',
-    storageType: 'FROZEN',
-    targetTemperature: -18,
-    warningDaysBeforeExpiry: 3,
-    minStock: 50,
-    maxStock: 500,
-    referencePrice: 350000,
-    status: 'ACTIVE',
-    note: 'Nhập khẩu từ Na Uy, cấp đông IQF',
-  },
-  {
-    id: 'p-2',
-    code: 'HS-TOM-TOMHUM',
-    name: 'Tôm Hùm Bông',
-    categoryId: 'TOM',
-    categoryName: 'Tôm',
-    unit: 'Kg',
-    storageType: 'ALIVE',
-    targetTemperature: 20,
-    warningDaysBeforeExpiry: 1,
-    minStock: 10,
-    maxStock: 100,
-    referencePrice: 1500000,
-    status: 'ACTIVE',
-    note: 'Nuôi vịnh Vân Phong, giao sống',
-  },
-  {
-    id: 'p-3',
-    code: 'HS-CUA-CUAHD',
-    name: 'Cua Hoàng Đế',
-    categoryId: 'CUA',
-    categoryName: 'Cua',
-    unit: 'Kg',
-    storageType: 'FRESH',
-    targetTemperature: 2,
-    warningDaysBeforeExpiry: 2,
-    minStock: 20,
-    maxStock: 200,
-    referencePrice: 2200000,
-    status: 'ACTIVE',
-  },
-  {
-    id: 'p-4',
-    code: 'HS-MUC-MUCLA',
-    name: 'Mực Lá Đại',
-    categoryId: 'MUC',
-    categoryName: 'Mực & Bạch tuộc',
-    unit: 'Kg',
-    storageType: 'FROZEN',
-    targetTemperature: -18,
-    warningDaysBeforeExpiry: 5,
-    minStock: 30,
-    maxStock: 300,
-    referencePrice: 280000,
-    status: 'ACTIVE',
-  },
-  {
-    id: 'p-5',
-    code: 'HS-CA-CATHU',
-    name: 'Cá Thu Phấn',
-    categoryId: 'CA',
-    categoryName: 'Cá',
-    unit: 'Kg',
-    storageType: 'FRESH',
-    targetTemperature: 2,
-    warningDaysBeforeExpiry: 2,
-    minStock: 20,
-    maxStock: 150,
-    referencePrice: 180000,
-    status: 'INACTIVE',
-    note: 'Tạm ngừng nhập do giá biến động',
-  },
-];
-
-// ── store types ──────────────────────────────────────────────────────────────
+const INITIAL_PRODUCTS: Product[] = [];
 
 interface ProductState {
   products: Product[];
-  addProduct: (product: Omit<Product, 'id'>) => Product;
-  updateProduct: (id: string, product: Omit<Product, 'id'>) => void;
-  deleteProduct: (id: string) => void;
+  fetchProducts: () => Promise<void>;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
+  updateProduct: (id: string, product: Omit<Product, 'id'>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
 }
-
-// ── store ─────────────────────────────────────────────────────────────────────
 
 export const useProductStore = create<ProductState>()(
   devtools(
     (set) => ({
       products: INITIAL_PRODUCTS,
 
-      addProduct: (productData) => {
-        const newProduct: Product = { ...productData, id: `p-${Date.now()}` };
-        set((state) => ({ products: [...state.products, newProduct] }));
-        return newProduct;
+      fetchProducts: async () => {
+        try {
+          const apiProducts = await productService.getAll();
+          if (apiProducts && apiProducts.length > 0) {
+            set({ products: apiProducts });
+          }
+        } catch {
+          // Keep current state on error
+        }
       },
 
-      updateProduct: (id, productData) => {
+      addProduct: async (productData) => {
+        try {
+          const newProduct = await productService.create(productData);
+          set((state) => ({ products: [...state.products, newProduct] }));
+          return newProduct;
+        } catch {
+          const newProduct: Product = { ...productData, id: `p-${Date.now()}` };
+          set((state) => ({ products: [...state.products, newProduct] }));
+          return newProduct;
+        }
+      },
+
+      updateProduct: async (id, productData) => {
+        try {
+          await productService.update(id, productData);
+        } catch {
+          // Continue updating local store
+        }
         set((state) => ({
           products: state.products.map((p) =>
             p.id === id ? { ...productData, id } : p
@@ -115,7 +54,12 @@ export const useProductStore = create<ProductState>()(
         }));
       },
 
-      deleteProduct: (id) => {
+      deleteProduct: async (id) => {
+        try {
+          await productService.delete(id);
+        } catch {
+          // Continue local delete
+        }
         set((state) => ({ products: state.products.filter((p) => p.id !== id) }));
       },
     }),

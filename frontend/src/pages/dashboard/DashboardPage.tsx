@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Row, Col, Alert, Statistic, Button, Table, Typography, Space, Tag } from 'antd';
+import { Card, Row, Col, Alert, Statistic, Button, Table, Typography, Space, Tag, Tooltip } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import {
   AlertOutlined,
   ArrowRightOutlined,
@@ -25,14 +26,41 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { mockDashboardData } from '../../services/mockDashboardData';
+import { EMPTY_DASHBOARD_DATA, type DashboardData } from '../../services/mockDashboardData';
+import { dashboardService } from '../../services/dashboardService';
 import { formatCurrency, formatWeight } from '../../utils/format';
 
 const { Title, Paragraph, Text } = Typography;
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { alerts, kpis, dailyFlow, categoryStock, recentTransactions } = mockDashboardData;
+  const [data, setData] = React.useState<DashboardData>(EMPTY_DASHBOARD_DATA);
+  const [loading, setLoading] = React.useState(false);
+  const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null);
+
+  const fetchData = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await dashboardService.getDashboardData();
+      if (res) {
+        setData(res);
+        setLastUpdated(new Date());
+      }
+    } catch {
+      // Backend API error
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchData();
+    // Auto-refresh mỗi 30 giây
+    const interval = setInterval(fetchData, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const { alerts, kpis, dailyFlow, categoryStock, recentTransactions } = data;
 
   const transactionColumns = [
     {
@@ -80,11 +108,27 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <Title level={2} className="m-0">Bảng Điều Khiển Tổng Quan</Title>
-        <Paragraph type="secondary">
-          Giám sát trực quan dữ liệu nhập xuất, tồn kho hải sản và cảnh báo vận hành thời gian thực.
-        </Paragraph>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div>
+          <Title level={2} className="m-0">Bảng Điều Khiển Tổng Quan</Title>
+          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            Giám sát trực quan dữ liệu nhập xuất, tồn kho hải sản và cảnh báo vận hành thời gian thực.
+          </Paragraph>
+          {lastUpdated && (
+            <span style={{ fontSize: 12, color: '#999' }}>
+              Cập nhật lúc: {lastUpdated.toLocaleTimeString('vi-VN')} &nbsp;·&nbsp; Tự động làm mới mỗi 30s
+            </span>
+          )}
+        </div>
+        <Tooltip title="Làm mới dữ liệu ngay">
+          <Button
+            icon={<ReloadOutlined spin={loading} />}
+            onClick={fetchData}
+            loading={loading}
+          >
+            Làm mới
+          </Button>
+        </Tooltip>
       </div>
 
       {/* Khối 1: Header Cảnh Báo Khẩn (Alert Banner) */}

@@ -1,0 +1,216 @@
+@API_HostAddress = http://localhost:5260
+
+### ===== HEALTH CHECK =====
+
+GET {{API_HostAddress}}/api/healthcheck
+Accept: application/json
+
+### ===== CATEGORIES =====
+
+### Lấy danh sách danh mục
+GET {{API_HostAddress}}/api/categories?pageNumber=1&pageSize=10
+Accept: application/json
+
+### Lấy danh mục theo Id
+GET {{API_HostAddress}}/api/categories/1
+Accept: application/json
+
+### Tạo mới danh mục
+POST {{API_HostAddress}}/api/categories
+Content-Type: application/json
+
+{
+  "code": "CAT-001",
+  "name": "Tôm",
+  "description": "Các loại tôm"
+}
+
+### Cập nhật danh mục
+PUT {{API_HostAddress}}/api/categories/1
+Content-Type: application/json
+
+{
+  "code": "CAT-001",
+  "name": "Tôm các loại",
+  "description": "Các loại tôm nhập khẩu"
+}
+
+### Xóa danh mục
+DELETE {{API_HostAddress}}/api/categories/1
+
+### ===== PRODUCTS =====
+
+### Lấy danh sách sản phẩm
+GET {{API_HostAddress}}/api/products?pageNumber=1&pageSize=10
+Accept: application/json
+
+### Lấy sản phẩm theo danh mục
+GET {{API_HostAddress}}/api/products?categoryId=1
+Accept: application/json
+
+### Lấy sản phẩm theo Id
+GET {{API_HostAddress}}/api/products/1
+Accept: application/json
+
+### Tạo mới sản phẩm
+POST {{API_HostAddress}}/api/products
+Content-Type: application/json
+
+{
+  "code": "PRD-001",
+  "name": "Tôm Thẻ Chân Trắng",
+  "unit": "kg",
+  "minimumStock": 500,
+  "targetTemperature": -18,
+  "scientificName": "Litopenaeus vannamei",
+  "categoryId": 1
+}
+
+### Cập nhật sản phẩm
+PUT {{API_HostAddress}}/api/products/1
+Content-Type: application/json
+
+{
+  "code": "PRD-001",
+  "name": "Tôm Thẻ Chân Trắng",
+  "unit": "kg",
+  "minimumStock": 800,
+  "targetTemperature": -18,
+  "scientificName": "Litopenaeus vannamei",
+  "categoryId": 1
+}
+
+### Xóa sản phẩm
+DELETE {{API_HostAddress}}/api/products/1
+
+### ===== WAREHOUSES =====
+
+### Lấy danh sách kho
+GET {{API_HostAddress}}/api/warehouses?pageNumber=1&pageSize=10
+Accept: application/json
+
+### Lấy kho theo loại
+GET {{API_HostAddress}}/api/warehouses?type=FrozenStorage
+Accept: application/json
+
+### Lấy kho theo Id
+GET {{API_HostAddress}}/api/warehouses/1
+Accept: application/json
+
+### Tạo mới kho
+POST {{API_HostAddress}}/api/warehouses
+Content-Type: application/json
+
+{
+  "code": "WH-001",
+  "name": "Kho Đông Hải Phòng",
+  "location": "Cảng Đình Vũ, Hải Phòng",
+  "type": "FrozenStorage",
+  "targetTemperature": -18,
+  "maxCapacityTon": 1000
+}
+
+### Cập nhật kho
+PUT {{API_HostAddress}}/api/warehouses/1
+Content-Type: application/json
+
+{
+  "code": "WH-001",
+  "name": "Kho Đông Hải Phòng",
+  "location": "Cảng Đình Vũ, Hải Phòng",
+  "type": "FrozenStorage",
+  "targetTemperature": -20,
+  "maxCapacityTon": 1200,
+  "isActive": true
+}
+
+### Xóa kho
+DELETE {{API_HostAddress}}/api/warehouses/1
+
+### ===== LOT BATCHES =====
+
+### Lấy danh sách lô hàng
+GET {{API_HostAddress}}/api/lotbatches?pageNumber=1&pageSize=10
+Accept: application/json
+
+### Lấy lô hàng sắp hết hạn (30 ngày tới)
+GET {{API_HostAddress}}/api/lotbatches/expiring?daysAhead=30
+Accept: application/json
+
+### Lấy lô hàng theo Id
+GET {{API_HostAddress}}/api/lotbatches/1
+Accept: application/json
+
+### Tạo mới lô hàng và nhập kho
+POST {{API_HostAddress}}/api/lotbatches
+Content-Type: application/json
+
+{
+  "batchCode": "LB-20260819-001",
+  "productId": 1,
+  "productionDate": "2026-08-19T00:00:00Z",
+  "expirationDate": "2027-08-19T00:00:00Z",
+  "initialQuantity": 1000,
+  "supplierName": "Công ty Hải Sản ABC",
+  "grade": "GradeA",
+  "certificateCode": "CERT-001",
+  "warehouseId": 1,
+  "storageBin": "A-01-01"
+}
+
+### Xóa lô hàng
+DELETE {{API_HostAddress}}/api/lotbatches/1
+
+### ===== INVENTORY =====
+
+### Lấy danh sách tồn kho
+GET {{API_HostAddress}}/api/inventory?pageNumber=1&pageSize=10
+Accept: application/json
+
+### Lấy tồn kho theo kho
+GET {{API_HostAddress}}/api/inventory?warehouseId=1
+Accept: application/json
+
+### Lấy lịch sử giao dịch
+GET {{API_HostAddress}}/api/inventory/transactions?pageNumber=1&pageSize=10
+Accept: application/json
+
+### Nhập kho
+POST {{API_HostAddress}}/api/inventory/import
+Content-Type: application/json
+
+{
+  "type": "Import",
+  "lotBatchId": 1,
+  "sourceWarehouseId": 1,
+  "quantity": 500,
+  "createdBy": "admin",
+  "note": "Nhập bổ sung"
+}
+
+### Xuất kho
+POST {{API_HostAddress}}/api/inventory/export
+Content-Type: application/json
+
+{
+  "type": "Export",
+  "lotBatchId": 1,
+  "sourceWarehouseId": 1,
+  "quantity": 200,
+  "createdBy": "admin",
+  "note": "Xuất cho đơn hàng ĐH-001"
+}
+
+### Chuyển kho
+POST {{API_HostAddress}}/api/inventory/transfer
+Content-Type: application/json
+
+{
+  "type": "Transfer",
+  "lotBatchId": 1,
+  "sourceWarehouseId": 1,
+  "destinationWarehouseId": 2,
+  "quantity": 300,
+  "createdBy": "admin",
+  "note": "Chuyển sang kho Đà Nẵng"
+}

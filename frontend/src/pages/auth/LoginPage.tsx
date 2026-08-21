@@ -3,8 +3,8 @@ import { Card, Form, Input, Button, Checkbox, Typography, App } from 'antd';
 import { UserOutlined, LockOutlined, GlobalOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
-import type { UserInfo } from '../../stores/useAuthStore';
 import { useThemeStore } from '../../stores/useThemeStore';
+import { authService } from '../../services/authService';
 
 const { Title, Paragraph } = Typography;
 
@@ -18,54 +18,14 @@ export const LoginPage: React.FC = () => {
 
   const from = location.state?.from?.pathname || '/';
 
-  // Mock authentication function since the real backend is not fully ready
-  const handleMockLogin = async (values: any): Promise<{ token: string; user: UserInfo }> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const { email, password } = values;
-        
-        // Define mock accounts
-        if (email === 'admin@gmail.com' && password === 'admin123') {
-          resolve({
-            token: 'mock-jwt-token-admin',
-            user: {
-              id: 'u-1',
-              name: 'Đặng Lâm Cường (Admin)',
-              email: 'admin@gmail.com',
-              roles: ['Admin'],
-            },
-          });
-        } else if (email === 'thukho@gmail.com' && password === 'thukho123') {
-          resolve({
-            token: 'mock-jwt-token-thukho',
-            user: {
-              id: 'u-2',
-              name: 'Trần Minh Thuận (Thủ kho)',
-              email: 'thukho@gmail.com',
-              roles: ['Thukho'],
-            },
-          });
-        } else if (email === 'nhanvien@gmail.com' && password === 'nhanvien123') {
-          resolve({
-            token: 'mock-jwt-token-nhanvien',
-            user: {
-              id: 'u-3',
-              name: 'Nguyễn Văn Nam (Nhân viên)',
-              email: 'nhanvien@gmail.com',
-              roles: ['Nhanvien'],
-            },
-          });
-        } else {
-          reject(new Error('Tài khoản hoặc mật khẩu không chính xác.'));
-        }
-      }, 800);
-    });
-  };
-
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
-      const response = await handleMockLogin(values);
+      const response = await authService.login({
+        email: values.email,
+        password: values.password,
+        tenantName: values.tenantName,
+      });
       login(response.token, response.user, values.tenantName);
       message.success('Đăng nhập thành công!');
       navigate(from, { replace: true });

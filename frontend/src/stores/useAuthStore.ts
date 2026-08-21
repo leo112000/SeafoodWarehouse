@@ -4,7 +4,10 @@ export interface UserInfo {
   id: string;
   name: string;
   email: string;
-  roles: ('Admin' | 'Thukho' | 'Nhanvien')[];
+  roles: string[];
+  phone?: string;
+  createdAt?: string;
+  status?: 'ACTIVE' | 'INACTIVE' | 'Active' | 'Blocked';
 }
 
 interface AuthState {
@@ -13,6 +16,7 @@ interface AuthState {
   tenantName: string | null;
   isAuthenticated: boolean;
   login: (token: string, user: UserInfo, tenantName?: string) => void;
+  updateProfile: (profile: Pick<UserInfo, 'name' | 'phone'>) => void;
   logout: () => void;
 }
 
@@ -64,6 +68,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: true,
     });
   },
+  updateProfile: (profile) => set((state) => {
+    if (!state.user) return state;
+    const user = { ...state.user, ...profile };
+    localStorage.setItem('user', JSON.stringify(user));
+    return { user };
+  }),
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

@@ -5,7 +5,7 @@ import { Placeholder } from '../components/Placeholder';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { UsersPage } from '../pages/admin/UsersPage';
 import { ProtectedRoute } from '../components/ProtectedRoute';
-import { RoleGuard } from '../components/RoleGuard';
+import { PermissionGuard } from '../components/PermissionGuard';
 import { InboundPage } from '../pages/inventory/InboundPage';
 import { InboundHistoryPage } from '../pages/inventory/InboundHistoryPage';
 import { OutboundPage } from '../pages/inventory/OutboundPage';
@@ -14,8 +14,12 @@ import OutboundHistoryPage from '../pages/inventory/OutboundHistoryPage';
 import AlertsPage from '../pages/reports/AlertsPage';
 import ReportsPage from '../pages/reports/ReportsPage';
 import PackagingPage from '../pages/master-data/PackagingPage';
+import CategoriesPage from '../pages/master-data/CategoriesPage';
 import PackagingReturnPage from '../pages/inventory/PackagingReturnPage';
 import ProductsPage from '../pages/master-data/ProductsPage';
+import RolesPage from '../pages/admin/RolesPage';
+import AuditLogPage from '../pages/system/AuditLogPage';
+import SystemSettingsPage from '../pages/system/SystemSettingsPage';
 
 export const router = createBrowserRouter([
   {
@@ -32,132 +36,187 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '',
-        element: <DashboardPage />,
+        element: <PermissionGuard permission="Pages.Dashboard.View"><DashboardPage /></PermissionGuard>,
       },
       {
         path: 'dashboard',
-        element: <DashboardPage />,
+        element: <PermissionGuard permission="Pages.Dashboard.View"><DashboardPage /></PermissionGuard>,
       },
       {
         path: 'inventory',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.Inbound.View">
             <Placeholder title="Quản lý kho chi tiết" description="Chức năng đang được phát triển..." />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'inventory/inbound',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.Inbound.Create">
             <InboundPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'inventory/inbound-history',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.Inbound.View">
             <InboundHistoryPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'inventory/outbound',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.Outbound.Create">
             <OutboundPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'inventory/outbound-history',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.Outbound.View">
             <OutboundHistoryPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
-        path: 'inventory/wastage',
+        path: 'inventory/packaging-loan',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
-            <WastagePage />
-          </RoleGuard>
+          <PermissionGuard permission="Pages.Packaging.Loan">
+            <Placeholder title="Mượn bao bì" description="Chức năng đang được phát triển..." />
+          </PermissionGuard>
         ),
       },
       {
         path: 'inventory/packaging-return',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.PackagingReturn.View">
             <PackagingReturnPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
-        path: 'alerts',
+        path: 'inventory/wastage',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
-            <AlertsPage />
-          </RoleGuard>
+          <PermissionGuard permission="Pages.Wastage.Create">
+            <WastagePage />
+          </PermissionGuard>
         ),
       },
-      {
-        path: 'reports',
-        element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
-            <ReportsPage />
-          </RoleGuard>
-        ),
-      },
-      // Canonical report sub-paths (used by sidebar menu)
       {
         path: 'reports/summary',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.Reports.View">
             <ReportsPage />
-          </RoleGuard>
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: 'reports/inventory',
+        element: (
+          <PermissionGuard permission="Pages.Reports.View">
+            <ReportsPage />
+          </PermissionGuard>
         ),
       },
       {
         path: 'reports/alerts',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.Alerts.View">
             <AlertsPage />
-          </RoleGuard>
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <PermissionGuard permission="Pages.Reports.View">
+            <ReportsPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: 'alerts',
+        element: (
+          <PermissionGuard permission="Pages.Alerts.View">
+            <AlertsPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: 'master-data/categories',
+        element: (
+          <PermissionGuard permission="Pages.Categories.View">
+            <CategoriesPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: 'master-data/warehouses',
+        element: (
+          <PermissionGuard permission="Pages.Warehouses.View">
+            <Placeholder title="Danh mục kho bãi" description="Chức năng đang được phát triển..." />
+          </PermissionGuard>
         ),
       },
       {
         path: 'master-data/packaging',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.Packaging.View">
             <PackagingPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'master-data/products',
         element: (
-          <RoleGuard allowedRoles={['Admin', 'Thukho']}>
+          <PermissionGuard permission="Pages.Products.View">
             <ProductsPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
       },
       {
         path: 'admin/users',
         element: (
-          <RoleGuard allowedRoles={['Admin']}>
+          <PermissionGuard permission="Pages.Users.Manage">
             <UsersPage />
-          </RoleGuard>
+          </PermissionGuard>
         ),
+      },
+      {
+        path: 'system/users',
+        element: <PermissionGuard permission="Pages.Users.Manage"><UsersPage /></PermissionGuard>,
+      },
+      {
+        path: 'admin/roles',
+        element: (
+          <PermissionGuard permission="Pages.Roles.Manage">
+            <RolesPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: 'system/roles',
+        element: <PermissionGuard permission="Pages.Roles.Manage"><RolesPage /></PermissionGuard>,
       },
       {
         path: 'settings',
         element: (
-          <RoleGuard allowedRoles={['Admin']}>
-            <Placeholder title="Cài đặt hệ thống" description="Cấu hình hệ thống và phân quyền." />
-          </RoleGuard>
+          <PermissionGuard permission="Pages.Settings.Manage">
+            <SystemSettingsPage />
+          </PermissionGuard>
         ),
+      },
+      {
+        path: 'system/settings',
+        element: <PermissionGuard permission="Pages.Settings.Manage"><SystemSettingsPage /></PermissionGuard>,
+      },
+      {
+        path: 'system/audit-logs',
+        element: <PermissionGuard permission="Pages.AuditLogs.View"><AuditLogPage /></PermissionGuard>,
       },
     ],
   },

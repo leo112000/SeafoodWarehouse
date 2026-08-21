@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Form, Button, Select, InputNumber, Row, Col, Space, Typography, Table, Tag, DatePicker, Radio, App } from 'antd';
 import { SaveOutlined, ReloadOutlined, SwapOutlined, WarningOutlined } from '@ant-design/icons';
+import { api } from '../../services/api';
 import { useBatchStore } from '../../stores/useBatchStore';
-import type { Batch } from '../../stores/useBatchStore';
 import { formatCurrency, formatWeight } from '../../utils/format';
-import dayjs from 'dayjs';
 
 const { Title, Paragraph } = Typography;
 
@@ -24,32 +23,12 @@ export const WastagePage: React.FC = () => {
   const { message } = App.useApp();
 
   const batches = useBatchStore((state) => state.batches);
-  const deductStock = useBatchStore((state) => state.deductStock);
-  const addBatch = useBatchStore((state) => state.addBatch);
 
   const [mode, setMode] = useState<'wastage' | 'reclass'>('wastage');
   const [selectedBatchCode, setSelectedBatchCode] = useState<string | null>(null);
 
   // Wastage logs local history
   const [logs, setLogs] = useState<WastageLog[]>([
-    {
-      id: 'WST-001',
-      date: '2026-08-10',
-      type: 'Hao hụt',
-      seafoodName: 'Tôm Hùm Bông',
-      batchCode: 'LOT-TOMHUM-20260810',
-      weight: 2.5,
-      reason: 'Bị chết ngạt',
-    },
-    {
-      id: 'WST-002',
-      date: '2026-08-11',
-      type: 'Chuyển phân loại',
-      seafoodName: 'Tôm Hùm Bông -> Tôm hùm ngợp ướp đá',
-      batchCode: 'LOT-TOMHUM-20260810',
-      weight: 5.0,
-      reason: 'Hao hụt sống chuyển cấp đông',
-    },
   ]);
 
   const activeBatch = batches.find((b) => b.batchCode === selectedBatchCode);
@@ -61,72 +40,57 @@ export const WastagePage: React.FC = () => {
     setSelectedBatchCode(null);
   };
 
-  const handleFormSubmit = (values: any) => {
-    const sourceBatch = batches.find((b) => b.batchCode === values.sourceBatchCode);
-    if (!sourceBatch) return;
-
-    if (values.weight > sourceBatch.quantity) {
-      message.error(`Không thể thực hiện! Khối lượng vượt quá tồn kho khả dụng (${sourceBatch.quantity}kg)`);
-      return;
+  const fetchWastageLogs = async () => {
+    try {
+      const res = await api.get('/wastage');
+      if (res.data?.data) {
+        setLogs(res.data.data);
+      }
+    } catch {
+      // Fallback
     }
-
-    // Deduct stock from source batch
-    deductStock(values.sourceBatchCode, values.weight);
-
-    if (mode === 'wastage') {
-      const newLog: WastageLog = {
-        id: `WST-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-        date: dayjs().format('YYYY-MM-DD'),
-        type: 'Hao hụt',
-        seafoodName: sourceBatch.seafoodName,
-        batchCode: sourceBatch.batchCode,
-        weight: values.weight,
-        reason: values.reason || 'Hư hỏng / Hao hụt tự nhiên',
-      };
-      setLogs((prev) => [newLog, ...prev]);
-      message.success(`Đã ghi nhận hao hụt ${values.weight}kg cho lô ${sourceBatch.batchCode}`);
-    } else {
-      // Reclassification logic
-      // Create a new batch representing the downgraded/chilled product
-      const targetCode = `${sourceBatch.seafoodCode}-NGOP`;
-      const targetName = `${sourceBatch.seafoodName} (Ngợp ướp đá)`;
-      const newBatchCode = `LOT-${targetCode}-${dayjs().format('YYYYMMDD')}`;
-
-      const newBatchItem: Batch = {
-        batchCode: newBatchCode,
-        seafoodCode: targetCode,
-        seafoodName: targetName,
-        expiryDate: values.newExpiryDate ? values.newExpiryDate.format('YYYY-MM-DD') : dayjs().add(2, 'day').format('YYYY-MM-DD'),
-        quantity: values.weight,
-        unitPrice: values.newUnitPrice || sourceBatch.unitPrice * 0.6, // default to 60% price
-      };
-
-      addBatch(newBatchItem);
-
-      const newLog: WastageLog = {
-        id: `WST-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-        date: dayjs().format('YYYY-MM-DD'),
-        type: 'Chuyển phân loại',
-        seafoodName: `${sourceBatch.seafoodName} -> ${targetName}`,
-        batchCode: sourceBatch.batchCode,
-        weight: values.weight,
-        reason: `Hạ cấp phân loại sang ngợp ướp đá`,
-        details: `Lô mới tạo: ${newBatchCode}`,
-      };
-      setLogs((prev) => [newLog, ...prev]);
-      message.success(`Đã chuyển phân loại ${values.weight}kg sang lô ${newBatchCode}`);
-    }
-    
-    form.resetFields();
-    setSelectedBatchCode(null);
   };
 
-  // Monthly stats report
-  const monthlyStats = [
-    { month: '08/2026', totalInbound: 1500, totalWastage: 18.5, rate: 1.23 },
-    { month: '07/2026', totalInbound: 2400, totalWastage: 32.0, rate: 1.33 },
-    { month: '06/2026', totalInbound: 1950, totalWastage: 14.2, rate: 0.72 },
-  ];
+  const handleFormSubmit = async (values: any) => {
+    try {
+      await api.post('/wastage', {
+        mode,
+        sourceBatchCode: values.sourceBatchCode,
+        weight: values.weight,
+        reason: values.reason || (mode === 'wastage' ? 'Hao hụt tự nhiên/hư hỏng' : 'Chuyển phân loại ngợp'),
+        newUnitPrice: values.newUnitPrice,
+        newExpiryDate: values.newExpiryDate ? values.newExpiryDate.format('YYYY-MM-DD') : null
+      });
+
+      message.success(mode === 'wastage' ? `Đã ghi nhận hao hụt ${values.weight}kg vào CSDL!` : `Đã chuyển phân loại ${values.weight}kg sang lô ngợp trong CSDL!`);
+      
+      form.resetFields();
+      setSelectedBatchCode(null);
+      fetchMonthlyStats();
+      fetchWastageLogs();
+    } catch {
+      message.error('Lỗi khi ghi nhận hao hụt vào CSDL!');
+    }
+  };
+
+  // Dynamic monthly stats report from backend DB
+  const [monthlyStats, setMonthlyStats] = useState<Array<{ month: string; totalInbound: number; totalWastage: number; rate: number }>>([]);
+
+  const fetchMonthlyStats = async () => {
+    try {
+      const res = await api.get('/reports/wastage-monthly');
+      if (res.data?.data) {
+        setMonthlyStats(res.data.data);
+      }
+    } catch {
+      // Fallback
+    }
+  };
+
+  useEffect(() => {
+    fetchMonthlyStats();
+    fetchWastageLogs();
+  }, []);
 
   const logColumns = [
     { title: 'Mã số', dataIndex: 'id', key: 'id' },
@@ -139,7 +103,7 @@ export const WastagePage: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="print-constrained">
       <div className="mb-6">
         <Title level={2} className="m-0">Hao Hụt & Chuyển Phân Loại Hải Sản</Title>
         <Paragraph type="secondary">Ghi nhận lượng hải sản hao hụt tự nhiên (ngợp, chết) hoặc điều chuyển phân loại bảo quản để bảo toàn giá trị kinh tế.</Paragraph>
@@ -229,7 +193,7 @@ export const WastagePage: React.FC = () => {
                     <SwapOutlined />
                     <span>Thông tin phân loại mới (Hạ cấp sang ngợp ướp đá)</span>
                   </div>
-                  
+
                   <Form.Item
                     name="newUnitPrice"
                     label="Đơn giá mới (đ/kg)"

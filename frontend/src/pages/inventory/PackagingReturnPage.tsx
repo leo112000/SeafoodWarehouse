@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Card, Table, Tag, Button, Modal, Form, Select, InputNumber,
   Input, Row, Col, Statistic, App, Tabs, Badge, Tooltip,
@@ -10,13 +10,7 @@ import {
 import dayjs from 'dayjs';
 import { usePackagingReturnStore, type PackagingLoan } from '../../stores/usePackagingReturnStore';
 import { useAuthStore } from '../../stores/useAuthStore';
-
-const PACKAGING_TYPES = [
-  { code: 'SOT-RED',    name: 'Sọt nhựa đỏ tiêu chuẩn',    defaultTareWeight: 1.8 },
-  { code: 'SOT-BLUE',   name: 'Sọt nhựa xanh dương lớn',    defaultTareWeight: 2.2 },
-  { code: 'THUNG-30KG', name: 'Thùng xốp lớn 30kg',          defaultTareWeight: 0.5 },
-  { code: 'THUNG-10KG', name: 'Thùng carton chống ẩm 10kg',  defaultTareWeight: 0.3 },
-];
+import { usePackagingStore } from '../../stores/usePackagingStore';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,7 +29,13 @@ const debtLabel = (loan: PackagingLoan) => {
 const PackagingReturnPage: React.FC = () => {
   const { message } = App.useApp();
   const user = useAuthStore((s) => s.user);
-  const { loans, returns, addReturn, addLoan } = usePackagingReturnStore();
+  const { loans, returns, addReturn, addLoan, fetchLoansAndReturns } = usePackagingReturnStore();
+  const { packagings, fetchPackagings } = usePackagingStore();
+
+  useEffect(() => {
+    fetchPackagings();
+    fetchLoansAndReturns();
+  }, [fetchPackagings, fetchLoansAndReturns]);
 
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [loanModalOpen, setLoanModalOpen] = useState(false);
@@ -96,7 +96,7 @@ const PackagingReturnPage: React.FC = () => {
   };
 
   const handleLoanSubmit = (values: any) => {
-    const pkg = PACKAGING_TYPES.find((p) => p.code === values.packagingCode);
+    const pkg = packagings.find((p) => p.code === values.packagingCode);
     if (!pkg) return;
     addLoan({
       partnerName: values.partnerName,
@@ -500,7 +500,7 @@ const PackagingReturnPage: React.FC = () => {
                 rules={[{ required: true, message: 'Chọn loại khay!' }]}
               >
                 <Select placeholder="Chọn loại bao bì" options={
-                  PACKAGING_TYPES.map((p) => ({ value: p.code, label: `${p.name} (${p.defaultTareWeight} kg)` }))
+                  packagings.map((p) => ({ value: p.code, label: `${p.name} (${p.defaultTareWeight} kg)` }))
                 } />
               </Form.Item>
             </Col>

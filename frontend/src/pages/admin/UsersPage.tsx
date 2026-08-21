@@ -1,53 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Tag, Button, Modal, Form, Input, Select, Switch, Space, App } from 'antd';
-import { UserAddOutlined, EditOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import type { UserInfo } from '../../stores/useAuthStore';
-
-interface UserRecord extends UserInfo {
-  status: 'Active' | 'Blocked';
-  tenantName?: string;
-}
+import { UserAddOutlined, EditOutlined, SafetyCertificateOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
+import { userService, type UserRecord } from '../../services/userService';
 
 export const UsersPage: React.FC = () => {
-  const { message } = App.useApp();
-  const [users, setUsers] = useState<UserRecord[]>([
-    {
-      id: 'u-1',
-      name: 'Đặng Lâm Cường (Admin)',
-      email: 'admin@gmail.com',
-      roles: ['Admin'],
-      status: 'Active',
-      tenantName: 'Default',
-    },
-    {
-      id: 'u-2',
-      name: 'Trần Minh Thuận (Thủ kho)',
-      email: 'thukho@gmail.com',
-      roles: ['Thukho'],
-      status: 'Active',
-      tenantName: 'Default',
-    },
-    {
-      id: 'u-3',
-      name: 'Nguyễn Văn Nam (Nhân viên)',
-      email: 'nhanvien@gmail.com',
-      roles: ['Nhanvien'],
-      status: 'Active',
-      tenantName: 'Default',
-    },
-    {
-      id: 'u-4',
-      name: 'Lê Thị Mai (Nhân viên)',
-      email: 'lemai@gmail.com',
-      roles: ['Nhanvien'],
-      status: 'Blocked',
-      tenantName: 'TenantA',
-    },
-  ]);
+  const { message, modal } = App.useApp();
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
   const [form] = Form.useForm();
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await userService.getAll();
+      setUsers(data);
+    } catch {
+      message.error('Không thể tải danh sách nhân viên.');
+    } finally {
+      setLoading(false);
+    }
+  }, [message]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleOpenAddModal = () => {
     setEditingUser(null);
@@ -60,6 +39,7 @@ export const UsersPage: React.FC = () => {
     form.setFieldsValue({
       name: record.name,
       email: record.email,
+      phone: record.phone,
       roles: record.roles,
       status: record.status === 'Active',
       tenantName: record.tenantName,
@@ -71,47 +51,66 @@ export const UsersPage: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleFormSubmit = (values: any) => {
+  const handleFormSubmit = async (values: any) => {
     const status: 'Active' | 'Blocked' = values.status ? 'Active' : 'Blocked';
-    if (editingUser) {
-      // Edit mode
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editingUser.id
-            ? {
-                ...u,
-                name: values.name,
-                email: values.email,
-                roles: values.roles,
-                status,
-                tenantName: values.tenantName || 'Default',
-              }
-            : u
-        )
-      );
-      message.success('Cập nhật thông tin nhân viên thành công!');
-    } else {
-      // Add mode
-      const newUser: UserRecord = {
-        id: `u-${Math.random().toString(36).substring(2, 9)}`,
-        name: values.name,
-        email: values.email,
-        roles: values.roles,
-        status,
-        tenantName: values.tenantName || 'Default',
-      };
-      setUsers((prev) => [...prev, newUser]);
-      message.success('Thêm nhân viên mới thành công!');
+    try {
+      if (editingUser) {
+        // Edit mode
+        await userService.update(editingUser.id, {
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          roles: values.roles,
+          status,
+          tenantName: values.tenantName || 'Default',
+        });
+        message.success('Cập nhật thông tin nhân viên thành công!');
+      } else {
+        // Add mode
+        await userService.create({
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          roles: values.roles,
+          status,
+          tenantName: values.tenantName || 'Default',
+        });
+        message.success('Thêm nhân viên mới thành công!');
+      }
+      setIsModalOpen(false);
+      fetchUsers();
+    } catch (err: any) {
+      message.error(err.message || 'Lỗi khi lưu thông tin nhân viên.');
     }
-    setIsModalOpen(false);
   };
 
-  const handleToggleStatus = (record: UserRecord) => {
-    const nextStatus = record.status === 'Active' ? 'Blocked' : 'Active';
-    setUsers((prev) =>
-      prev.map((u) => (u.id === record.id ? { ...u, status: nextStatus } : u))
-    );
-    message.success(`Đã thay đổi trạng thái của ${record.name} thành ${nextStatus === 'Active' ? 'Hoạt động' : 'Bị chặn'}`);
+  const handleToggleStatus = async (record: UserRecord) => {
+    try {
+      await userService.toggleStatus(record.id);
+      message.success(`Đã thay đổi trạng thái của ${record.name}`);
+      fetchUsers();
+    } catch {
+      message.error('Không thể thay đổi trạng thái.');
+    }
+  };
+
+  const handleDeleteUser = (record: UserRecord) => {
+    modal.confirm({
+      title: 'Xác nhận xóa tài khoản',
+      content: `Bạn có chắc muốn xóa nhân viên "${record.name}" (${record.email})?`,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await userService.delete(record.id);
+          message.success('Đã xóa nhân viên thành công!');
+          fetchUsers();
+        } catch {
+          message.error('Không thể xóa nhân viên.');
+        }
+      },
+    });
   };
 
   const columns = [
@@ -127,7 +126,13 @@ export const UsersPage: React.FC = () => {
       key: 'email',
     },
     {
-      title: 'Tenant',
+      title: 'Số điện thoại',
+      dataIndex: 'phone',
+      key: 'phone',
+      render: (phone?: string) => phone || 'Chưa cập nhật',
+    },
+    {
+      title: 'Tenant / Chi nhánh',
       dataIndex: 'tenantName',
       key: 'tenantName',
       render: (tenant?: string) => <Tag color="purple">{tenant || 'Default'}</Tag>,
@@ -136,9 +141,9 @@ export const UsersPage: React.FC = () => {
       title: 'Vai trò',
       dataIndex: 'roles',
       key: 'roles',
-      render: (roles: UserInfo['roles']) => (
+      render: (roles: string[]) => (
         <>
-          {roles.map((role) => {
+          {(roles || []).map((role) => {
             let color = 'blue';
             let label = 'Quản trị viên';
             if (role === 'Thukho') {
@@ -188,6 +193,12 @@ export const UsersPage: React.FC = () => {
           >
             {record.status === 'Active' ? 'Chặn' : 'Kích hoạt'}
           </Button>
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteUser(record)}
+          />
         </Space>
       ),
     },
@@ -202,18 +213,23 @@ export const UsersPage: React.FC = () => {
             Quản lý tài khoản, thay đổi quyền hạn (Role-Based Access Control) và trạng thái hoạt động của nhân viên kho.
           </p>
         </div>
-        <Button
-          type="primary"
-          icon={<UserAddOutlined />}
-          onClick={handleOpenAddModal}
-          className="bg-sky-500 hover:bg-sky-600 border-none"
-        >
-          Thêm người dùng
-        </Button>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={fetchUsers} loading={loading}>
+            Làm mới
+          </Button>
+          <Button
+            type="primary"
+            icon={<UserAddOutlined />}
+            onClick={handleOpenAddModal}
+            className="bg-sky-500 hover:bg-sky-600 border-none"
+          >
+            Thêm người dùng
+          </Button>
+        </Space>
       </div>
 
       <Card className="shadow-sm">
-        <Table dataSource={users} columns={columns} rowKey="id" pagination={{ pageSize: 5 }} scroll={{ x: 'max-content' }} />
+        <Table dataSource={users} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
       </Card>
 
       <Modal
@@ -257,6 +273,13 @@ export const UsersPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item
+            name="phone"
+            label="Số điện thoại"
+          >
+            <Input placeholder="0901234567" />
+          </Form.Item>
+
+          <Form.Item
             name="tenantName"
             label="TenantName (Cửa hàng / Chi nhánh)"
           >
@@ -287,4 +310,5 @@ export const UsersPage: React.FC = () => {
     </div>
   );
 };
+
 export default UsersPage;

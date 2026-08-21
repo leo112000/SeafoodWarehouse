@@ -1,14 +1,14 @@
-﻿$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Stop"
 
 Write-Host "============================="
 Write-Host "AI PROJECT VERIFICATION"
 Write-Host "============================="
 
 Write-Host "`n[1/6] Backend Build"
-dotnet build
+dotnet build backend
 
 Write-Host "`n[2/6] Backend Tests"
-dotnet test
+dotnet test backend
 
 Write-Host "`n[3/6] Frontend Type Check"
 Set-Location frontend

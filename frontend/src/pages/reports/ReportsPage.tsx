@@ -22,7 +22,9 @@ import {
   type TopItem,
   type TimeSeriesPoint,
   type StockByCategory,
+  type ReportData,
 } from '../../services/mockReportData';
+import { reportService } from '../../services/reportService';
 import { formatCurrency, formatWeight } from '../../utils/format';
 import { exportReportToExcel } from '../../utils/excelExporter';
 
@@ -232,7 +234,27 @@ export const ReportsPage: React.FC = () => {
     }
   }, [mode, selectedWeek, selectedMonth, selectedQuarter, selectedYear, customRange]);
 
-  const data = useMemo(() => getReportData(filter), [filter]);
+  const initialMockData = useMemo(() => getReportData(filter), [filter]);
+  const [data, setData] = useState<ReportData>(initialMockData);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    reportService
+      .getReportData(mode)
+      .then((res) => {
+        if (isMounted && res) {
+          setData(res);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setData(initialMockData);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [mode, initialMockData]);
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
     setMode(e.target.value as ReportMode);

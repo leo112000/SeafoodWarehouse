@@ -1,29 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Button, DatePicker, Select, InputNumber, Row, Col, Typography, App, Modal, Divider } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined, AppstoreAddOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useInboundStore } from '../../stores/useInboundStore';
 import { useProductStore } from '../../stores/useProductStore';
+import { usePackagingStore } from '../../stores/usePackagingStore';
+import { useCategoryStore } from '../../stores/useCategoryStore';
+import { QRScannerModal } from '../../components/common/QRScannerModal';
 import dayjs from 'dayjs';
 
 const { Title, Paragraph } = Typography;
-
-// Shared static packaging types (mirrors PackagingPage data; replace with a store/API later)
-const PACKAGING_TYPES = [
-  { code: 'SOT-RED',   name: 'Sọt nhựa đỏ tiêu chuẩn',    defaultTareWeight: 1.8 },
-  { code: 'SOT-BLUE',  name: 'Sọt nhựa xanh dương lớn',    defaultTareWeight: 2.2 },
-  { code: 'THUNG-30KG', name: 'Thùng xốp lớn 30kg',         defaultTareWeight: 0.5 },
-  { code: 'THUNG-10KG', name: 'Thùng carton chống ẩm 10kg', defaultTareWeight: 0.3 },
-];
-
-const QUICK_ADD_CATEGORIES = [
-  { id: 'CA',   name: 'Cá' },
-  { id: 'TOM',  name: 'Tôm' },
-  { id: 'CUA',  name: 'Cua' },
-  { id: 'MUC',  name: 'Mực & Bạch tuộc' },
-  { id: 'HAU',  name: 'Hàu & Nhuyễn thể' },
-  { id: 'KHAC', name: 'Hải sản khác' },
-];
 
 export const InboundPage: React.FC = () => {
   const [form] = Form.useForm();
@@ -32,15 +18,47 @@ export const InboundPage: React.FC = () => {
   const { message } = App.useApp();
   const addReceipt = useInboundStore((state) => state.addReceipt);
   const { products, addProduct } = useProductStore();
+  const { packagings, fetchPackagings } = usePackagingStore();
+  const { categories, fetchCategories } = useCategoryStore();
+
+  // Fetch packaging and category data from database on mount
+  useEffect(() => {
+    fetchPackagings();
+    fetchCategories();
+  }, [fetchPackagings, fetchCategories]);
 
   // ── quick-add modal state ────────────────────────────────────────────────────
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   // Stores which form-list item index triggered the quick-add, so we can auto-select
   const [pendingItemIndex, setPendingItemIndex] = useState<number | null>(null);
 
+  // ── QR/Barcode scanner state ────────────────────────────────────────────────
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [scanItemIndex, setScanItemIndex] = useState<number | null>(null);
+  void setScanItemIndex;
+
   const activeProducts = products.filter((p) => p.status === 'ACTIVE');
 
-  const onFinish = (values: any) => {
+  const handleScanSuccess = (scannedCode: string) => {
+    const matchedProduct = activeProducts.find(
+      (p) => p.code.toLowerCase() === scannedCode.toLowerCase() || p.id === scannedCode
+    );
+
+    if (matchedProduct) {
+      const items = form.getFieldValue('items') || [];
+      const targetIndex = scanItemIndex !== null ? scanItemIndex : items.length;
+      items[targetIndex] = {
+        ...items[targetIndex],
+        seafoodCode: matchedProduct.code,
+      };
+      form.setFieldsValue({ items });
+      message.success(`Đã nhận diện: ${matchedProduct.name} (${matchedProduct.code})`);
+    } else {
+      message.warning(`Không tìm thấy hải sản có mã "${scannedCode}". Bạn có thể Thêm Nhanh!`);
+    }
+  };
+
+  const onFinish = async (values: any) => {
     // Format dates before saving
     const formattedItems = (values.items || []).map((item: any) => {
       const selectedProduct = activeProducts.find((p) => p.code === item.seafoodCode);
@@ -56,7 +74,7 @@ export const InboundPage: React.FC = () => {
 
     const totalAmount = formattedItems.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
-    addReceipt({
+    await addReceipt({
       supplier: values.supplier,
       inboundDate: values.inboundDate ? values.inboundDate.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
       storageLocation: values.storageLocation,
@@ -77,7 +95,7 @@ export const InboundPage: React.FC = () => {
       if (!item) return item;
 
       // Auto-compute tare from packaging type × quantity
-      const pkg = PACKAGING_TYPES.find((p) => p.code === item.packagingCode);
+      const pkg = packagings.find((p) => p.code === item.packagingCode);
       const pkgQty = Number(item.packagingQty) || 0;
       const computedTare = pkg ? pkgQty * pkg.defaultTareWeight : Number(item.tareWeight) || 0;
 
@@ -119,9 +137,9 @@ export const InboundPage: React.FC = () => {
   };
 
   // ── quick-add submit ──────────────────────────────────────────────────────────
-  const handleQuickAddSubmit = (values: any) => {
-    const cat = QUICK_ADD_CATEGORIES.find((c) => c.id === values.categoryId);
-    const newProduct = addProduct({
+  const handleQuickAddSubmit = async (values: any) => {
+    const cat = categories.find((c) => c.id === values.categoryId);
+    const newProduct = await addProduct({
       code: (values.code as string).toUpperCase(),
       name: values.name,
       categoryId: values.categoryId,
@@ -151,7 +169,7 @@ export const InboundPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="print-constrained">
       <div className="mb-6">
         <Title level={2} className="m-0">Tạo Phiếu Nhập Kho Hải Sản</Title>
         <Paragraph type="secondary">Nhập thông tin nhà cung cấp, lô hàng và các chỉ số đo lường bảo quản hải sản.</Paragraph>
@@ -287,11 +305,20 @@ export const InboundPage: React.FC = () => {
                       <Col xs={24} md={5}>
                         <Form.Item
                           {...restField}
+                          name={[name, 'batchCode']}
+                          label="Mã Lô (Tự động)"
+                        >
+                          <Input placeholder="Mã lô hàng" disabled className="text-gray-500 font-semibold" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={4}>
+                        <Form.Item
+                          {...restField}
                           name={[name, 'packagingCode']}
                           label="Loại Khay/Bì"
                         >
                           <Select placeholder="Chọn loại khay/bì" allowClear>
-                            {PACKAGING_TYPES.map((pkg) => (
+                            {packagings.map((pkg) => (
                               <Select.Option key={pkg.code} value={pkg.code}>
                                 {pkg.name} ({pkg.defaultTareWeight} kg)
                               </Select.Option>
@@ -299,7 +326,7 @@ export const InboundPage: React.FC = () => {
                           </Select>
                         </Form.Item>
                       </Col>
-                      <Col xs={12} md={3}>
+                      <Col xs={12} md={2}>
                         <Form.Item
                           {...restField}
                           name={[name, 'packagingQty']}
@@ -308,7 +335,7 @@ export const InboundPage: React.FC = () => {
                           <InputNumber min={0} precision={0} className="w-full" />
                         </Form.Item>
                       </Col>
-                      <Col xs={12} md={3}>
+                      <Col xs={12} md={2}>
                         <Form.Item
                           {...restField}
                           name={[name, 'totalWeight']}
@@ -318,7 +345,7 @@ export const InboundPage: React.FC = () => {
                           <InputNumber min={0} className="w-full" precision={1} />
                         </Form.Item>
                       </Col>
-                      <Col xs={12} md={3}>
+                      <Col xs={12} md={2}>
                         <Form.Item
                           {...restField}
                           name={[name, 'tareWeight']}
@@ -328,7 +355,7 @@ export const InboundPage: React.FC = () => {
                           <InputNumber min={0} className="w-full" precision={1} />
                         </Form.Item>
                       </Col>
-                      <Col xs={12} md={3}>
+                      <Col xs={12} md={2}>
                         <Form.Item
                           {...restField}
                           name={[name, 'netWeight']}
@@ -351,15 +378,7 @@ export const InboundPage: React.FC = () => {
                           </Select>
                         </Form.Item>
                       </Col>
-                      <Col xs={24} md={5}>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'batchCode']}
-                          label="Mã Lô (Tự động)"
-                        >
-                          <Input placeholder="Mã lô hàng" disabled className="text-gray-500 font-semibold" />
-                        </Form.Item>
-                      </Col>
+
                     </Row>
 
                     <Row gutter={[12, 12]} className="mt-2">
@@ -482,7 +501,7 @@ export const InboundPage: React.FC = () => {
           <Row gutter={12}>
             <Col xs={24} sm={10}>
               <Form.Item name="categoryId" label="Danh Mục" rules={[{ required: true, message: 'Chọn danh mục!' }]}>
-                <Select options={QUICK_ADD_CATEGORIES.map((c) => ({ value: c.id, label: c.name }))} placeholder="Danh mục" />
+                <Select options={categories.map((c) => ({ value: c.id, label: c.name }))} placeholder="Danh mục" />
               </Form.Item>
             </Col>
             <Col xs={12} sm={7}>
@@ -493,10 +512,10 @@ export const InboundPage: React.FC = () => {
             <Col xs={12} sm={7}>
               <Form.Item name="storageType" label="Bảo Quản" rules={[{ required: true }]}>
                 <Select options={[
-                  { value: 'ALIVE',  label: 'Tươi sống' },
-                  { value: 'FRESH',  label: 'Ướp đá' },
+                  { value: 'ALIVE', label: 'Tươi sống' },
+                  { value: 'FRESH', label: 'Ướp đá' },
                   { value: 'FROZEN', label: 'Cấp đông' },
-                  { value: 'DRY',    label: 'Khô' },
+                  { value: 'DRY', label: 'Khô' },
                 ]} />
               </Form.Item>
             </Col>
@@ -527,6 +546,13 @@ export const InboundPage: React.FC = () => {
           </div>
         </Form>
       </Modal>
+
+      <QRScannerModal
+        open={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        onScanSuccess={handleScanSuccess}
+        title="Quét Mã Vạch / QR Code Hải Sản"
+      />
     </div>
   );
 };

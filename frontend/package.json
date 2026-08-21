@@ -17,6 +17,7 @@
     "antd": "^6.6.0",
     "axios": "^1.19.0",
     "file-saver": "^2.0.5",
+    "html5-qrcode": "^2.3.8",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",

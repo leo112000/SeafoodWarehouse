@@ -1,58 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, App, Row, Col, Statistic } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined, ShoppingOutlined, CalculatorOutlined, BarChartOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined, ShoppingOutlined, CalculatorOutlined, ReloadOutlined, WarningOutlined, PlusCircleOutlined } from '@ant-design/icons';
 import type { PackagingType } from '../../types/seafood';
+import { packagingService } from '../../services/packagingService';
 
 export const PackagingPage: React.FC = () => {
   const { message, modal } = App.useApp();
-  const [packagings, setPackagings] = useState<PackagingType[]>([
-    {
-      id: 'pkg-1',
-      code: 'SOT-RED',
-      name: 'Sọt nhựa đỏ tiêu chuẩn',
-      category: 'CONTAINER',
-      defaultTareWeight: 1.8,
-      unit: 'Cái',
-      stockQuantity: 120,
-      note: 'Dùng đựng cá cơm, cá nục nhập kho',
-    },
-    {
-      id: 'pkg-2',
-      code: 'SOT-BLUE',
-      name: 'Sọt nhựa xanh dương lớn',
-      category: 'CONTAINER',
-      defaultTareWeight: 2.2,
-      unit: 'Cái',
-      stockQuantity: 85,
-      note: 'Dành cho hàng mực và bạch tuộc tươi',
-    },
-    {
-      id: 'pkg-3',
-      code: 'THUNG-30KG',
-      name: 'Thùng xốp lớn 30kg',
-      category: 'CONSUMABLE',
-      defaultTareWeight: 0.5,
-      unit: 'Chiếc',
-      stockQuantity: 450,
-      note: 'Thùng xốp dùng 1 lần để đóng gói xuất khẩu',
-    },
-    {
-      id: 'pkg-4',
-      code: 'THUNG-10KG',
-      name: 'Thùng carton chống ẩm 10kg',
-      category: 'CONSUMABLE',
-      defaultTareWeight: 0.3,
-      unit: 'Chiếc',
-      stockQuantity: 600,
-      note: 'Đóng gói nội địa cá basa fillet',
-    },
-  ]);
+  const [packagings, setPackagings] = useState<PackagingType[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
+  const [adjustMode, setAdjustMode] = useState<'ADD' | 'LOSS'>('ADD');
+  const [selectedPkgForAdjust, setSelectedPkgForAdjust] = useState<PackagingType | null>(null);
+
   const [editingPkg, setEditingPkg] = useState<PackagingType | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'CONTAINER' | 'CONSUMABLE'>('ALL');
   const [form] = Form.useForm();
+  const [adjustForm] = Form.useForm();
+
+  const fetchPackagings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await packagingService.getAll();
+      setPackagings(data);
+    } catch {
+      message.error('Không thể tải danh sách bao bì.');
+    } finally {
+      setLoading(false);
+    }
+  }, [message]);
+
+  useEffect(() => {
+    fetchPackagings();
+  }, [fetchPackagings]);
 
   // Statistics calculations
   const totalTypes = packagings.length;
@@ -87,37 +69,51 @@ export const PackagingPage: React.FC = () => {
       okText: 'Xóa',
       okType: 'danger',
       cancelText: 'Hủy',
-      onOk: () => {
-        setPackagings((prev) => prev.filter((p) => p.id !== record.id));
-        message.success('Đã xóa danh mục bao bì thành công!');
+      onOk: async () => {
+        try {
+          await packagingService.delete(record.id);
+          message.success('Đã xóa danh mục bao bì thành công!');
+          fetchPackagings();
+        } catch {
+          message.error('Không thể xóa bao bì.');
+        }
       },
     });
   };
 
-  const handleFormSubmit = (values: any) => {
-    if (editingPkg) {
-      // Edit Mode
-      setPackagings((prev) =>
-        prev.map((p) =>
-          p.id === editingPkg.id
-            ? {
-                ...p,
-                code: values.code.toUpperCase(),
-                name: values.name,
-                category: values.category,
-                defaultTareWeight: values.defaultTareWeight,
-                unit: values.unit,
-                stockQuantity: values.stockQuantity,
-                note: values.note,
-              }
-            : p
-        )
-      );
-      message.success('Cập nhật danh mục bao bì thành công!');
-    } else {
-      // Add Mode
-      const newPkg: PackagingType = {
-        id: `pkg-${Math.random().toString(36).substring(2, 9)}`,
+  const handleOpenAdjustModal = (pkg?: PackagingType, mode: 'ADD' | 'LOSS' = 'ADD') => {
+    setSelectedPkgForAdjust(pkg || packagings[0] || null);
+    setAdjustMode(mode);
+    adjustForm.resetFields();
+    if (pkg) {
+      adjustForm.setFieldsValue({ packagingId: pkg.id });
+    }
+    setIsAdjustModalOpen(true);
+  };
+
+  const handleAdjustSubmit = async (values: any) => {
+    try {
+      const pkgId = Number(values.packagingId || selectedPkgForAdjust?.id);
+      const qty = Math.abs(Number(values.quantity || 0));
+      const finalQty = adjustMode === 'ADD' ? qty : -qty;
+
+      await packagingService.adjustStock({
+        packagingId: pkgId,
+        adjustmentQty: finalQty,
+        reason: values.reason || (adjustMode === 'ADD' ? 'Nhập bổ sung sọt' : 'Báo hư hỏng / báo mất sọt'),
+      });
+
+      message.success(adjustMode === 'ADD' ? 'Đã nhập bổ sung số lượng sọt vào kho!' : 'Đã ghi nhận báo hỏng / báo mất sọt thành công!');
+      setIsAdjustModalOpen(false);
+      fetchPackagings();
+    } catch {
+      message.error('Không thể cập nhật số lượng sọt.');
+    }
+  };
+
+  const handleFormSubmit = async (values: any) => {
+    try {
+      const payload = {
         code: values.code.toUpperCase(),
         name: values.name,
         category: values.category,
@@ -126,10 +122,19 @@ export const PackagingPage: React.FC = () => {
         stockQuantity: values.stockQuantity,
         note: values.note,
       };
-      setPackagings((prev) => [...prev, newPkg]);
-      message.success('Thêm danh mục bao bì mới thành công!');
+
+      if (editingPkg) {
+        await packagingService.update(editingPkg.id, payload);
+        message.success('Cập nhật danh mục bao bì thành công!');
+      } else {
+        await packagingService.create(payload);
+        message.success('Thêm danh mục bao bì mới thành công!');
+      }
+      setIsModalOpen(false);
+      fetchPackagings();
+    } catch {
+      message.error('Lỗi khi lưu thông tin bao bì.');
     }
-    setIsModalOpen(false);
   };
 
   const filteredPackagings = packagings.filter((p) => {
@@ -137,7 +142,7 @@ export const PackagingPage: React.FC = () => {
       p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.note && p.note.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+
     const matchesCategory = categoryFilter === 'ALL' || p.category === categoryFilter;
 
     return matchesSearch && matchesCategory;
@@ -145,61 +150,75 @@ export const PackagingPage: React.FC = () => {
 
   const columns = [
     {
-      title: 'Mã Vật Tư',
+      title: 'Mã số',
       dataIndex: 'code',
       key: 'code',
-      render: (code: string) => <Tag color="blue" className="font-mono font-semibold">{code}</Tag>,
+      render: (code: string) => <span className="font-semibold text-sky-600">{code}</span>,
     },
     {
-      title: 'Tên Bao Bì / Vật Tư',
+      title: 'Tên bao bì / sọt',
       dataIndex: 'name',
       key: 'name',
-      render: (name: string) => <strong>{name}</strong>,
     },
     {
-      title: 'Phân Loại',
+      title: 'Phân loại',
       dataIndex: 'category',
       key: 'category',
-      render: (cat: 'CONTAINER' | 'CONSUMABLE') => {
-        return cat === 'CONTAINER' ? (
-          <Tag color="cyan" icon={<InboxOutlined />}>Vật chứa tái sử dụng</Tag>
-        ) : (
-          <Tag color="orange" icon={<ShoppingOutlined />}>Vật tư dùng 1 lần</Tag>
-        );
-      },
-    },
-    {
-      title: 'Bì Tiêu Chuẩn (kg)',
-      dataIndex: 'defaultTareWeight',
-      key: 'defaultTareWeight',
-      render: (w: number) => (
-        <span className="font-semibold text-blue-600 dark:text-blue-400">
-          {w.toFixed(2)} kg
-        </span>
+      render: (cat: string) => (
+        <Tag color={cat === 'CONTAINER' ? 'blue' : 'orange'}>
+          {cat === 'CONTAINER' ? 'Sọt / Khay luân chuyển' : 'Vật tư 1 lần'}
+        </Tag>
       ),
     },
     {
-      title: 'Đơn Vị',
+      title: 'Bì chuẩn (kg)',
+      dataIndex: 'defaultTareWeight',
+      key: 'defaultTareWeight',
+      render: (val: number) => `${val.toFixed(2)} kg`,
+    },
+    {
+      title: 'Đơn vị',
       dataIndex: 'unit',
       key: 'unit',
     },
     {
-      title: 'Tồn Kho Vật Tư',
+      title: 'Tồn kho hiện tại',
       dataIndex: 'stockQuantity',
       key: 'stockQuantity',
-      render: (q: number) => <span className="font-bold">{q.toLocaleString()}</span>,
+      render: (qty: number) => (
+        <span className={`font-bold ${qty < 20 ? 'text-red-500 font-extrabold' : 'text-emerald-600'}`}>
+          {qty.toLocaleString()}
+        </span>
+      ),
     },
     {
-      title: 'Ghi Chú',
+      title: 'Ghi chú',
       dataIndex: 'note',
       key: 'note',
-      ellipsis: true,
+      render: (note?: string) => note || <span className="text-gray-400 italic">--</span>,
     },
     {
-      title: 'Hành Động',
+      title: 'Thao tác',
       key: 'action',
       render: (_: any, record: PackagingType) => (
-        <Space size="middle">
+        <Space size="small">
+          <Button
+            size="small"
+            icon={<PlusCircleOutlined className="text-emerald-500" />}
+            onClick={() => handleOpenAdjustModal(record, 'ADD')}
+            title="Nhập thêm sọt"
+          >
+            Nhập
+          </Button>
+          <Button
+            size="small"
+            danger
+            icon={<WarningOutlined />}
+            onClick={() => handleOpenAdjustModal(record, 'LOSS')}
+            title="Báo hỏng"
+          >
+            Báo hỏng
+          </Button>
           <Button
             type="text"
             icon={<EditOutlined />}
@@ -217,150 +236,156 @@ export const PackagingPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-center">
+    <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Danh Mục Bao Bì & Trọng Lượng Bì
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Quản lý các loại sọt nhựa, thùng xốp, thùng carton và cấu hình cân nặng bì tiêu chuẩn phục vụ quy trình cân nhập/xuất kho.
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 m-0">Danh Mục Bao Bì & Quản Lý Luồng Sọt</h1>
+          <p className="text-gray-500 mt-1">
+            Quản lý danh sách các loại sọt nhựa, khay inox, thùng xốp, báo mất/hỏng và nhập bổ sung vỏ sọt.
           </p>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleOpenAddModal}
-          size="large"
-          className="bg-sky-600 hover:bg-sky-500"
-        >
-          Thêm Bao Bì Mới
-        </Button>
+        <Space wrap>
+          <Button icon={<ReloadOutlined />} onClick={fetchPackagings} loading={loading}>
+            Làm mới
+          </Button>
+          <Button
+            icon={<PlusCircleOutlined className="text-emerald-500" />}
+            onClick={() => handleOpenAdjustModal(undefined, 'ADD')}
+          >
+            Nhập Thêm Sọt
+          </Button>
+          <Button
+            danger
+            icon={<WarningOutlined />}
+            onClick={() => handleOpenAdjustModal(undefined, 'LOSS')}
+          >
+            ⚠️ Báo Hỏng / Mất
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleOpenAddModal}
+            className="bg-sky-500 hover:bg-sky-600 border-none"
+          >
+            Tạo Loại Bao Bì Mới
+          </Button>
+        </Space>
       </div>
 
-      {/* Summary Cards */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+      <Row gutter={[16, 16]} className="mb-6">
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm border-l-4 border-l-sky-500">
             <Statistic
-              title="Tổng số loại bao bì"
+              title="Tổng loại Bao Bì / Vật Tư"
               value={totalTypes}
-              prefix={<BarChartOutlined className="text-sky-500 mr-2" />}
+              prefix={<InboxOutlined className="text-sky-500" />}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm border-l-4 border-l-blue-500">
             <Statistic
-              title="Vật chứa tái sử dụng"
+              title="Sọt / Khay Luân Chuyển"
               value={containerCount}
-              prefix={<InboxOutlined className="text-cyan-500 mr-2" />}
+              prefix={<ShoppingOutlined className="text-blue-500" />}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm border-l-4 border-l-orange-500">
             <Statistic
-              title="Vật tư đóng gói dùng 1 lần"
+              title="Vật Tư Dùng 1 Lần"
               value={consumableCount}
-              prefix={<ShoppingOutlined className="text-orange-500 mr-2" />}
+              prefix={<CalculatorOutlined className="text-orange-500" />}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+        <Col xs={24} sm={12} md={6}>
+          <Card className="shadow-sm border-l-4 border-l-emerald-500">
             <Statistic
-              title="Tổng lượng tồn kho vật tư"
+              title="Tổng Số Lượng Tồn Kho"
               value={totalStock}
-              prefix={<CalculatorOutlined className="text-emerald-500 mr-2" />}
+              prefix={<InboxOutlined className="text-emerald-500" />}
             />
           </Card>
         </Col>
       </Row>
 
-      {/* Table & Filters Card */}
-      <Card bordered={false} className="shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+      <Card className="shadow-sm mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+          <Space wrap className="w-full md:w-auto">
             <Input.Search
-              placeholder="Tìm theo mã hoặc tên bao bì..."
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-64"
+              placeholder="Tìm kiếm mã sọt, tên sọt..."
               allowClear
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: 250 }}
             />
             <Select
               value={categoryFilter}
               onChange={(val) => setCategoryFilter(val)}
-              className="w-full sm:w-56"
+              style={{ width: 200 }}
               options={[
-                { value: 'ALL', label: 'Tất cả loại bao bì' },
-                { value: 'CONTAINER', label: 'Vật chứa tái sử dụng (Sọt nhựa, khay...)' },
-                { value: 'CONSUMABLE', label: 'Vật tư dùng 1 lần (Thùng xốp, carton...)' },
+                { value: 'ALL', label: 'Tất cả phân loại' },
+                { value: 'CONTAINER', label: 'Sọt / Khay luân chuyển' },
+                { value: 'CONSUMABLE', label: 'Vật tư 1 lần' },
               ]}
             />
-          </div>
+          </Space>
         </div>
 
         <Table
-          columns={columns}
           dataSource={filteredPackagings}
+          columns={columns}
           rowKey="id"
+          loading={loading}
           pagination={{ pageSize: 10 }}
-          className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden"
           scroll={{ x: 'max-content' }}
         />
       </Card>
 
-      {/* Add / Edit Modal */}
       <Modal
-        title={editingPkg ? 'Cập Nhật Danh Mục Bao Bì' : 'Thêm Danh Mục Bao Bì Mới'}
+        title={editingPkg ? 'Chỉnh sửa thông tin bao bì' : 'Thêm danh mục bao bì mới'}
         open={isModalOpen}
+        onOk={() => form.submit()}
         onCancel={() => setIsModalOpen(false)}
-        footer={null}
+        okText={editingPkg ? 'Lưu thay đổi' : 'Tạo mới'}
+        cancelText="Hủy bỏ"
         destroyOnClose
       >
         <Form
           form={form}
           layout="vertical"
           onFinish={handleFormSubmit}
-          initialValues={{
-            category: 'CONTAINER',
-            defaultTareWeight: 0,
-            stockQuantity: 0,
-            unit: 'Cái',
-          }}
+          initialValues={{ category: 'CONTAINER', unit: 'Cái', defaultTareWeight: 1.5, stockQuantity: 100 }}
           className="mt-4"
         >
           <Form.Item
             name="code"
-            label="Mã Vật Tư / Bao Bì"
-            rules={[
-              { required: true, message: 'Vui lòng nhập mã vật tư!' },
-              { pattern: /^[a-zA-Z0-9-_]+$/, message: 'Mã chỉ bao gồm chữ, số, gạch ngang và gạch dưới!' }
-            ]}
+            label="Mã Bao bì / Sọt"
+            rules={[{ required: true, message: 'Vui lòng nhập mã!' }]}
           >
-            <Input placeholder="VD: SOT-RED-01" disabled={!!editingPkg} />
+            <Input placeholder="VD: SOT-RED, THUNG-30KG" disabled={!!editingPkg} />
           </Form.Item>
 
           <Form.Item
             name="name"
-            label="Tên Bao Bì / Vật Tư"
+            label="Tên hiển thị"
             rules={[{ required: true, message: 'Vui lòng nhập tên bao bì!' }]}
           >
-            <Input placeholder="VD: Sọt nhựa đỏ trung" />
+            <Input placeholder="VD: Sọt nhựa đỏ tiêu chuẩn" />
           </Form.Item>
 
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="category"
-                label="Phân Loại Bao Bì"
+                label="Phân loại"
                 rules={[{ required: true }]}
               >
                 <Select
                   options={[
-                    { value: 'CONTAINER', label: 'Vật chứa tái sử dụng' },
+                    { value: 'CONTAINER', label: 'Sọt / Khay luân chuyển' },
                     { value: 'CONSUMABLE', label: 'Vật tư dùng 1 lần' },
                   ]}
                 />
@@ -369,10 +394,10 @@ export const PackagingPage: React.FC = () => {
             <Col span={12}>
               <Form.Item
                 name="unit"
-                label="Đơn Vị Tính"
-                rules={[{ required: true, message: 'Vui lòng nhập đơn vị tính!' }]}
+                label="Đơn vị tính"
+                rules={[{ required: true }]}
               >
-                <Input placeholder="VD: Cái, Chiếc, Cuộn" />
+                <Input placeholder="VD: Cái, Chiếc, Thùng" />
               </Form.Item>
             </Col>
           </Row>
@@ -381,41 +406,84 @@ export const PackagingPage: React.FC = () => {
             <Col span={12}>
               <Form.Item
                 name="defaultTareWeight"
-                label="Trọng Lượng Bì Tiêu Chuẩn (Kg)"
+                label="Trọng lượng bì chuẩn (kg)"
                 rules={[{ required: true, message: 'Vui lòng nhập trọng lượng bì!' }]}
               >
-                <InputNumber min={0} step={0.1} precision={2} style={{ width: '100%' }} />
+                <InputNumber min={0} step={0.1} precision={2} className="w-full" placeholder="1.8" />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
                 name="stockQuantity"
-                label="Số Lượng Tồn Kho Vật Tư"
+                label="Số lượng tồn kho ban đầu"
                 rules={[{ required: true, message: 'Vui lòng nhập số lượng!' }]}
               >
-                <InputNumber min={0} precision={0} style={{ width: '100%' }} />
+                <InputNumber min={0} step={1} className="w-full" placeholder="100" />
               </Form.Item>
             </Col>
           </Row>
 
+          <Form.Item name="note" label="Ghi chú sử dụng">
+            <Input.TextArea rows={3} placeholder="VD: Dùng đựng cá cơm nhập kho..." />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Modal Điều Chỉnh Số Lượng Sọt / Báo Hỏng Báo Mất */}
+      <Modal
+        title={
+          <Space>
+            {adjustMode === 'ADD' ? <PlusCircleOutlined className="text-emerald-500" /> : <WarningOutlined className="text-red-500" />}
+            <span>{adjustMode === 'ADD' ? 'Nhập Bổ Sung Số Lượng Sọt' : 'Ghi Nhận Báo Hỏng / Báo Mất Sọt'}</span>
+          </Space>
+        }
+        open={isAdjustModalOpen}
+        onCancel={() => setIsAdjustModalOpen(false)}
+        onOk={() => adjustForm.submit()}
+        okText={adjustMode === 'ADD' ? 'Cập nhật tăng tồn kho' : 'Cập nhật trừ tồn kho'}
+        okButtonProps={{ danger: adjustMode === 'LOSS' }}
+      >
+        <Form form={adjustForm} layout="vertical" onFinish={handleAdjustSubmit}>
           <Form.Item
-            name="note"
-            label="Ghi Chú"
+            name="packagingId"
+            label="Chọn Loại Sọt / Bao Bì"
+            rules={[{ required: true, message: 'Vui lòng chọn loại sọt!' }]}
+            initialValue={selectedPkgForAdjust?.id}
           >
-            <Input.TextArea rows={3} placeholder="Mô tả hoặc ghi chú lưu trữ..." />
+            <Select
+              options={packagings.map((p) => ({
+                value: p.id,
+                label: `${p.name} (${p.code}) - Tồn hiện tại: ${p.stockQuantity} ${p.unit}`,
+              }))}
+            />
           </Form.Item>
 
-          <Form.Item className="mb-0 flex justify-end">
-            <Space>
-              <Button onClick={() => setIsModalOpen(false)}>Hủy</Button>
-              <Button type="primary" htmlType="submit">
-                Lưu Danh Mục
-              </Button>
-            </Space>
+          <Form.Item
+            name="quantity"
+            label={adjustMode === 'ADD' ? 'Số lượng sọt nhập thêm (+)' : 'Số lượng sọt hỏng / mất (-)'}
+            rules={[{ required: true, message: 'Vui lòng nhập số lượng!' }]}
+          >
+            <InputNumber min={1} precision={0} className="w-full" placeholder="VD: 50" />
+          </Form.Item>
+
+          <Form.Item
+            name="reason"
+            label="Lý do / Ghi chú chi tiết"
+            rules={[{ required: true, message: 'Vui lòng nhập lý do!' }]}
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder={
+                adjustMode === 'ADD'
+                  ? 'VD: Nhập mua bổ sung 50 sọt nhựa đỏ mới từ nhà cung cấp nhựa...'
+                  : 'VD: Sọt bị bể nứt trong quá trình bốc xếp cá / Khách mượn làm thất lạc...'
+              }
+            />
           </Form.Item>
         </Form>
       </Modal>
     </div>
   );
 };
+
 export default PackagingPage;

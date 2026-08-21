@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { packagingReturnService } from '../services/packagingReturnService';
 
 // ---------- types ----------
 
@@ -27,9 +28,15 @@ export interface PackagingReturn {
   note?: string;
 }
 
+const SEED_LOANS: PackagingLoan[] = [
+];
+
 interface PackagingReturnState {
   loans: PackagingLoan[];
   returns: PackagingReturn[];
+  loading: boolean;
+
+  fetchLoansAndReturns: () => Promise<void>;
 
   addReturn: (payload: {
     loanId: string;
@@ -37,76 +44,67 @@ interface PackagingReturnState {
     returnDate: string;
     recordedBy: string;
     note?: string;
-  }) => void;
+  }) => Promise<void>;
 
-  addLoan: (loan: Omit<PackagingLoan, 'id' | 'returnedQty'>) => void;
+  addLoan: (loan: Omit<PackagingLoan, 'id' | 'returnedQty'>) => Promise<void>;
 }
 
 // ---------- store ----------
 
 export const usePackagingReturnStore = create<PackagingReturnState>()(
-  devtools((set) => ({
-    // ── seed data ─────────────────────────────────────────
-    loans: [
-      {
-        id: 'LOAN-001',
-        partnerName: 'Nhà hàng Hải Sản A',
-        partnerType: 'CUSTOMER',
-        packagingCode: 'SOT-RED',
-        packagingName: 'Sọt nhựa đỏ tiêu chuẩn',
-        loanedQty: 30,
-        returnedQty: 12,
-        date: '2026-08-10',
-        note: 'Giao kèm lô tôm hùm PXK-20260812-001',
-      },
-      {
-        id: 'LOAN-002',
-        partnerName: 'Siêu thị WinMart',
-        partnerType: 'CUSTOMER',
-        packagingCode: 'SOT-BLUE',
-        packagingName: 'Sọt nhựa xanh dương lớn',
-        loanedQty: 20,
-        returnedQty: 5,
-        date: '2026-08-11',
-      },
-      {
-        id: 'LOAN-003',
-        partnerName: 'Vựa hải sản Hùng Vương',
-        partnerType: 'SUPPLIER',
-        packagingCode: 'SOT-RED',
-        packagingName: 'Sọt nhựa đỏ tiêu chuẩn',
-        loanedQty: 50,
-        returnedQty: 50,
-        date: '2026-08-05',
-        note: 'Đã hoàn trả đủ',
-      },
-      {
-        id: 'LOAN-004',
-        partnerName: 'Đại lý Cá Sạch B',
-        partnerType: 'CUSTOMER',
-        packagingCode: 'SOT-RED',
-        packagingName: 'Sọt nhựa đỏ tiêu chuẩn',
-        loanedQty: 15,
-        returnedQty: 0,
-        date: '2026-08-12',
-      },
-    ],
-
+  devtools((set, get) => ({
+    loans: SEED_LOANS,
     returns: [],
+    loading: false,
+
+    fetchLoansAndReturns: async () => {
+      set({ loading: true });
+      try {
+        const [apiLoans, apiReturns] = await Promise.all([
+          packagingReturnService.getLoans(),
+          packagingReturnService.getReturns(),
+        ]);
+
+        if (apiLoans.length > 0) {
+          set({ loans: apiLoans });
+        }
+        if (apiReturns.length > 0) {
+          set({ returns: apiReturns });
+        }
+      } catch {
+        // Keep current state on API error
+      } finally {
+        set({ loading: false });
+      }
+    },
 
     // ── actions ───────────────────────────────────────────
-    addReturn: ({ loanId, returnedQty, returnDate, recordedBy, note }) => {
-      set((state) => {
-        const loan = state.loans.find((l) => l.id === loanId);
-        if (!loan) return state;
+    addReturn: async ({ loanId, returnedQty, returnDate, recordedBy, note }) => {
+      const state = get();
+      const loan = state.loans.find((l) => l.id === loanId);
+      if (!loan) return;
 
-        const updatedLoans = state.loans.map((l) =>
+      let createdReturn: PackagingReturn | null = null;
+      try {
+        createdReturn = await packagingReturnService.createReturn({
+          loanId,
+          returnedQty,
+          returnDate,
+          recordedBy,
+          note,
+        });
+      } catch {
+        // fallback offline/mock
+      }
+
+      set((currState) => {
+        const updatedLoans = currState.loans.map((l) =>
           l.id === loanId
             ? { ...l, returnedQty: Math.min(l.loanedQty, l.returnedQty + returnedQty) }
             : l
         );
 
-        const newReturn: PackagingReturn = {
+        const newReturn: PackagingReturn = createdReturn || {
           id: `RET-${Date.now()}`,
           loanId,
           partnerName: loan.partnerName,
@@ -120,15 +118,22 @@ export const usePackagingReturnStore = create<PackagingReturnState>()(
 
         return {
           loans: updatedLoans,
-          returns: [newReturn, ...state.returns],
+          returns: [newReturn, ...currState.returns],
         };
       });
     },
 
-    addLoan: (loan) => {
+    addLoan: async (loanData) => {
+      let createdLoan: PackagingLoan | null = null;
+      try {
+        createdLoan = await packagingReturnService.createLoan(loanData);
+      } catch {
+        // fallback offline/mock
+      }
+
       set((state) => ({
         loans: [
-          { ...loan, id: `LOAN-${Date.now()}`, returnedQty: 0 },
+          createdLoan || { ...loanData, id: `LOAN-${Date.now()}`, returnedQty: 0 },
           ...state.loans,
         ],
       }));

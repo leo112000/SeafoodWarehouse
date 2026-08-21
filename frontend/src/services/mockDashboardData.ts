@@ -48,68 +48,22 @@ export interface DashboardData {
   recentTransactions: RecentTransaction[];
 }
 
-export const mockDashboardData: DashboardData = {
+export const EMPTY_DASHBOARD_DATA: DashboardData = {
   alerts: {
-    expiringBatchesCount: 4,
-    deviatedFreezersCount: 2,
-    lowStockProductsCount: 3,
+    expiringBatchesCount: 0,
+    deviatedFreezersCount: 0,
+    lowStockProductsCount: 0,
   },
   kpis: {
-    totalStockKg: { value: 575 },
-    totalStockValue: { value: 638250000 },
-    todayInboundKg: { value: 135 },
-    todayInboundReceipts: { value: 2 },
-    todayOutboundKg: { value: 120 },
-    todayOutboundTransactions: { value: 1 },
-    monthlyLossRate: { value: 1.4 },
+    totalStockKg: { value: 0 },
+    totalStockValue: { value: 0 },
+    todayInboundKg: { value: 0 },
+    todayInboundReceipts: { value: 0 },
+    todayOutboundKg: { value: 0 },
+    todayOutboundTransactions: { value: 0 },
+    monthlyLossRate: { value: 0 },
   },
-  dailyFlow: [
-    { date: '06/08', inboundKg: 450, outboundKg: 300 },
-    { date: '07/08', inboundKg: 200, outboundKg: 350 },
-    { date: '08/08', inboundKg: 600, outboundKg: 400 },
-    { date: '09/08', inboundKg: 150, outboundKg: 220 },
-    { date: '10/08', inboundKg: 700, outboundKg: 500 },
-    { date: '11/08', inboundKg: 125, outboundKg: 80 },
-    { date: '12/08', inboundKg: 135, outboundKg: 120 },
-  ],
-  categoryStock: [
-    { name: 'Cá', value: 370, color: '#3b82f6' },
-    { name: 'Tôm', value: 120, color: '#f97316' },
-    { name: 'Cua', value: 25, color: '#ef4444' },
-    { name: 'Mực', value: 80, color: '#8b5cf6' },
-  ],
-  recentTransactions: [
-    {
-      id: 'PNK-20260812-002',
-      type: 'INBOUND',
-      time: '14:35',
-      partnerName: 'Tàu cá QT-90112',
-      weightKg: 15,
-      amount: 33000000,
-    },
-    {
-      id: 'PXK-20260812-001',
-      type: 'OUTBOUND',
-      time: '10:15',
-      partnerName: 'Nhà hàng Hải Sản A',
-      weightKg: 120,
-      amount: 2400000,
-    },
-    {
-      id: 'PNK-20260811-001',
-      type: 'INBOUND',
-      time: '08:30',
-      partnerName: 'Vựa hải sản Hùng Vương',
-      weightKg: 120,
-      amount: 180000000,
-    },
-    {
-      id: 'PXK-20260810-002',
-      type: 'OUTBOUND',
-      time: '16:45',
-      partnerName: 'Siêu thị Hải Sản B',
-      weightKg: 50,
-      amount: 1000000,
-    },
-  ],
+  dailyFlow: [],
+  categoryStock: [],
+  recentTransactions: [],
 };

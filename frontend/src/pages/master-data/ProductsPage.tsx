@@ -12,17 +12,9 @@ import {
 import type { Product } from '../../types/seafood';
 import { formatCurrency } from '../../utils/format';
 import { useProductStore } from '../../stores/useProductStore';
+import { useCategoryStore } from '../../stores/useCategoryStore';
 
-// ─── constants ─────────────────────────────────────────────────────────────────
 
-const CATEGORIES = [
-  { id: 'CA', name: 'Cá' },
-  { id: 'TOM', name: 'Tôm' },
-  { id: 'CUA', name: 'Cua' },
-  { id: 'MUC', name: 'Mực & Bạch tuộc' },
-  { id: 'HAU', name: 'Hàu & Nhuyễn thể' },
-  { id: 'KHAC', name: 'Hải sản khác' },
-];
 
 const STORAGE_TYPE_CONFIG: Record<Product['storageType'], { label: string; color: string; icon: React.ReactNode; temp: string }> = {
   ALIVE: { label: 'Tươi sống', color: 'green', icon: <SunOutlined />, temp: '18–22°C' },
@@ -47,7 +39,8 @@ const StorageTag: React.FC<{ type: Product['storageType'] }> = ({ type }) => {
 
 export const ProductsPage: React.FC = () => {
   const { message, modal } = App.useApp();
-  const { products, addProduct, updateProduct, deleteProduct } = useProductStore();
+  const { products, fetchProducts, addProduct, updateProduct, deleteProduct } = useProductStore();
+  const { categories, fetchCategories } = useCategoryStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,6 +48,11 @@ export const ProductsPage: React.FC = () => {
   const [storageFilter, setStorageFilter] = useState<Product['storageType'] | 'ALL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [form] = Form.useForm();
+
+  React.useEffect(() => {
+    fetchProducts();
+    fetchCategories();
+  }, [fetchProducts, fetchCategories]);
 
   // ── statistics ───────────────────────────────────────────────────────────────
   const activeCount = useMemo(() => products.filter(p => p.status === 'ACTIVE').length, [products]);
@@ -105,7 +103,7 @@ export const ProductsPage: React.FC = () => {
   };
 
   const handleSubmit = (values: any) => {
-    const cat = CATEGORIES.find(c => c.id === values.categoryId);
+    const cat = categories.find(c => c.id === values.categoryId || c.code === values.categoryId);
     const productData: Omit<Product, 'id'> = {
       code: (values.code as string).toUpperCase(),
       name: values.name,
@@ -323,7 +321,7 @@ export const ProductsPage: React.FC = () => {
             className="w-44"
             options={[
               { value: 'ALL', label: 'Tất cả danh mục' },
-              ...CATEGORIES.map(c => ({ value: c.id, label: c.name })),
+              ...categories.map(c => ({ value: c.id, label: c.name })),
             ]}
           />
           <Select
@@ -405,7 +403,7 @@ export const ProductsPage: React.FC = () => {
                 rules={[{ required: true, message: 'Chọn danh mục!' }]}
               >
                 <Select
-                  options={CATEGORIES.map(c => ({ value: c.id, label: c.name }))}
+                  options={categories.map(c => ({ value: c.id, label: c.name }))}
                   placeholder="Chọn danh mục"
                 />
               </Form.Item>
