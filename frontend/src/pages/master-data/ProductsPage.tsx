@@ -13,6 +13,7 @@ import type { Product } from '../../types/seafood';
 import { formatCurrency } from '../../utils/format';
 import { useProductStore } from '../../stores/useProductStore';
 import { useCategoryStore } from '../../stores/useCategoryStore';
+import { QRCodeSVG } from 'qrcode.react';
 
 
 
@@ -47,6 +48,8 @@ export const ProductsPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [storageFilter, setStorageFilter] = useState<Product['storageType'] | 'ALL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [selectedProductQr, setSelectedProductQr] = useState<Product | null>(null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [form] = Form.useForm();
 
   React.useEffect(() => {
@@ -220,6 +223,24 @@ export const ProductsPage: React.FC = () => {
         status === 'ACTIVE'
           ? <Tag color="green" icon={<CheckCircleOutlined />}>Đang hoạt động</Tag>
           : <Tag color="default">Ngừng kinh doanh</Tag>
+      ),
+    },
+    {
+      title: 'Mã Barcode / QR',
+      key: 'qr',
+      align: 'center' as const,
+      render: (_: any, record: Product) => (
+        <Button
+          size="small"
+          type="dashed"
+          className="text-sky-600 border-sky-400 font-mono text-xs hover:bg-sky-50"
+          onClick={() => {
+            setSelectedProductQr(record);
+            setIsQrModalOpen(true);
+          }}
+        >
+          🏷️ Xem Mã ({record.code})
+        </Button>
       ),
     },
     {
@@ -514,6 +535,47 @@ export const ProductsPage: React.FC = () => {
             </div>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Modal hiển thị và in tem QR của hải sản */}
+      <Modal
+        title={
+          <span className="text-sky-600 font-bold flex items-center gap-2">
+            🏷️ Mã QR Hải Sản: {selectedProductQr?.name}
+          </span>
+        }
+        open={isQrModalOpen}
+        onCancel={() => setIsQrModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setIsQrModalOpen(false)}>
+            Đóng
+          </Button>,
+          <Button key="print" type="primary" onClick={() => window.print()}>
+            In Tem Dán
+          </Button>,
+        ]}
+        width={420}
+      >
+        {selectedProductQr && (
+          <div className="flex flex-col items-center justify-center p-4 text-center">
+            <div className="bg-white p-3 border-2 border-dashed border-sky-400 rounded-lg shadow-sm">
+              <div className="font-extrabold text-sm uppercase text-sky-800 mb-1">
+                KHO THỦY HẢI SẢN WMS
+              </div>
+              <div className="text-xs font-bold text-gray-800 mb-2">{selectedProductQr.name}</div>
+              <div className="flex justify-center my-2">
+                <QRCodeSVG value={selectedProductQr.code} size={150} level="H" />
+              </div>
+              <div className="font-mono text-sm font-bold text-sky-700 mt-1">MÃ: {selectedProductQr.code}</div>
+              <div className="text-[11px] text-gray-500 mt-1">
+                Đơn vị: {selectedProductQr.unit} | Bảo quản: {selectedProductQr.storageType}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 italic mt-3">
+              Dùng điện thoại mở mục "Nhập kho" ➜ Bấm "Quét Mã QR" và hướng camera vào mã này để nhận diện tự động!
+            </p>
+          </div>
+        )}
       </Modal>
     </div>
   );

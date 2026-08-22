@@ -237,6 +237,33 @@ export const InventoryStockPage: React.FC = () => {
               Đặt lại
             </Button>
           </div>
+          <div>
+            <Button
+              type="default"
+              className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium"
+              onClick={() => {
+                const exportData = items.map((item, idx) => ({
+                  'STT': idx + 1,
+                  'Mã Lô Hàng': item.batchCode,
+                  'Tên Hải Sản': item.productName,
+                  'Mã Sản Phẩm': item.productCode,
+                  'Kho Lưu Trữ': item.warehouseName || `Kho #${item.warehouseId}`,
+                  'Vị Trí Kệ': item.storageBin || 'Kệ chính',
+                  'Số Lượng Tồn (kg)': item.quantity,
+                  'Đơn Vị': item.unit || 'kg',
+                  'Đơn Giá (VNĐ)': item.unitPrice || 0,
+                  'Thành Tiền (VNĐ)': (item.quantity || 0) * (item.unitPrice || 0),
+                  'Ngày Sản Xuất/Nhập': item.productionDate ? dayjs(item.productionDate).format('DD/MM/YYYY') : '',
+                  'Hạn Sử Dụng': item.expirationDate ? dayjs(item.expirationDate).format('DD/MM/YYYY') : '',
+                }));
+                import('../../utils/excelExport').then(({ exportToExcel }) => {
+                  exportToExcel(exportData, 'Bao_Cao_Ton_Kho_Hai_San', 'Ton_Kho');
+                });
+              }}
+            >
+              📥 Xuất File Excel (.xlsx)
+            </Button>
+          </div>
         </div>
       </Card>
 

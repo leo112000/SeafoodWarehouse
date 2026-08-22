@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Button, Input, Space, Alert, Typography } from 'antd';
-import { QrcodeOutlined, BarcodeOutlined } from '@ant-design/icons';
+import { Modal, Button, Input, Space, Alert, Typography, Select } from 'antd';
+import { QrcodeOutlined, BarcodeOutlined, CameraOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Html5Qrcode } from 'html5-qrcode';
 
 const { Text } = Typography;
@@ -16,14 +16,119 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   open,
   onClose,
   onScanSuccess,
-  title = 'Quét mã Barcode / QR Code',
+  title = 'Quét Mã QR Code & Mã Vạch (Barcode)',
 }) => {
   const [manualCode, setManualCode] = useState('');
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  void isScanning;
+  const [cameras, setCameras] = useState<{ value: string; label: string }[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+  const [isStarted, setIsStarted] = useState(false);
+  const [containerId] = useState(() => `scanner-box-${Math.random().toString(36).slice(2, 8)}`);
+
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerId = 'qr-reader-container';
+  const isHandlingRef = useRef<boolean>(false);
+  const openTimeRef = useRef<number>(0);
+
+  const stopCamera = async () => {
+    if (scannerRef.current) {
+      try {
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
+        }
+      } catch {}
+      try {
+        scannerRef.current.clear();
+      } catch {}
+      scannerRef.current = null;
+    }
+
+    // Stop and clear all existing video tracks in the container
+    try {
+      const container = document.getElementById(containerId);
+      if (container) {
+        const videos = container.querySelectorAll('video');
+        videos.forEach((v) => {
+          if (v.srcObject) {
+            const stream = v.srcObject as MediaStream;
+            stream.getTracks().forEach((t) => t.stop());
+            v.srcObject = null;
+          }
+        });
+        container.innerHTML = '';
+      }
+    } catch {}
+    setIsStarted(false);
+  };
+
+  const startCamera = async (targetId?: string) => {
+    try {
+      await stopCamera();
+
+      // Đợi DOM sẵn sàng
+      const box = document.getElementById(containerId);
+      if (!box) return;
+
+      const html5Qrcode = new Html5Qrcode(containerId, { verbose: false });
+      scannerRef.current = html5Qrcode;
+
+      const config = targetId
+        ? { deviceId: { exact: targetId } }
+        : { facingMode: 'environment' };
+
+      await html5Qrcode.start(
+        config,
+        {
+          fps: 10,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const edgeSize = Math.max(180, Math.floor(minEdge * 0.75));
+            return { width: edgeSize, height: edgeSize };
+          },
+        },
+        (decodedText) => {
+          // Bỏ qua giải mã quá sớm trong 1000ms đầu khi camera vừa mở để tránh dính frame cũ
+          if (Date.now() - openTimeRef.current < 1000) return;
+          handleSuccess(decodedText);
+        },
+        () => {}
+      );
+
+      setIsStarted(true);
+      setCameraError(null);
+    } catch (err: any) {
+      console.error('Lỗi mở camera:', err);
+      setIsStarted(false);
+      setCameraError('Không thể khởi động Camera. Hãy chọn thiết bị khác trong danh sách hoặc bấm "Thử kết nối lại".');
+    }
+  };
+
+  const initDevices = async () => {
+    try {
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length > 0) {
+        const opts = devices.map((d) => ({
+          value: d.id,
+          label: d.label || `Camera (${d.id.slice(0, 8)})`,
+        }));
+        setCameras(opts);
+
+        // Ưu tiên chọn DroidCam hoặc Camera sau
+        const droidCam = devices.find((d) =>
+          d.label.toLowerCase().includes('droidcam') || d.label.toLowerCase().includes('source')
+        );
+        const backCam = devices.find((d) =>
+          d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('sau')
+        );
+        const chosen = droidCam ? droidCam.id : (backCam ? backCam.id : devices[0].id);
+        setSelectedCameraId(chosen);
+        await startCamera(chosen);
+      } else {
+        await startCamera();
+      }
+    } catch {
+      await startCamera();
+    }
+  };
 
   useEffect(() => {
     if (!open) {
@@ -31,12 +136,13 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       return;
     }
 
+    openTimeRef.current = Date.now();
+    isHandlingRef.current = false;
     setCameraError(null);
     setManualCode('');
 
-    // Start camera scanning when modal opens
     const timer = setTimeout(() => {
-      startCamera();
+      initDevices();
     }, 300);
 
     return () => {
@@ -45,50 +151,10 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     };
   }, [open]);
 
-  const startCamera = async () => {
-    try {
-      if (scannerRef.current) {
-        await stopCamera();
-      }
-
-      const html5Qrcode = new Html5Qrcode(containerId);
-      scannerRef.current = html5Qrcode;
-
-      await html5Qrcode.start(
-        { facingMode: 'environment' }, // Dùng camera sau nếu là điện thoại
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-        },
-        (decodedText) => {
-          handleSuccess(decodedText);
-        },
-        () => {
-          // Ignore frame decode errors
-        }
-      );
-      setIsScanning(true);
-    } catch (err: any) {
-      setCameraError('Không thể mở Camera. Vui lòng cho phép truy cập camera hoặc dùng máy quét cầm tay.');
-      setIsScanning(false);
-    }
-  };
-
-  const stopCamera = async () => {
-    if (scannerRef.current && scannerRef.current.isScanning) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-      } catch (err) {
-        // Ignore stop error
-      }
-      scannerRef.current = null;
-    }
-    setIsScanning(false);
-  };
-
   const handleSuccess = (code: string) => {
-    if (!code) return;
+    if (!code || isHandlingRef.current) return;
+    isHandlingRef.current = true;
+    console.log('📷 ĐÃ QUÉT ĐƯỢC MÃ:', code);
     stopCamera();
     onScanSuccess(code.trim());
     onClose();
@@ -122,25 +188,70 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       centered
       width={480}
     >
-      <div className="flex flex-col items-center justify-center my-2">
+      <div className="flex flex-col items-center justify-center my-2 space-y-3">
+        {/* Dropdown danh sách camera */}
+        {cameras.length > 1 && (
+          <div className="w-full flex items-center justify-between gap-2 text-xs">
+            <span className="text-gray-500 font-medium whitespace-nowrap">Chọn Camera:</span>
+            <Select
+              size="small"
+              className="flex-1"
+              value={selectedCameraId}
+              onChange={(newId) => {
+                setSelectedCameraId(newId);
+                startCamera(newId);
+              }}
+              options={cameras}
+            />
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={initDevices}
+              title="Tìm lại camera"
+            />
+          </div>
+        )}
+
+        {/* Khung Camera trực tiếp */}
         <div
           id={containerId}
-          className="w-full max-w-[360px] h-[260px] bg-black rounded-lg overflow-hidden flex items-center justify-center border-2 border-sky-500"
+          className="w-full max-w-[340px] min-h-[260px] bg-black rounded-xl overflow-hidden shadow-md border-2 border-sky-500 flex items-center justify-center text-white"
         />
+
+        {isStarted && (
+          <div className="text-center text-xs text-gray-500 dark:text-gray-400">
+            🎯 Đưa <span className="font-semibold text-sky-600">Mã QR</span> hoặc <span className="font-semibold text-emerald-600">Mã vạch</span> vào giữa khung để quét tự động.
+          </div>
+        )}
 
         {cameraError && (
           <Alert
-            message="Thông báo Camera"
-            description={cameraError}
+            message="Không nhận được hình ảnh Camera"
+            description={
+              <div className="text-xs space-y-1 mt-1 text-slate-700 dark:text-slate-300">
+                <p>{cameraError}</p>
+                <div className="pt-2">
+                  <Button
+                    size="small"
+                    type="primary"
+                    icon={<CameraOutlined />}
+                    onClick={() => startCamera(selectedCameraId)}
+                    className="bg-sky-600"
+                  >
+                    Thử kết nối lại
+                  </Button>
+                </div>
+              </div>
+            }
             type="warning"
             showIcon
-            className="mt-3 w-full"
+            className="w-full text-left"
           />
         )}
 
-        <div className="w-full mt-4 border-t pt-3">
+        <div className="w-full mt-2 border-t pt-3">
           <Text type="secondary" className="text-xs mb-1 block">
-            <BarcodeOutlined /> Nhập thủ công hoặc quét bằng Máy quét mã vạch cầm tay:
+            <BarcodeOutlined /> Hoặc nhập mã thủ công:
           </Text>
           <Space.Compact className="w-full">
             <Input
@@ -148,7 +259,6 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
               value={manualCode}
               onChange={(e) => setManualCode(e.target.value)}
               onPressEnter={handleManualSubmit}
-              autoFocus
             />
             <Button type="primary" onClick={handleManualSubmit}>
               Xác nhận
@@ -159,3 +269,4 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     </Modal>
   );
 };
+

@@ -94,6 +94,27 @@ public class ApplicationDbContextInitialiser
                   );
               END",
 
+            @"IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Partners')
+              BEGIN
+                  CREATE TABLE [Partners] (
+                      [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                      [Code] NVARCHAR(50) NOT NULL,
+                      [Name] NVARCHAR(200) NOT NULL,
+                      [Type] INT NOT NULL DEFAULT 0,
+                      [Phone] NVARCHAR(50) NULL,
+                      [Email] NVARCHAR(100) NULL,
+                      [Address] NVARCHAR(500) NULL,
+                      [TaxCode] NVARCHAR(50) NULL,
+                      [ContactPerson] NVARCHAR(100) NULL,
+                      [Note] NVARCHAR(MAX) NULL,
+                      [IsActive] BIT NOT NULL DEFAULT 1,
+                      [TenantId] INT NULL,
+                      [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                      [UpdatedAt] DATETIME2 NULL,
+                      [IsDeleted] BIT NOT NULL DEFAULT 0
+                  );
+              END",
+
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'TenantId') ALTER TABLE [Users] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Roles') AND name = 'TenantId') ALTER TABLE [Roles] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Warehouses') AND name = 'TenantId') ALTER TABLE [Warehouses] ADD [TenantId] INT NULL;",
@@ -195,20 +216,115 @@ public class ApplicationDbContextInitialiser
         }
 
         // 2. Seed Sản phẩm Hải sản (Products)
-        if (!await _context.Products.AnyAsync())
+        if (!await _context.Products.IgnoreQueryFilters().AnyAsync())
         {
-            var caCat = await _context.Categories.FirstOrDefaultAsync(c => c.Code == "CA");
-            var tomCat = await _context.Categories.FirstOrDefaultAsync(c => c.Code == "TOM");
+            var caCat = await _context.Categories.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Code == "CA");
+            var tomCat = await _context.Categories.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Code == "TOM");
+            var cuaCat = await _context.Categories.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Code == "CUA");
+            var mucCat = await _context.Categories.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Code == "MUC");
 
-            if (caCat != null && tomCat != null)
+            var products = new List<Product>
             {
-                var products = new List<Product>
+                new()
                 {
-                    
-                };
-                _context.Products.AddRange(products);
-                await _context.SaveChangesAsync();
-            }
+                    Code = "HS-001",
+                    Name = "Cá hồi Na Uy nguyên con",
+                    ScientificName = "Salmo salar",
+                    CategoryId = caCat?.Id ?? 1,
+                    StorageType = "FRESH",
+                    TargetTemperature = 0,
+                    WarningDaysBeforeExpiry = 5,
+                    MinimumStock = 50,
+                    MaximumStock = 500,
+                    Unit = "Kg",
+                    ReferencePrice = 320000,
+                    Status = "ACTIVE",
+                    TenantId = defaultTenantId
+                },
+                new()
+                {
+                    Code = "HS-002",
+                    Name = "Tôm sú Cà Mau tươi sống",
+                    ScientificName = "Penaeus monodon",
+                    CategoryId = tomCat?.Id ?? 2,
+                    StorageType = "ALIVE",
+                    TargetTemperature = 18,
+                    WarningDaysBeforeExpiry = 3,
+                    MinimumStock = 30,
+                    MaximumStock = 300,
+                    Unit = "Kg",
+                    ReferencePrice = 450000,
+                    Status = "ACTIVE",
+                    TenantId = defaultTenantId
+                },
+                new()
+                {
+                    Code = "CA-NGU-001",
+                    Name = "Cá ngừ đại dương tươi sống",
+                    ScientificName = "Thunnus albacares",
+                    CategoryId = caCat?.Id ?? 1,
+                    StorageType = "FROZEN",
+                    TargetTemperature = -18,
+                    WarningDaysBeforeExpiry = 5,
+                    MinimumStock = 50,
+                    MaximumStock = 500,
+                    Unit = "Kg",
+                    ReferencePrice = 280000,
+                    Status = "ACTIVE",
+                    TenantId = defaultTenantId
+                },
+                new()
+                {
+                    Code = "TOM-HUM-001",
+                    Name = "Tôm hùm bông Nha Trang",
+                    ScientificName = "Panulirus ornatus",
+                    CategoryId = tomCat?.Id ?? 2,
+                    StorageType = "ALIVE",
+                    TargetTemperature = 18,
+                    WarningDaysBeforeExpiry = 3,
+                    MinimumStock = 20,
+                    MaximumStock = 200,
+                    Unit = "Kg",
+                    ReferencePrice = 1250000,
+                    Status = "ACTIVE",
+                    TenantId = defaultTenantId
+                },
+                new()
+                {
+                    Code = "CUA-HD-001",
+                    Name = "Cua hoàng đế King Crab",
+                    ScientificName = "Paralithodes camtschaticus",
+                    CategoryId = cuaCat?.Id ?? 3,
+                    StorageType = "ALIVE",
+                    TargetTemperature = 16,
+                    WarningDaysBeforeExpiry = 3,
+                    MinimumStock = 10,
+                    MaximumStock = 100,
+                    Unit = "Con",
+                    ReferencePrice = 2200000,
+                    Status = "ACTIVE",
+                    TenantId = defaultTenantId
+                },
+                new()
+                {
+                    Code = "MUC-LA-001",
+                    Name = "Mực lá câu đại Côn Đảo",
+                    ScientificName = "Sepioteuthis lessoniana",
+                    CategoryId = mucCat?.Id ?? 4,
+                    StorageType = "FRESH",
+                    TargetTemperature = 0,
+                    WarningDaysBeforeExpiry = 4,
+                    MinimumStock = 30,
+                    MaximumStock = 300,
+                    Unit = "Kg",
+                    ReferencePrice = 350000,
+                    Status = "ACTIVE",
+                    TenantId = defaultTenantId
+                }
+            };
+
+            _context.Products.AddRange(products);
+            await _context.SaveChangesAsync();
         }
 
         // 3. Seed Bao bì (Packagings)
@@ -363,6 +479,66 @@ public class ApplicationDbContextInitialiser
                 }
             };
             _context.AuditLogs.AddRange(logs);
+            await _context.SaveChangesAsync();
+        }
+
+        // 8. Seed Đối tác mẫu (Nhà cung cấp & Khách hàng)
+        if (!await _context.Partners.AnyAsync())
+        {
+            var partners = new List<Partner>
+            {
+                new()
+                {
+                    Code = "NCC-TAU-01",
+                    Name = "Đội Tàu Đánh Bắt Xa Bờ Đà Nẵng 01",
+                    Type = PartnerType.Supplier,
+                    Phone = "0912 345 678",
+                    Email = "taudanhbat01@cangdanang.vn",
+                    Address = "Cầu cảng số 3, Cảng Cá Thọ Quang, Đà Nẵng",
+                    ContactPerson = "Thuyền trưởng Nguyễn Văn Hải",
+                    Note = "Cung cấp cá ngừ, cá thu đại dương tươi sống",
+                    IsActive = true
+                },
+                new()
+                {
+                    Code = "NCC-HTX-CAMAU",
+                    Name = "HTX Nuôi Tôm Sinh Thái Cà Mau",
+                    Type = PartnerType.Supplier,
+                    Phone = "0290 388 999",
+                    Email = "hop_tac_xa@tomcamau.vn",
+                    Address = "Huyện Năm Căn, Tỉnh Cà Mau",
+                    ContactPerson = "Ông Ba Cà Mau",
+                    Note = "Chuyên tôm sú, tôm càng xanh, cua biển",
+                    IsActive = true
+                },
+                new()
+                {
+                    Code = "KH-NHAHANG-BIENDONG",
+                    Name = "Chuỗi Nhà Hàng Hải Sản Biển Đông",
+                    Type = PartnerType.Customer,
+                    Phone = "0988 777 666",
+                    Email = "bep_truong@nhahangbiendong.com",
+                    Address = "88 Đường Võ Nguyên Giáp, Sơn Trà, Đà Nẵng",
+                    ContactPerson = "Bếp trưởng Lê Văn Tài",
+                    TaxCode = "0400 987 654",
+                    Note = "Giao hàng mỗi ngày trước 09:00 sáng",
+                    IsActive = true
+                },
+                new()
+                {
+                    Code = "KH-SIEU-THI-WINMART",
+                    Name = "Hệ Thống Siêu Thị WinMart Miền Trung",
+                    Type = PartnerType.Customer,
+                    Phone = "024 710 66866",
+                    Email = "muahang@winmart.masan.vn",
+                    Address = "Khu công nghiệp Hòa Khánh, Liên Chiểu, Đà Nẵng",
+                    ContactPerson = "Phòng Thu Mua Thực Phẩm Tươi Sống",
+                    TaxCode = "0104 918 404",
+                    IsActive = true
+                }
+            };
+
+            _context.Partners.AddRange(partners);
             await _context.SaveChangesAsync();
         }
     }

@@ -34,6 +34,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<SystemSetting> Settings => Set<SystemSetting>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<Partner> Partners => Set<Partner>();
     public DbSet<AppNotification> AppNotifications => Set<AppNotification>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 

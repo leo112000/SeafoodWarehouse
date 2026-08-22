@@ -132,10 +132,17 @@ export const UsersPage: React.FC = () => {
       render: (phone?: string) => phone || 'Chưa cập nhật',
     },
     {
-      title: 'Tenant / Chi nhánh',
+      title: 'Cửa hàng / Chi nhánh',
       dataIndex: 'tenantName',
       key: 'tenantName',
-      render: (tenant?: string) => <Tag color="purple">{tenant || 'Default'}</Tag>,
+      render: (tenant?: string) => {
+        const isHost = !tenant || tenant.includes('Host');
+        return (
+          <Tag color={isHost ? 'gold' : 'cyan'} className="font-medium">
+            {tenant || '👑 Host (Toàn hệ thống)'}
+          </Tag>
+        );
+      },
     },
     {
       title: 'Vai trò',

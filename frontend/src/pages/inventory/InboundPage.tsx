@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, DatePicker, Select, InputNumber, Row, Col, Typography, App, Modal, Divider } from 'antd';
-import { PlusOutlined, DeleteOutlined, SaveOutlined, AppstoreAddOutlined } from '@ant-design/icons';
+import { Card, Form, Input, Button, DatePicker, Select, InputNumber, Row, Col, Typography, App, Modal, Divider, Space } from 'antd';
+import { PlusOutlined, DeleteOutlined, SaveOutlined, AppstoreAddOutlined, QrcodeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useInboundStore } from '../../stores/useInboundStore';
 import { useProductStore } from '../../stores/useProductStore';
 import { usePackagingStore } from '../../stores/usePackagingStore';
 import { useCategoryStore } from '../../stores/useCategoryStore';
 import { QRScannerModal } from '../../components/common/QRScannerModal';
+import { partnerService, type PartnerItem } from '../../services/partnerService';
 import dayjs from 'dayjs';
 
 const { Title, Paragraph } = Typography;
@@ -17,15 +18,18 @@ export const InboundPage: React.FC = () => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const addReceipt = useInboundStore((state) => state.addReceipt);
-  const { products, addProduct } = useProductStore();
+  const { products, fetchProducts, addProduct } = useProductStore();
   const { packagings, fetchPackagings } = usePackagingStore();
   const { categories, fetchCategories } = useCategoryStore();
+  const [suppliers, setSuppliers] = useState<PartnerItem[]>([]);
 
-  // Fetch packaging and category data from database on mount
+  // Fetch packaging, category, products and suppliers data from database on mount
   useEffect(() => {
+    fetchProducts();
     fetchPackagings();
     fetchCategories();
-  }, [fetchPackagings, fetchCategories]);
+    partnerService.getAll('SUPPLIER').then(setSuppliers).catch(() => { });
+  }, [fetchProducts, fetchPackagings, fetchCategories]);
 
   // ── quick-add modal state ────────────────────────────────────────────────────
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -37,24 +41,108 @@ export const InboundPage: React.FC = () => {
   const [scanItemIndex, setScanItemIndex] = useState<number | null>(null);
   void setScanItemIndex;
 
-  const activeProducts = products.filter((p) => p.status === 'ACTIVE');
+  const activeProducts = products.filter((p) => !p.status || p.status.toUpperCase() === 'ACTIVE');
 
-  const handleScanSuccess = (scannedCode: string) => {
-    const matchedProduct = activeProducts.find(
-      (p) => p.code.toLowerCase() === scannedCode.toLowerCase() || p.id === scannedCode
-    );
+  const handleScanSuccess = (scannedText: string) => {
+    try {
+      let codeToMatch = scannedText.trim();
+      let parsedWeight: number | undefined;
+      let parsedLot: string | undefined;
+      let parsedExp: string | undefined;
 
-    if (matchedProduct) {
-      const items = form.getFieldValue('items') || [];
-      const targetIndex = scanItemIndex !== null ? scanItemIndex : items.length;
-      items[targetIndex] = {
-        ...items[targetIndex],
-        seafoodCode: matchedProduct.code,
+      // Hỗ trợ nếu mã QR là JSON chứa chi tiết lô hàng (tem in nhiệt)
+      if (scannedText.startsWith('{') && scannedText.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(scannedText);
+          codeToMatch = parsed.pCode || parsed.code || parsed.lot || codeToMatch;
+          parsedWeight = parsed.weight ? Number(parsed.weight) : undefined;
+          parsedLot = parsed.lot;
+          parsedExp = parsed.exp;
+        } catch {}
+      }
+
+      // 1. Tìm chính xác tuyệt đối theo Mã sản phẩm hoặc ID trước (Exact Match)
+      const inputTrimmed = codeToMatch.trim().toLowerCase();
+      let matchedProduct = activeProducts.find(
+        (p) => p.code.toLowerCase() === inputTrimmed || String(p.id).toLowerCase() === inputTrimmed
+      );
+
+      // 2. Nếu chưa thấy, tìm theo chuỗi chuẩn hóa mã không dấu phân cách
+      if (!matchedProduct) {
+        const cleanInput = inputTrimmed.replace(/[^a-z0-9]/g, '');
+        matchedProduct = activeProducts.find((p) => {
+          const pCodeClean = p.code.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return pCodeClean === cleanInput;
+        });
+      }
+
+      // 3. Nếu vẫn chưa thấy, tìm theo tên hải sản
+      if (!matchedProduct) {
+        matchedProduct = activeProducts.find((p) =>
+          p.name.toLowerCase().includes(inputTrimmed)
+        );
+      }
+
+      if (!matchedProduct) {
+        message.warning(`Không tìm thấy hải sản có mã "${scannedText}". Hãy kiểm tra lại mã hoặc bấm [+ Thêm mặt hàng mới]!`);
+        return;
+      }
+
+      const currentFormValues = form.getFieldsValue();
+      const currentItems = Array.isArray(currentFormValues.items) ? [...currentFormValues.items] : [];
+
+      let targetIndex = -1;
+
+      // Nếu bấm nút "Quét dòng này" ở dòng cụ thể
+      if (scanItemIndex !== null && scanItemIndex >= 0 && scanItemIndex < currentItems.length) {
+        targetIndex = scanItemIndex;
+      } else {
+        // Nếu bấm nút Quét chung:
+        // Tìm dòng đầu tiên mà seafoodCode đang trống/undefined/chuỗi rỗng
+        const emptyIdx = currentItems.findIndex(
+          (it) => !it || !it.seafoodCode || String(it.seafoodCode).trim() === ''
+        );
+        if (emptyIdx !== -1) {
+          targetIndex = emptyIdx;
+        } else {
+          // Nếu tất cả các dòng đều đã có hải sản -> thêm dòng mới vào sau
+          targetIndex = currentItems.length;
+        }
+      }
+
+      const existingRow = currentItems[targetIndex] || {
+        packagingCode: 'SOT-RED',
+        packagingQty: 1,
+        totalWeight: 0,
+        tareWeight: 1.8,
+        netWeight: 0,
+        storageCondition: 'Cấp đông',
+        unitPrice: 0,
+        totalPrice: 0,
       };
-      form.setFieldsValue({ items });
-      message.success(`Đã nhận diện: ${matchedProduct.name} (${matchedProduct.code})`);
-    } else {
-      message.warning(`Không tìm thấy hải sản có mã "${scannedCode}". Bạn có thể Thêm Nhanh!`);
+
+      const newBatchCode = parsedLot || `LOT-${matchedProduct.code}-${dayjs().format('YYYYMMDDHHmmss')}`;
+      const defaultWeight = parsedWeight !== undefined ? parsedWeight : (existingRow.totalWeight || 0);
+
+      currentItems[targetIndex] = {
+        ...existingRow,
+        seafoodCode: matchedProduct.code,
+        batchCode: newBatchCode,
+        totalWeight: defaultWeight,
+        unitPrice: matchedProduct.referencePrice || existingRow.unitPrice || 0,
+        expiryDate: parsedExp ? dayjs(parsedExp) : existingRow.expiryDate,
+      };
+
+      console.log('>>> SCANNED RAW TEXT:', scannedText, '>>> MATCHED:', matchedProduct);
+
+      // Cập nhật lại toàn bộ mảng items vào Form
+      form.setFieldsValue({ items: currentItems });
+      handleValuesChange({}, { ...currentFormValues, items: currentItems });
+      setScanItemIndex(null); // Reset trạng thái
+      message.success(`✅ Đã quét mã "${scannedText}" ➔ Khớp: ${matchedProduct.name} (${matchedProduct.code})`);
+    } catch (e) {
+      console.error(e);
+      message.error('Lỗi khi xử lý mã QR.');
     }
   };
 
@@ -106,7 +194,7 @@ export const InboundPage: React.FC = () => {
 
       const code = item.seafoodCode || '';
       const existingBatch = item.batchCode || '';
-      const computedBatch = code 
+      const computedBatch = code
         ? (existingBatch && existingBatch.startsWith(`LOT-${code}`) ? existingBatch : `LOT-${code}-${dayjs().format('YYYYMMDDHHmmss')}`)
         : '';
 
@@ -204,9 +292,20 @@ export const InboundPage: React.FC = () => {
               <Form.Item
                 name="supplier"
                 label="Nhà cung cấp (Vựa / Tàu cá)"
-                rules={[{ required: true, message: 'Vui lòng nhập tên nhà cung cấp!' }]}
+                rules={[{ required: true, message: 'Vui lòng chọn hoặc nhập tên nhà cung cấp!' }]}
               >
-                <Input placeholder="Vựa hải sản Hùng Vương, Tàu cá QT-..." />
+                <Select
+                  showSearch
+                  allowClear
+                  placeholder="Chọn tàu cá / vựa hoặc gõ tên mới..."
+                  optionFilterProp="label"
+                  options={[
+                    ...suppliers.map((s) => ({
+                      value: s.name,
+                      label: `⚓ ${s.name} (${s.code})${s.phone ? ` - ${s.phone}` : ''}`,
+                    })),
+                  ]}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
@@ -234,7 +333,23 @@ export const InboundPage: React.FC = () => {
           </Row>
         </Card>
 
-        <Card title="Danh sách hải sản nhập kho" className="shadow-sm mb-6">
+        <Card
+          title="Danh sách hải sản nhập kho"
+          className="shadow-sm mb-6"
+          extra={
+            <Button
+              type="primary"
+              icon={<QrcodeOutlined />}
+              onClick={() => {
+                setScanItemIndex(null);
+                setQrModalOpen(true);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 font-medium"
+            >
+              📷 Quét Mã QR / Barcode
+            </Button>
+          }
+        >
           <Form.List name="items">
             {(fields, { add, remove }) => (
               <div className="space-y-4">
@@ -245,14 +360,28 @@ export const InboundPage: React.FC = () => {
                     size="small"
                     className="border border-sky-100 dark:border-gray-800"
                     extra={
-                      fields.length > 1 && (
+                      <Space>
                         <Button
-                          type="text"
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={() => remove(name)}
-                        />
-                      )
+                          size="small"
+                          type="dashed"
+                          icon={<QrcodeOutlined />}
+                          onClick={() => {
+                            setScanItemIndex(name);
+                            setQrModalOpen(true);
+                          }}
+                          className="text-sky-600 border-sky-400"
+                        >
+                          Quét dòng này
+                        </Button>
+                        {fields.length > 1 && (
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => remove(name)}
+                          />
+                        )}
+                      </Space>
                     }
                   >
                     <Row gutter={[12, 12]}>

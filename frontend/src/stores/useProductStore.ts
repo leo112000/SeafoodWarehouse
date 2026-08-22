@@ -21,7 +21,7 @@ export const useProductStore = create<ProductState>()(
       fetchProducts: async () => {
         try {
           const apiProducts = await productService.getAll();
-          if (apiProducts && apiProducts.length > 0) {
+          if (Array.isArray(apiProducts)) {
             set({ products: apiProducts });
           }
         } catch {

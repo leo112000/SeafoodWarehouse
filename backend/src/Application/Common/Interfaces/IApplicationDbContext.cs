@@ -21,6 +21,7 @@ public interface IApplicationDbContext
     DbSet<RolePermission> RolePermissions { get; }
     DbSet<SystemSetting> Settings { get; }
     DbSet<Tenant> Tenants { get; }
+    DbSet<Partner> Partners { get; }
     DbSet<AppNotification> AppNotifications { get; }
     DbSet<UserNotification> UserNotifications { get; }
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popconfirm, Popover, Tag, theme } from 'antd';
-import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, UserOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -78,6 +78,7 @@ export const MainLayout: React.FC = () => {
       ...(canViewProducts ? [{ key: '/master-data/products', icon: <AppstoreOutlined />, label: <Link to="/master-data/products">Danh mục hải sản</Link> }] : []),
       ...(canAccessWarehouse ? [{ key: '/master-data/warehouses', icon: <EnvironmentOutlined />, label: <Link to="/master-data/warehouses">Danh mục kho bãi</Link> }] : []),
       ...(canViewPackaging ? [{ key: '/master-data/packaging', icon: <InboxOutlined />, label: <Link to="/master-data/packaging">Danh mục bao bì</Link> }] : []),
+      { key: '/master-data/partners', icon: <TeamOutlined />, label: <Link to="/master-data/partners">Đối tác (Tàu cá & Khách hàng)</Link> },
     ] },
     { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo & Phân tích', children: [
       { key: '/reports/summary', label: <Link to="/reports/summary">Thống kê tổng hợp</Link> },
@@ -150,13 +151,134 @@ export const MainLayout: React.FC = () => {
     <Popconfirm title="Đăng xuất khỏi hệ thống?" description="Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?" okText="Đồng ý" cancelText="Hủy" okButtonProps={{ danger: true }} onConfirm={handleLogout}><Button type="text" danger icon={<LogoutOutlined />} className="w-full text-left" style={{ justifyContent: 'flex-start' }}>Đăng xuất</Button></Popconfirm>
   </div>;
 
-  return <><Layout className="min-h-screen">
-    {!isMobile ? <Sider trigger={null} collapsible collapsed={collapsed} theme="dark"><div className="p-4 text-white text-center font-bold text-lg overflow-hidden whitespace-nowrap">{collapsed ? '🚢' : '🚢 KHO HẢI SẢN'}</div><Menu theme="dark" mode="inline" selectedKeys={[location.pathname]} defaultOpenKeys={location.pathname.startsWith('/master-data') ? ['/master-data'] : location.pathname.startsWith('/reports') ? ['/reports'] : location.pathname.startsWith('/system') ? ['/system'] : []} items={menuItems} /></Sider> : <Drawer title="🚢 KHO HẢI SẢN" placement="left" onClose={() => setDrawerVisible(false)} open={drawerVisible} bodyStyle={{ padding: 0 }} width={250}><Menu theme="light" mode="inline" selectedKeys={[location.pathname]} defaultOpenKeys={location.pathname.startsWith('/master-data') ? ['/master-data'] : location.pathname.startsWith('/reports') ? ['/reports'] : location.pathname.startsWith('/system') ? ['/system'] : []} items={menuItems} /></Drawer>}
-    <Layout><Header className="p-0 flex items-center justify-between" style={{ background: colorBgContainer, lineHeight: 'normal' }}><Button type="text" icon={isMobile ? <MenuOutlined /> : collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed)} className="text-lg w-16 h-16" />
-      <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6"><Button type="text" icon={currentTheme === 'dark' ? <SunOutlined className="text-yellow-400" /> : <MoonOutlined />} onClick={toggleTheme} className="text-lg flex items-center justify-center w-10 h-10" aria-label="Đổi giao diện" /><Popover content={notifications} trigger="click" placement="bottomRight"><Badge count={unreadCount} size="small"><Button type="text" icon={<BellOutlined />} className="text-lg flex items-center justify-center w-10 h-10" aria-label="Thông báo" /></Badge></Popover>
-        {user && <Dropdown trigger={['click']} open={profileOpen} onOpenChange={setProfileOpen} popupRender={() => <div className="rounded-lg shadow-lg" style={{ background: currentTheme === 'dark' ? '#1f2937' : '#f0f9ff', border: `1px solid ${currentTheme === 'dark' ? '#374151' : '#bae6fd'}` }}>{profileContent}</div>} placement="bottomRight"><button type="button" className="flex items-center rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Mở menu tài khoản"><Avatar className="bg-sky-500">{user.name.charAt(0).toLocaleUpperCase()}</Avatar></button></Dropdown>}
-      </div></Header><Content className="m-3 md:m-6 p-4 md:p-6 min-h-[280px]" style={{ background: colorBgContainer, borderRadius: borderRadiusLG }}><Outlet /></Content></Layout>
-  </Layout><UserProfileModal open={profileModalOpen} onClose={() => setProfileModalOpen(false)} user={user} tenantName={tenantName} /><ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} /></>;
+  return (
+    <>
+      <Layout className="min-h-screen">
+        {!isMobile ? (
+          <Sider trigger={null} collapsible collapsed={collapsed} theme="dark">
+            <div className="p-4 text-white text-center font-bold text-lg overflow-hidden whitespace-nowrap">
+              {collapsed ? '🚢' : '🚢 KHO HẢI SẢN'}
+            </div>
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectedKeys={[location.pathname]}
+              defaultOpenKeys={
+                location.pathname.startsWith('/master-data')
+                  ? ['/master-data']
+                  : location.pathname.startsWith('/reports')
+                  ? ['/reports']
+                  : location.pathname.startsWith('/system')
+                  ? ['/system']
+                  : []
+              }
+              items={menuItems}
+            />
+          </Sider>
+        ) : (
+          <Drawer
+            title="🚢 KHO HẢI SẢN"
+            placement="left"
+            onClose={() => setDrawerVisible(false)}
+            open={drawerVisible}
+            bodyStyle={{ padding: 0 }}
+            width={250}
+          >
+            <Menu
+              theme={currentTheme === 'dark' ? 'dark' : 'light'}
+              mode="inline"
+              selectedKeys={[location.pathname]}
+              defaultOpenKeys={
+                location.pathname.startsWith('/master-data')
+                  ? ['/master-data']
+                  : location.pathname.startsWith('/reports')
+                  ? ['/reports']
+                  : location.pathname.startsWith('/system')
+                  ? ['/system']
+                  : []
+              }
+              items={menuItems}
+            />
+          </Drawer>
+        )}
+        <Layout>
+          <Header
+            className="p-0 flex items-center justify-between border-b border-gray-200 dark:border-gray-800"
+            style={{ background: colorBgContainer, lineHeight: 'normal' }}
+          >
+            <Button
+              type="text"
+              icon={isMobile ? <MenuOutlined /> : collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => (isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed))}
+              className="text-lg w-16 h-16"
+            />
+            <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6">
+              <Button
+                type="text"
+                icon={currentTheme === 'dark' ? <SunOutlined className="text-yellow-400" /> : <MoonOutlined />}
+                onClick={toggleTheme}
+                className="text-lg flex items-center justify-center w-10 h-10"
+                aria-label="Đổi giao diện"
+              />
+              <Popover content={notifications} trigger="click" placement="bottomRight">
+                <Badge count={unreadCount} size="small">
+                  <Button
+                    type="text"
+                    icon={<BellOutlined />}
+                    className="text-lg flex items-center justify-center w-10 h-10"
+                    aria-label="Thông báo"
+                  />
+                </Badge>
+              </Popover>
+              {user && (
+                <Dropdown
+                  trigger={['click']}
+                  open={profileOpen}
+                  onOpenChange={setProfileOpen}
+                  popupRender={() => (
+                    <div
+                      className="rounded-lg shadow-lg"
+                      style={{
+                        background: currentTheme === 'dark' ? '#1f2937' : '#ffffff',
+                        border: `1px solid ${currentTheme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                      }}
+                    >
+                      {profileContent}
+                    </div>
+                  )}
+                  placement="bottomRight"
+                >
+                  <button
+                    type="button"
+                    className="flex items-center rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    aria-label="Mở menu tài khoản"
+                  >
+                    <Avatar className="bg-sky-500">{user.name.charAt(0).toLocaleUpperCase()}</Avatar>
+                  </button>
+                </Dropdown>
+              )}
+            </div>
+          </Header>
+          <Content
+            className="m-3 md:m-6 p-4 md:p-6 min-h-[280px]"
+            style={{
+              background: colorBgContainer,
+              borderRadius: borderRadiusLG,
+            }}
+          >
+            <Outlet />
+          </Content>
+        </Layout>
+      </Layout>
+      <UserProfileModal
+        open={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        user={user}
+        tenantName={tenantName}
+      />
+      <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
+    </>
+  );
 };
 
 export default MainLayout;

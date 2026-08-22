@@ -63,6 +63,10 @@ public class UsersController : BaseApiController
             .ThenInclude(ur => ur.Role)
             .ToListAsync(cancellationToken);
 
+        var tenants = await _context.Tenants
+            .IgnoreQueryFilters()
+            .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
+
         var dtos = users.Select(u => new UserDto
         {
             Id = u.Id.ToString(),
@@ -71,7 +75,9 @@ public class UsersController : BaseApiController
             Phone = u.Phone,
             Status = u.Status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase) ? "Active" : "Blocked",
             Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList(),
-            TenantName = "Default"
+            TenantName = u.TenantId.HasValue && tenants.ContainsKey(u.TenantId.Value) 
+                ? tenants[u.TenantId.Value] 
+                : (u.TenantId.HasValue ? $"Tenant #{u.TenantId}" : "👑 Host (Toàn hệ thống)")
         }).ToList();
 
         return Ok(Result<List<UserDto>>.Success(dtos));
@@ -93,6 +99,13 @@ public class UsersController : BaseApiController
             return NotFound(Result<UserDto>.Failure("Không tìm thấy nhân viên."));
         }
 
+        string tenantName = "👑 Host (Toàn hệ thống)";
+        if (user.TenantId.HasValue)
+        {
+            var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == user.TenantId.Value, cancellationToken);
+            tenantName = tenant?.Name ?? $"Tenant #{user.TenantId.Value}";
+        }
+
         var dto = new UserDto
         {
             Id = user.Id.ToString(),
@@ -101,7 +114,7 @@ public class UsersController : BaseApiController
             Phone = user.Phone,
             Status = user.Status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase) ? "Active" : "Blocked",
             Roles = user.UserRoles.Select(ur => ur.Role.Name).ToList(),
-            TenantName = "Default"
+            TenantName = tenantName
         };
 
         return Ok(Result<UserDto>.Success(dto));
@@ -124,11 +137,12 @@ public class UsersController : BaseApiController
             return BadRequest(Result<UserDto>.Failure("Email này đã được sử dụng."));
         }
 
+        var rawPassword = string.IsNullOrWhiteSpace(request.Password) ? "123456" : request.Password;
         var user = new User
         {
             FullName = request.Name,
             Email = request.Email,
-            PasswordHash = string.IsNullOrWhiteSpace(request.Password) ? "123456" : request.Password,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword),
             Phone = request.Phone ?? string.Empty,
             Status = request.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) ? "ACTIVE" : "BLOCKED"
         };

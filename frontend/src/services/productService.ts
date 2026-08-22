@@ -4,9 +4,10 @@ import type { Product } from '../types/seafood';
 export const productService = {
   async getAll(): Promise<Product[]> {
     try {
-      const response = await api.get('/products');
-      if (response.data && response.data.items) {
-        return response.data.items.map((item: any) => ({
+      const response = await api.get('/products?pageSize=100');
+      const rawList = response.data?.items || response.data?.data || (Array.isArray(response.data) ? response.data : []);
+      if (Array.isArray(rawList)) {
+        return rawList.map((item: any) => ({
           id: String(item.id),
           code: item.code,
           name: item.name,

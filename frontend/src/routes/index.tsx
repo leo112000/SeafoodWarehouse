@@ -17,6 +17,7 @@ import PackagingPage from '../pages/master-data/PackagingPage';
 import CategoriesPage from '../pages/master-data/CategoriesPage';
 import PackagingReturnPage from '../pages/inventory/PackagingReturnPage';
 import ProductsPage from '../pages/master-data/ProductsPage';
+import PartnersPage from '../pages/master-data/PartnersPage';
 import RolesPage from '../pages/admin/RolesPage';
 import AuditLogPage from '../pages/system/AuditLogPage';
 import SystemSettingsPage from '../pages/system/SystemSettingsPage';
@@ -179,6 +180,14 @@ export const router = createBrowserRouter([
             <PackagingPage />
           </PermissionGuard>
         ),
+      },
+      {
+        path: 'master-data/partners',
+        element: <PartnersPage />,
+      },
+      {
+        path: 'partners',
+        element: <PartnersPage />,
       },
       {
         path: 'master-data/products',
