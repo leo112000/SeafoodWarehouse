@@ -170,14 +170,24 @@ export const OutboundPage: React.FC = () => {
       totalWeightKg: totalNetWeight,
       totalAmount,
       createdBy: user?.name ?? 'Thủ kho',
-      batches: items.map((i: any) => ({
-        batchCode: i.batchCode,
-        species: i.seafoodCode,
-        quantityKg: i.quantity,
-        expiryDate: i.expiryDate || '',
-        unitPrice: i.unitPrice || 0,
-        amount: i.totalPrice || 0,
-      })),
+      batches: items.map((i: any) => {
+        const pkgWeight = packagings.find((p) => p.code === i.packagingCode)?.defaultTareWeight || 0;
+        const pQty = i.packagingQty || 0;
+        const tareW = pQty * pkgWeight;
+        const netW = i.quantity || 0;
+        return {
+          batchCode: i.batchCode,
+          species: i.seafoodCode,
+          quantityKg: netW,
+          grossWeight: netW + tareW,
+          tareWeight: tareW,
+          packagingCode: i.packagingCode,
+          packagingQty: pQty,
+          expiryDate: i.expiryDate || '',
+          unitPrice: i.unitPrice || 0,
+          amount: i.totalPrice || 0,
+        };
+      }),
     });
 
     const printData: InvoicePrintData = {

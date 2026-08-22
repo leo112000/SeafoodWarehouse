@@ -25,7 +25,5 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                .WithMany(c => c.Products)
                .HasForeignKey(p => p.CategoryId)
                .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasQueryFilter(p => !p.IsDeleted);
     }
 }

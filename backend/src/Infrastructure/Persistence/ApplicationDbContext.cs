@@ -1,14 +1,21 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using SeafoodWarehouseManagement.Application.Common.Interfaces;
+using SeafoodWarehouseManagement.Domain.Common;
 using SeafoodWarehouseManagement.Domain.Entities;
 
 namespace SeafoodWarehouseManagement.Infrastructure.Persistence;
 
 public class ApplicationDbContext : DbContext, IApplicationDbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    private readonly ICurrentTenant? _currentTenant;
+
+    public ApplicationDbContext(
+        DbContextOptions<ApplicationDbContext> options,
+        ICurrentTenant? currentTenant = null) : base(options)
     {
+        _currentTenant = currentTenant;
     }
 
     public DbSet<Category> Categories => Set<Category>();
@@ -26,10 +33,71 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<SystemSetting> Settings => Set<SystemSetting>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<AppNotification> AppNotifications => Set<AppNotification>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var currentTenantId = _currentTenant?.Id;
+
+        foreach (var entry in ChangeTracker.Entries<IMustHaveTenant>())
+        {
+            if (entry.State == EntityState.Added && currentTenantId.HasValue)
+            {
+                if (!entry.Entity.TenantId.HasValue || entry.Entity.TenantId == 0)
+                {
+                    entry.Entity.TenantId = currentTenantId.Value;
+                }
+            }
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Apply Global Query Filters automatically for Soft Delete & Multi-tenancy
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            var clrType = entityType.ClrType;
+
+            if (typeof(BaseEntity).IsAssignableFrom(clrType))
+            {
+                var parameter = Expression.Parameter(clrType, "e");
+
+                // Filter: !e.IsDeleted
+                var isDeletedProperty = Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
+                Expression filterExpr = Expression.Equal(isDeletedProperty, Expression.Constant(false));
+
+                // Filter: TenantId == _currentTenant.Id || _currentTenant.Id == null || e.TenantId == null
+                if (typeof(IMustHaveTenant).IsAssignableFrom(clrType))
+                {
+                    var tenantIdProperty = Expression.Property(parameter, nameof(IMustHaveTenant.TenantId));
+
+                    // Expression accessing _currentTenant.Id dynamically per query
+                    Expression<Func<int?>> currentTenantIdAccessor = () => _currentTenant != null ? _currentTenant.Id : null;
+                    var currentTenantIdExpr = currentTenantIdAccessor.Body;
+
+                    // _currentTenant.Id == null
+                    var currentTenantIsNull = Expression.Equal(currentTenantIdExpr, Expression.Constant(null, typeof(int?)));
+
+                    // e.TenantId == _currentTenant.Id
+                    var tenantIdMatches = Expression.Equal(tenantIdProperty, currentTenantIdExpr);
+
+                    // (e.TenantId == _currentTenant.Id || _currentTenant.Id == null)
+                    var tenantFilter = Expression.OrElse(tenantIdMatches, currentTenantIsNull);
+
+                    filterExpr = Expression.AndAlso(filterExpr, tenantFilter);
+                }
+
+                var lambda = Expression.Lambda(filterExpr, parameter);
+                modelBuilder.Entity(clrType).HasQueryFilter(lambda);
+            }
+        }
     }
 }
+

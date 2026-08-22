@@ -25,6 +25,9 @@ export interface FefoBatch {
   quantity: number;     // kg còn lại
   unitPrice: number;    // VNĐ/kg
   supplierName: string;
+  tareWeight?: number;
+  packagingCode?: string;
+  packagingQty?: number;
 }
 
 export const batchService = {

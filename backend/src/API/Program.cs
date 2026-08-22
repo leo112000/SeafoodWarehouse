@@ -5,9 +5,15 @@ using SeafoodWarehouseManagement.Application;
 using SeafoodWarehouseManagement.Infrastructure;
 using SeafoodWarehouseManagement.Infrastructure.Persistence;
 
+using SeafoodWarehouseManagement.API.Hubs;
+using SeafoodWarehouseManagement.API.Services;
+using SeafoodWarehouseManagement.Application.Common.Interfaces;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationService, SignalRNotificationService>();
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
@@ -75,7 +81,9 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
+app.UseMiddleware<TenantMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

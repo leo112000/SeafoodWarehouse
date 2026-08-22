@@ -1,16 +1,16 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
-import { Placeholder } from '../components/Placeholder';
+import InventoryStockPage from '../pages/inventory/InventoryStockPage';
+import WarehousesPage from '../pages/master-data/WarehousesPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { UsersPage } from '../pages/admin/UsersPage';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { PermissionGuard } from '../components/PermissionGuard';
 import { InboundPage } from '../pages/inventory/InboundPage';
-import { InboundHistoryPage } from '../pages/inventory/InboundHistoryPage';
+import TransactionHistoryPage from '../pages/inventory/TransactionHistoryPage';
 import { OutboundPage } from '../pages/inventory/OutboundPage';
 import { WastagePage } from '../pages/inventory/WastagePage';
-import OutboundHistoryPage from '../pages/inventory/OutboundHistoryPage';
 import AlertsPage from '../pages/reports/AlertsPage';
 import ReportsPage from '../pages/reports/ReportsPage';
 import PackagingPage from '../pages/master-data/PackagingPage';
@@ -20,6 +20,8 @@ import ProductsPage from '../pages/master-data/ProductsPage';
 import RolesPage from '../pages/admin/RolesPage';
 import AuditLogPage from '../pages/system/AuditLogPage';
 import SystemSettingsPage from '../pages/system/SystemSettingsPage';
+import TenantsPage from '../pages/system/TenantsPage';
+import { Placeholder } from '../components/Placeholder';
 
 export const router = createBrowserRouter([
   {
@@ -46,7 +48,7 @@ export const router = createBrowserRouter([
         path: 'inventory',
         element: (
           <PermissionGuard permission="Pages.Inbound.View">
-            <Placeholder title="Quản lý kho chi tiết" description="Chức năng đang được phát triển..." />
+            <InventoryStockPage />
           </PermissionGuard>
         ),
       },
@@ -59,10 +61,18 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'inventory/history',
+        element: (
+          <PermissionGuard permission="Pages.Inbound.View">
+            <TransactionHistoryPage />
+          </PermissionGuard>
+        ),
+      },
+      {
         path: 'inventory/inbound-history',
         element: (
           <PermissionGuard permission="Pages.Inbound.View">
-            <InboundHistoryPage />
+            <TransactionHistoryPage />
           </PermissionGuard>
         ),
       },
@@ -78,7 +88,7 @@ export const router = createBrowserRouter([
         path: 'inventory/outbound-history',
         element: (
           <PermissionGuard permission="Pages.Outbound.View">
-            <OutboundHistoryPage />
+            <TransactionHistoryPage />
           </PermissionGuard>
         ),
       },
@@ -158,7 +168,7 @@ export const router = createBrowserRouter([
         path: 'master-data/warehouses',
         element: (
           <PermissionGuard permission="Pages.Warehouses.View">
-            <Placeholder title="Danh mục kho bãi" description="Chức năng đang được phát triển..." />
+            <WarehousesPage />
           </PermissionGuard>
         ),
       },
@@ -213,6 +223,10 @@ export const router = createBrowserRouter([
       {
         path: 'system/settings',
         element: <PermissionGuard permission="Pages.Settings.Manage"><SystemSettingsPage /></PermissionGuard>,
+      },
+      {
+        path: 'system/tenants',
+        element: <PermissionGuard permission="Pages.Tenants.Manage"><TenantsPage /></PermissionGuard>,
       },
       {
         path: 'system/audit-logs',

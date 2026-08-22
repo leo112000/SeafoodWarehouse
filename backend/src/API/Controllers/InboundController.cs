@@ -20,9 +20,11 @@ public class CreateInboundItemDto
 {
     public string SeafoodCode { get; set; } = string.Empty;
     public string SeafoodName { get; set; } = string.Empty;
-    public decimal TotalWeight { get; set; }
-    public decimal TareWeight { get; set; }
-    public decimal NetWeight { get; set; }
+    public decimal TotalWeight { get; set; } // Cân thô (Gross weight)
+    public decimal TareWeight { get; set; } // Số cân bì/khay (Tare weight)
+    public decimal NetWeight { get; set; } // Khối lượng thực (Net weight)
+    public string? PackagingCode { get; set; }
+    public int PackagingQty { get; set; }
     public string StorageCondition { get; set; } = "Cấp đông";
     public string CatchDate { get; set; } = string.Empty;
     public string ExpiryDate { get; set; } = string.Empty;
@@ -38,14 +40,21 @@ public class CreateInboundItemDto
 public class InboundController : BaseApiController
 {
     private readonly IApplicationDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly ICurrentTenant _currentTenant;
 
-    public InboundController(IApplicationDbContext context)
+    public InboundController(
+        IApplicationDbContext context,
+        INotificationService notificationService,
+        ICurrentTenant currentTenant)
     {
         _context = context;
+        _notificationService = notificationService;
+        _currentTenant = currentTenant;
     }
 
     /// <summary>
-    /// Lấy danh sách phiếu nhập kho từ CSDL
+    /// Lấy danh sách phiếu nhập kho từ CSDL với đầy đủ khối lượng, điều kiện bảo quản thực và ngày giờ nhập
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<Result<object>>> GetAll(CancellationToken cancellationToken = default)
@@ -63,22 +72,43 @@ public class InboundController : BaseApiController
             {
                 id = g.Key,
                 supplier = g.First().Note?.Split('-').FirstOrDefault()?.Replace("Nhà cung cấp:", "").Trim() ?? "Nhà cung cấp",
-                inboundDate = g.First().TransactionDate.ToString("yyyy-MM-dd"),
+                inboundDate = g.First().TransactionDate.ToString("yyyy-MM-dd HH:mm:ss"),
                 storageLocation = g.First().SourceWarehouse?.Name ?? "Kho chính",
-                totalAmount = (double)g.Sum(x => x.Quantity * x.LotBatch.UnitPrice),
-                items = g.Select(i => new
+                totalAmount = (double)g.Sum(x => x.TotalAmount > 0 ? x.TotalAmount : (x.Quantity * (x.UnitPrice > 0 ? x.UnitPrice : (x.LotBatch != null && x.LotBatch.UnitPrice > 0 ? x.LotBatch.UnitPrice : 250000m)))),
+                items = g.Select(i =>
                 {
-                    seafoodName = i.LotBatch?.Product?.Name ?? "Hải sản",
-                    seafoodCode = i.LotBatch?.Product?.Code ?? "HS-001",
-                    totalWeight = (double)i.Quantity,
-                    tareWeight = 0.0,
-                    netWeight = (double)i.Quantity,
-                    storageCondition = "Cấp đông",
-                    catchDate = i.LotBatch?.ProductionDate.ToString("yyyy-MM-dd"),
-                    expiryDate = i.LotBatch?.ExpirationDate.ToString("yyyy-MM-dd"),
-                    unitPrice = (double)(i.LotBatch?.UnitPrice ?? 0),
-                    totalPrice = (double)(i.Quantity * (i.LotBatch?.UnitPrice ?? 0)),
-                    batchCode = i.LotBatch?.BatchCode ?? "LOT-001"
+                    var price = i.UnitPrice > 0 ? i.UnitPrice : (i.LotBatch != null && i.LotBatch.UnitPrice > 0 ? i.LotBatch.UnitPrice : 250000m);
+                    var amt = i.TotalAmount > 0 ? i.TotalAmount : (i.Quantity * price);
+                    var tareW = (double)i.TareWeight;
+                    var netW = (double)i.Quantity;
+                    var grossW = i.GrossWeight > 0 ? (double)i.GrossWeight : (netW + tareW);
+
+                    var storageType = i.LotBatch?.Product?.StorageType;
+                    var conditionStr = storageType switch
+                    {
+                        "ALIVE" => "Tươi sống",
+                        "FRESH" => "Ướp đá",
+                        "DRY"   => "Khô",
+                        _       => "Cấp đông"
+                    };
+
+                    return new
+                    {
+                        seafoodName = i.LotBatch?.Product?.Name ?? "Hải sản",
+                        seafoodCode = i.LotBatch?.Product?.Code ?? "HS-001",
+                        totalWeight = grossW,
+                        tareWeight = tareW,
+                        netWeight = netW,
+                        grossWeight = grossW,
+                        packagingCode = i.PackagingCode,
+                        packagingQty = i.PackagingQty,
+                        storageCondition = conditionStr,
+                        catchDate = i.LotBatch?.ProductionDate.ToString("yyyy-MM-dd"),
+                        expiryDate = i.LotBatch?.ExpirationDate.ToString("yyyy-MM-dd"),
+                        unitPrice = (double)price,
+                        totalPrice = (double)amt,
+                        batchCode = i.LotBatch?.BatchCode ?? "LOT-001"
+                    };
                 }).ToList()
             }).ToList();
 
@@ -86,7 +116,7 @@ public class InboundController : BaseApiController
     }
 
     /// <summary>
-    /// Tạo mới phiếu nhập kho và tự động ghi nhận Lô hàng & Tồn kho trong CSDL
+    /// Tạo mới phiếu nhập kho, sinh Mã phiếu duy nhất (PNK-yyyyMMddHHmmss-XX) để không bao giờ trùng hoặc đè phiếu
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<Result<object>>> Create([FromBody] CreateInboundRequestDto request, CancellationToken cancellationToken = default)
@@ -105,9 +135,17 @@ public class InboundController : BaseApiController
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        string refNo = $"PNK-{DateTime.UtcNow:yyyyMMddHHmmss}";
+        DateTime nowLocal = DateTime.UtcNow.AddHours(7);
+        DateTime txDate = nowLocal;
 
-        // Tự động tìm category mặc định hoặc tạo mới
+        if (!string.IsNullOrWhiteSpace(request.InboundDate) && DateTime.TryParse(request.InboundDate, out var parsedInDate))
+        {
+            txDate = new DateTime(parsedInDate.Year, parsedInDate.Month, parsedInDate.Day, nowLocal.Hour, nowLocal.Minute, nowLocal.Second, nowLocal.Millisecond);
+        }
+
+        // Sinh mã phiếu duy nhất PNK-yyyyMMddHHmmss-XX không bao giờ trùng lặp
+        string refNo = $"PNK-{txDate:yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
+
         var category = await _context.Categories.FirstOrDefaultAsync(c => !c.IsDeleted, cancellationToken);
         if (category == null)
         {
@@ -121,16 +159,23 @@ public class InboundController : BaseApiController
             var product = await _context.Products.FirstOrDefaultAsync(p => p.Code == item.SeafoodCode && !p.IsDeleted, cancellationToken)
                        ?? await _context.Products.FirstOrDefaultAsync(p => p.Name == item.SeafoodName && !p.IsDeleted, cancellationToken);
 
+            string mappedStorageType = item.StorageCondition switch
+            {
+                "Tươi sống" => "ALIVE",
+                "Ướp đá"   => "FRESH",
+                "Khô"      => "DRY",
+                _          => "FROZEN"
+            };
+
             if (product == null)
             {
-                // Tự động tạo sản phẩm nếu chưa có trong DB
                 product = new Product
                 {
                     Code = string.IsNullOrWhiteSpace(item.SeafoodCode) ? $"HS-{DateTime.UtcNow:yyyyMMddHHmmss}" : item.SeafoodCode,
                     Name = string.IsNullOrWhiteSpace(item.SeafoodName) ? "Hải sản tươi" : item.SeafoodName,
                     CategoryId = category.Id,
                     Unit = "Kg",
-                    StorageType = "FRESH",
+                    StorageType = mappedStorageType,
                     TargetTemperature = -1,
                     WarningDaysBeforeExpiry = 5,
                     MinimumStock = 10,
@@ -141,24 +186,39 @@ public class InboundController : BaseApiController
                 _context.Products.Add(product);
                 await _context.SaveChangesAsync(cancellationToken);
             }
+            else
+            {
+                product.StorageType = mappedStorageType;
+                _context.Products.Update(product);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
 
-            // 1. Tạo Lô hàng mới trong CSDL SQL Server
+            var netQty = item.NetWeight > 0 ? item.NetWeight : item.TotalWeight;
+
+            string bCode = string.IsNullOrWhiteSpace(item.BatchCode) ? $"LOT-{product.Code}-{txDate:yyyyMMddHHmmss}" : item.BatchCode;
+            if (await _context.LotBatches.AnyAsync(b => b.BatchCode == bCode && !b.IsDeleted, cancellationToken))
+            {
+                bCode = $"{bCode}-{Random.Shared.Next(10, 99)}";
+            }
+
             var lotBatch = new LotBatch
             {
-                BatchCode = string.IsNullOrWhiteSpace(item.BatchCode) ? $"LOT-{DateTime.UtcNow:yyyyMMdd}-{product.Code}" : item.BatchCode,
+                BatchCode = bCode,
                 ProductId = product.Id,
-                ProductionDate = DateTime.TryParse(item.CatchDate, out var pDate) ? pDate : DateTime.UtcNow,
-                ExpirationDate = DateTime.TryParse(item.ExpiryDate, out var eDate) ? eDate : DateTime.UtcNow.AddMonths(6),
-                InitialQuantity = item.NetWeight > 0 ? item.NetWeight : item.TotalWeight,
-                CurrentQuantity = item.NetWeight > 0 ? item.NetWeight : item.TotalWeight,
-                UnitPrice = item.UnitPrice,
-                SupplierName = request.Supplier ?? "Vựa hải sản"
+                ProductionDate = DateTime.TryParse(item.CatchDate, out var pDate) ? pDate : txDate,
+                ExpirationDate = DateTime.TryParse(item.ExpiryDate, out var eDate) ? eDate : txDate.AddMonths(6),
+                InitialQuantity = netQty,
+                CurrentQuantity = netQty,
+                UnitPrice = item.UnitPrice > 0 ? item.UnitPrice : (product.ReferencePrice > 0 ? product.ReferencePrice : 250000m),
+                SupplierName = request.Supplier ?? "Vựa hải sản",
+                TareWeight = item.TareWeight,
+                PackagingCode = item.PackagingCode,
+                PackagingQty = item.PackagingQty
             };
 
             _context.LotBatches.Add(lotBatch);
             await _context.SaveChangesAsync(cancellationToken);
 
-            // 2. Tạo vị trí tồn kho trong CSDL
             var invItem = new InventoryItem
             {
                 WarehouseId = warehouse.Id,
@@ -168,15 +228,24 @@ public class InboundController : BaseApiController
             };
             _context.InventoryItems.Add(invItem);
 
-            // 3. Ghi nhận giao dịch nhập kho trong CSDL
+            var unitPrice = item.UnitPrice > 0 ? item.UnitPrice : (product.ReferencePrice > 0 ? product.ReferencePrice : 250000m);
+            var totalAmt = item.TotalPrice > 0 ? item.TotalPrice : (netQty * unitPrice);
+            var grossW = item.TotalWeight > 0 ? item.TotalWeight : (netQty + item.TareWeight);
+
             var tx = new InventoryTransaction
             {
                 ReferenceNumber = refNo,
                 Type = TransactionType.Import,
                 LotBatchId = lotBatch.Id,
                 SourceWarehouseId = warehouse.Id,
-                Quantity = lotBatch.CurrentQuantity,
-                TransactionDate = DateTime.UtcNow,
+                Quantity = netQty,
+                TareWeight = item.TareWeight,
+                GrossWeight = grossW,
+                PackagingCode = item.PackagingCode,
+                PackagingQty = item.PackagingQty,
+                UnitPrice = unitPrice,
+                TotalAmount = totalAmt,
+                TransactionDate = txDate,
                 CreatedBy = "Thủ kho",
                 Note = $"Nhà cung cấp: {request.Supplier}"
             };
@@ -184,6 +253,29 @@ public class InboundController : BaseApiController
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Bắn thông báo Real-time và trigger cập nhật tồn kho
+        var tenantId = _currentTenant.Id;
+        var totalWeightKg = request.Items.Sum(i => i.NetWeight > 0 ? i.NetWeight : i.TotalWeight);
+        var notif = new NotificationMessage
+        {
+            Type = "INBOUND",
+            Title = "Nhập kho hải sản mới",
+            Message = $"Phiếu {refNo} ({request.Items.Count} mặt hàng, tổng {totalWeightKg:N1}kg) từ '{request.Supplier}' đã được nhập kho thành công.",
+            Severity = "success",
+            Link = "/inventory/history"
+        };
+
+        if (tenantId.HasValue && tenantId.Value > 0)
+        {
+            await _notificationService.SendNotificationToTenantAsync(tenantId.Value, notif, cancellationToken);
+            await _notificationService.SendStockUpdateEventAsync(tenantId.Value, "INBOUND_CREATED", cancellationToken);
+        }
+        else
+        {
+            await _notificationService.SendNotificationToAllAsync(notif, cancellationToken);
+            await _notificationService.SendStockUpdateEventAsync(null, "INBOUND_CREATED", cancellationToken);
+        }
 
         return Ok(Result<object>.Success(new { referenceNumber = refNo }));
     }

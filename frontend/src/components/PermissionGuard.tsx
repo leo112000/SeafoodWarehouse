@@ -14,11 +14,13 @@ export const usePermission = (permission: string): boolean => {
   const user = useAuthStore((state) => state.user);
   const tenantName = useAuthStore((state) => state.tenantName);
   const rolesByTenant = useRoleStore((state) => state.rolesByTenant);
-  // A tenant's roles are hydrated lazily in this demo frontend. Until its role
-  // configuration is loaded, use the same default role definitions for that tenant.
+
+  if (!user) return false;
+  if (user.roles.includes('Admin')) return true;
+
   const tenantRoles = rolesByTenant[tenantName?.trim() || 'Default'] ?? createDefaultRoles();
 
-  return !!user && tenantRoles.filter((role) => user.roles.includes(role.name)).some((role) => role.permissions.includes(permission));
+  return tenantRoles.filter((role) => user.roles.includes(role.name)).some((role) => role.permissions.includes(permission));
 };
 
 export const PermissionGuard: React.FC<PermissionGuardProps> = ({ permission, children, fallback = null }) => {

@@ -15,7 +15,13 @@ export const SystemSettingsPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await settingService.getSettings();
-      form.setFieldsValue(data);
+      form.setFieldsValue({
+        expiringAlertDays: Number(data.expiringAlertDays) || 15,
+        tempDeviationThreshold: Number(data.tempDeviationThreshold) || 3.0,
+        defaultSeafoodPrice: Number(data.defaultSeafoodPrice) || 250000,
+        autoRefreshIntervalSeconds: Number(data.autoRefreshIntervalSeconds) || 30,
+        lowStockWarningPercent: Number(data.lowStockWarningPercent) || 100,
+      });
     } catch {
       message.error('Không thể tải cài đặt hệ thống từ Cơ sở dữ liệu.');
     } finally {
@@ -33,8 +39,8 @@ export const SystemSettingsPage: React.FC = () => {
       await settingService.updateSettings(values);
       message.success('Đã lưu cấu hình cài đặt hệ thống thành công vào CSDL!');
       await loadSettings();
-    } catch {
-      message.error('Có lỗi xảy ra khi lưu cấu hình hệ thống.');
+    } catch (err: any) {
+      message.error(err?.message || 'Có lỗi xảy ra khi lưu cấu hình hệ thống.');
     } finally {
       setSaving(false);
     }
@@ -181,6 +187,27 @@ export const SystemSettingsPage: React.FC = () => {
                   min={5}
                   max={300}
                   addonAfter="giây"
+                  className="w-full"
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} className="mt-4 md:mt-0">
+              <Form.Item
+                name="lowStockWarningPercent"
+                label={
+                  <Space>
+                    <Text strong>Ngưỡng cảnh báo tồn kho thấp (kg)</Text>
+                    <Tooltip title="Mức khối lượng tồn kho tối thiểu (kg) để hệ thống cảnh báo khi sản phẩm sắp hết hàng.">
+                      <InfoCircleOutlined className="text-gray-400" />
+                    </Tooltip>
+                  </Space>
+                }
+                rules={[{ required: true, message: 'Vui lòng nhập ngưỡng tồn kho tối thiểu!' }]}
+              >
+                <InputNumber
+                  min={1}
+                  max={10000}
+                  addonAfter="kg"
                   className="w-full"
                 />
               </Form.Item>

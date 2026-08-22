@@ -20,7 +20,5 @@ public class LotBatchConfiguration : IEntityTypeConfiguration<LotBatch>
                .WithMany(p => p.LotBatches)
                .HasForeignKey(l => l.ProductId)
                .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasQueryFilter(l => !l.IsDeleted);
     }
 }

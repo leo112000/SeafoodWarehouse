@@ -23,6 +23,10 @@ public class CreateOutboundBatchDto
     public string BatchCode { get; set; } = string.Empty;
     public string Species { get; set; } = string.Empty;
     public decimal QuantityKg { get; set; }
+    public decimal GrossWeight { get; set; }
+    public decimal TareWeight { get; set; }
+    public string? PackagingCode { get; set; }
+    public int PackagingQty { get; set; }
     public string ExpiryDate { get; set; } = string.Empty;
     public decimal UnitPrice { get; set; }
     public decimal Amount { get; set; }
@@ -42,7 +46,7 @@ public class OutboundController : BaseApiController
     }
 
     /// <summary>
-    /// Lấy danh sách phiếu xuất kho từ CSDL
+    /// Lấy danh sách phiếu xuất kho từ CSDL với đầy đủ Cân thô, Bì/khay, Khối lượng thực & Đơn giá bán thực tế
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<Result<object>>> GetAll(CancellationToken cancellationToken = default)
@@ -59,20 +63,44 @@ public class OutboundController : BaseApiController
             .Select(g => new
             {
                 id = g.Key,
-                date = g.First().TransactionDate.ToString("yyyy-MM-dd"),
+                date = g.First().TransactionDate.ToString("yyyy-MM-dd HH:mm:ss"),
                 customerName = g.First().Note?.Split('-').FirstOrDefault()?.Replace("Khách hàng:", "").Trim() ?? "Khách hàng lẻ",
                 reason = g.First().Note?.Split('-').Skip(1).FirstOrDefault()?.Replace("Lý do:", "").Trim() ?? "Bán hàng",
                 totalWeightKg = (double)g.Sum(x => x.Quantity),
-                totalAmount = (double)g.Sum(x => x.Quantity * (x.LotBatch != null && x.LotBatch.UnitPrice > 0 ? x.LotBatch.UnitPrice : 250000m)),
+                totalAmount = (double)g.Sum(x => x.TotalAmount > 0 ? x.TotalAmount : (x.Quantity * (x.UnitPrice > 0 ? x.UnitPrice : (x.LotBatch != null && x.LotBatch.UnitPrice > 0 ? x.LotBatch.UnitPrice : 250000m)))),
                 createdBy = g.First().CreatedBy,
-                batches = g.Select(b => new
+                batches = g.Select(b =>
                 {
-                    batchCode = b.LotBatch?.BatchCode ?? "LOT-EXPORT",
-                    species = b.LotBatch?.Product?.Name ?? "Hải sản",
-                    quantityKg = (double)b.Quantity,
-                    expiryDate = b.LotBatch?.ExpirationDate.ToString("yyyy-MM-dd"),
-                    unitPrice = (double)(b.LotBatch?.UnitPrice ?? 250000m),
-                    amount = (double)(b.Quantity * (b.LotBatch?.UnitPrice ?? 250000m))
+                    var price = b.UnitPrice > 0 ? b.UnitPrice : (b.LotBatch != null && b.LotBatch.UnitPrice > 0 ? b.LotBatch.UnitPrice : (b.LotBatch != null && b.LotBatch.Product != null && b.LotBatch.Product.ReferencePrice > 0 ? b.LotBatch.Product.ReferencePrice : 250000m));
+                    var amt = b.TotalAmount > 0 ? b.TotalAmount : (b.Quantity * price);
+                    var tareW = (double)b.TareWeight;
+                    var netW = (double)b.Quantity;
+                    var grossW = b.GrossWeight > 0 ? (double)b.GrossWeight : (netW + tareW);
+
+                    var storageType = b.LotBatch?.Product?.StorageType;
+                    var conditionStr = storageType switch
+                    {
+                        "ALIVE" => "Tươi sống",
+                        "FRESH" => "Ướp đá",
+                        "DRY"   => "Khô",
+                        _       => "Cấp đông"
+                    };
+
+                    return new
+                    {
+                        batchCode = b.LotBatch?.BatchCode ?? "LOT-EXPORT",
+                        species = b.LotBatch?.Product?.Name ?? "Hải sản",
+                        quantityKg = netW,
+                        netWeight = netW,
+                        tareWeight = tareW,
+                        grossWeight = grossW,
+                        packagingCode = b.PackagingCode,
+                        packagingQty = b.PackagingQty,
+                        storageCondition = conditionStr,
+                        expiryDate = b.LotBatch?.ExpirationDate.ToString("yyyy-MM-dd"),
+                        unitPrice = (double)price,
+                        amount = (double)amt
+                    };
                 }).ToList()
             }).ToList();
 
@@ -80,7 +108,7 @@ public class OutboundController : BaseApiController
     }
 
     /// <summary>
-    /// Tạo mới phiếu xuất kho và trừ tồn kho trực tiếp trong CSDL theo FEFO
+    /// Tạo mới phiếu xuất kho, sinh Mã phiếu duy nhất (PXK-yyyyMMddHHmmss-XX) để không bao giờ trùng hoặc đè phiếu xuất
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<Result<object>>> Create([FromBody] CreateOutboundRequestDto request, CancellationToken cancellationToken = default)
@@ -99,7 +127,16 @@ public class OutboundController : BaseApiController
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        string refNo = $"PXK-{DateTime.UtcNow:yyyyMMddHHmmss}";
+        DateTime nowLocal = DateTime.UtcNow.AddHours(7);
+        DateTime txDate = nowLocal;
+
+        if (!string.IsNullOrWhiteSpace(request.Date) && DateTime.TryParse(request.Date, out var parsedDate))
+        {
+            txDate = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, nowLocal.Hour, nowLocal.Minute, nowLocal.Second, nowLocal.Millisecond);
+        }
+
+        // Sinh mã phiếu duy nhất PXK-yyyyMMddHHmmss-XX không bao giờ trùng lặp
+        string refNo = $"PXK-{txDate:yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
 
         foreach (var item in request.Batches)
         {
@@ -125,7 +162,11 @@ public class OutboundController : BaseApiController
                     invItem.Quantity = Math.Max(0, invItem.Quantity - item.QuantityKg);
                 }
 
-                // Ghi nhận giao dịch xuất kho CSDL
+                // Ghi nhận giao dịch xuất kho CSDL với Giá bán, Thành tiền, Cân thô và Số cân bì
+                var sellPrice = item.UnitPrice > 0 ? item.UnitPrice : (lotBatch.UnitPrice > 0 ? lotBatch.UnitPrice : (lotBatch.Product?.ReferencePrice > 0 ? lotBatch.Product.ReferencePrice : 250000m));
+                var totalSellAmt = item.Amount > 0 ? item.Amount : (item.QuantityKg * sellPrice);
+                var grossW = item.GrossWeight > 0 ? item.GrossWeight : (item.QuantityKg + item.TareWeight);
+
                 var tx = new InventoryTransaction
                 {
                     ReferenceNumber = refNo,
@@ -133,7 +174,13 @@ public class OutboundController : BaseApiController
                     LotBatchId = lotBatch.Id,
                     SourceWarehouseId = warehouse.Id,
                     Quantity = item.QuantityKg,
-                    TransactionDate = DateTime.UtcNow,
+                    TareWeight = item.TareWeight,
+                    GrossWeight = grossW,
+                    PackagingCode = item.PackagingCode,
+                    PackagingQty = item.PackagingQty,
+                    UnitPrice = sellPrice,
+                    TotalAmount = totalSellAmt,
+                    TransactionDate = txDate,
                     CreatedBy = request.CreatedBy ?? "Thủ kho",
                     Note = $"Khách hàng: {request.CustomerName} - Lý do: {request.Reason}"
                 };

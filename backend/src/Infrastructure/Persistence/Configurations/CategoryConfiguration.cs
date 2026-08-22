@@ -13,7 +13,5 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
         builder.HasIndex(c => c.Code).IsUnique();
         builder.Property(c => c.Name).IsRequired().HasMaxLength(150);
         builder.Property(c => c.Description).HasMaxLength(500);
-
-        builder.HasQueryFilter(c => !c.IsDeleted);
     }
 }

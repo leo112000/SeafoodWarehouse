@@ -14,7 +14,5 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
         builder.Property(w => w.Name).IsRequired().HasMaxLength(150);
         builder.Property(w => w.Location).IsRequired().HasMaxLength(250);
         builder.Property(w => w.MaxCapacityTon).HasPrecision(18, 3);
-
-        builder.HasQueryFilter(w => !w.IsDeleted);
     }
 }

@@ -69,7 +69,7 @@ public class DashboardController : BaseApiController
 
         // 3. Cảnh báo lô hạn sử dụng (động theo Cài đặt) & sản phẩm tồn kho dưới định mức tối thiểu
         var expiringBatchesCount = await _context.LotBatches
-            .Where(b => !b.IsDeleted && b.CurrentQuantity > 0 && b.ExpirationDate <= inAlertDays)
+            .Where(b => !b.IsDeleted && b.CurrentQuantity > 0 && b.ExpirationDate >= today && b.ExpirationDate <= inAlertDays)
             .CountAsync(cancellationToken);
 
         var products = await _context.Products

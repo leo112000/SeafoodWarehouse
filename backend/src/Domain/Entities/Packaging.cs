@@ -2,7 +2,7 @@ using SeafoodWarehouseManagement.Domain.Common;
 
 namespace SeafoodWarehouseManagement.Domain.Entities;
 
-public class Packaging : BaseEntity
+public class Packaging : BaseEntity, IMustHaveTenant
 {
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
@@ -11,6 +11,7 @@ public class Packaging : BaseEntity
     public string Unit { get; set; } = "Cái";
     public int StockQuantity { get; set; } = 0;
     public string? Note { get; set; }
+    public int? TenantId { get; set; }
 
     public ICollection<PackagingLoan> Loans { get; set; } = new List<PackagingLoan>();
 }

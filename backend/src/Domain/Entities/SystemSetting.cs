@@ -5,7 +5,7 @@ namespace SeafoodWarehouseManagement.Domain.Entities;
 /// <summary>
 /// Thực thể lưu trữ các thông số cài đặt/cấu hình chung cho toàn hệ thống kho
 /// </summary>
-public class SystemSetting : BaseEntity
+public class SystemSetting : BaseEntity, IMustHaveTenant
 {
     /// <summary>
     /// Số ngày trước khi hết hạn để đưa vào danh sách cảnh báo lô hàng (mặc định: 15 ngày)
@@ -31,4 +31,6 @@ public class SystemSetting : BaseEntity
     /// Tỷ lệ % cảnh báo tồn kho tối thiểu (mặc định 100% = nhỏ hơn MinimumStock)
     /// </summary>
     public double LowStockWarningPercent { get; set; } = 100.0;
+
+    public int? TenantId { get; set; }
 }

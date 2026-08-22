@@ -37,7 +37,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ open, onClos
     setEditing(false);
   };
 
-  return <Modal title="Thông tin tài khoản" open={open} onCancel={onClose} footer={null} destroyOnClose>
+  return <Modal title="Thông tin tài khoản" open={open} onCancel={onClose} footer={null} destroyOnHidden>
     {user && (editing ? <Form form={form} layout="vertical" onFinish={save} className="mt-5">
       <Form.Item name="name" label="Họ và tên" rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập họ và tên.' }]}><Input /></Form.Item>
       <Form.Item name="phone" label="Số điện thoại" rules={[{ pattern: /^(?:\+84|0)\d{9,10}$/, message: 'Số điện thoại chưa hợp lệ.' }]}><Input placeholder="Ví dụ: 0901234567" /></Form.Item>

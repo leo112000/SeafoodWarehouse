@@ -89,7 +89,6 @@ export const InboundPage: React.FC = () => {
   const handleValuesChange = (_changedValues: any, allValues: any) => {
     const items = allValues.items || [];
     let isChanged = false;
-    const dateStr = allValues.inboundDate ? allValues.inboundDate.format('YYYYMMDD') : '';
 
     const updatedItems = items.map((item: any) => {
       if (!item) return item;
@@ -106,7 +105,10 @@ export const InboundPage: React.FC = () => {
       const computedTotal = computedNet * price;
 
       const code = item.seafoodCode || '';
-      const computedBatch = code && dateStr ? `LOT-${code}-${dateStr}` : '';
+      const existingBatch = item.batchCode || '';
+      const computedBatch = code 
+        ? (existingBatch && existingBatch.startsWith(`LOT-${code}`) ? existingBatch : `LOT-${code}-${dayjs().format('YYYYMMDDHHmmss')}`)
+        : '';
 
       let updatedItem = { ...item };
 

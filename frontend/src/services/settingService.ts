@@ -35,7 +35,14 @@ export const settingService = {
   },
 
   async updateSettings(data: SystemSetting): Promise<SystemSetting> {
-    const response = await api.put('/settings', data);
+    const payload = {
+      expiringAlertDays: Number(data.expiringAlertDays) || 15,
+      tempDeviationThreshold: Number(data.tempDeviationThreshold) || 3.0,
+      defaultSeafoodPrice: Number(data.defaultSeafoodPrice) || 250000,
+      autoRefreshIntervalSeconds: Number(data.autoRefreshIntervalSeconds) || 30,
+      lowStockWarningPercent: Number(data.lowStockWarningPercent) || 100,
+    };
+    const response = await api.put('/settings', payload);
     return response.data?.data || data;
   },
 };

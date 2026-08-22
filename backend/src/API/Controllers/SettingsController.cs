@@ -8,11 +8,11 @@ namespace SeafoodWarehouseManagement.API.Controllers;
 
 public class UpdateSettingDto
 {
-    public int ExpiringAlertDays { get; set; } = 15;
-    public double TempDeviationThreshold { get; set; } = 3.0;
-    public decimal DefaultSeafoodPrice { get; set; } = 250000;
-    public int AutoRefreshIntervalSeconds { get; set; } = 30;
-    public double LowStockWarningPercent { get; set; } = 100.0;
+    public int? ExpiringAlertDays { get; set; }
+    public double? TempDeviationThreshold { get; set; }
+    public decimal? DefaultSeafoodPrice { get; set; }
+    public int? AutoRefreshIntervalSeconds { get; set; }
+    public double? LowStockWarningPercent { get; set; }
 }
 
 /// <summary>
@@ -73,11 +73,24 @@ public class SettingsController : BaseApiController
             _context.Settings.Add(setting);
         }
 
-        setting.ExpiringAlertDays = dto.ExpiringAlertDays > 0 ? dto.ExpiringAlertDays : 15;
-        setting.TempDeviationThreshold = dto.TempDeviationThreshold >= 0 ? dto.TempDeviationThreshold : 3.0;
-        setting.DefaultSeafoodPrice = dto.DefaultSeafoodPrice >= 0 ? dto.DefaultSeafoodPrice : 250000;
-        setting.AutoRefreshIntervalSeconds = dto.AutoRefreshIntervalSeconds >= 5 ? dto.AutoRefreshIntervalSeconds : 30;
-        setting.LowStockWarningPercent = dto.LowStockWarningPercent > 0 ? dto.LowStockWarningPercent : 100.0;
+        if (dto != null)
+        {
+            if (dto.ExpiringAlertDays.HasValue && dto.ExpiringAlertDays.Value > 0)
+                setting.ExpiringAlertDays = dto.ExpiringAlertDays.Value;
+
+            if (dto.TempDeviationThreshold.HasValue && dto.TempDeviationThreshold.Value >= 0)
+                setting.TempDeviationThreshold = dto.TempDeviationThreshold.Value;
+
+            if (dto.DefaultSeafoodPrice.HasValue && dto.DefaultSeafoodPrice.Value >= 0)
+                setting.DefaultSeafoodPrice = dto.DefaultSeafoodPrice.Value;
+
+            if (dto.AutoRefreshIntervalSeconds.HasValue && dto.AutoRefreshIntervalSeconds.Value >= 5)
+                setting.AutoRefreshIntervalSeconds = dto.AutoRefreshIntervalSeconds.Value;
+
+            if (dto.LowStockWarningPercent.HasValue && dto.LowStockWarningPercent.Value > 0)
+                setting.LowStockWarningPercent = dto.LowStockWarningPercent.Value;
+        }
+
         setting.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);

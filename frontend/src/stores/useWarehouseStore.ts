@@ -5,6 +5,7 @@ import { warehouseService, type WarehouseItem } from '../services/warehouseServi
 interface WarehouseState {
   products: SeafoodProduct[];
   warehouses: WarehouseItem[];
+  loading: boolean;
   isLoading: boolean;
   fetchWarehouses: () => Promise<void>;
   addProduct: (product: Omit<SeafoodProduct, 'id' | 'lastUpdated'>) => void;
@@ -56,8 +57,10 @@ export const useWarehouseStore = create<WarehouseState>((set) => ({
     },
   ],
   warehouses: [],
+  loading: false,
   isLoading: false,
   fetchWarehouses: async () => {
+    set({ loading: true, isLoading: true });
     try {
       const data = await warehouseService.getAll();
       if (data && data.length > 0) {
@@ -65,6 +68,8 @@ export const useWarehouseStore = create<WarehouseState>((set) => ({
       }
     } catch {
       // Keep state on error
+    } finally {
+      set({ loading: false, isLoading: false });
     }
   },
   addProduct: (product) =>
@@ -81,10 +86,10 @@ export const useWarehouseStore = create<WarehouseState>((set) => ({
       products: state.products.map((p) =>
         p.id === id
           ? {
-              ...p,
-              ...updated,
-              lastUpdated: new Date().toISOString(),
-            }
+            ...p,
+            ...updated,
+            lastUpdated: new Date().toISOString(),
+          }
           : p
       ),
     })),

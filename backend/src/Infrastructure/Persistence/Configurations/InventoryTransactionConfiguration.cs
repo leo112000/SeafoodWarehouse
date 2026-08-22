@@ -28,7 +28,5 @@ public class InventoryTransactionConfiguration : IEntityTypeConfiguration<Invent
                .WithMany()
                .HasForeignKey(t => t.DestinationWarehouseId)
                .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasQueryFilter(t => !t.IsDeleted);
     }
 }

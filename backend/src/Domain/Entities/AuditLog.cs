@@ -2,7 +2,7 @@ using SeafoodWarehouseManagement.Domain.Common;
 
 namespace SeafoodWarehouseManagement.Domain.Entities;
 
-public class AuditLog : BaseEntity
+public class AuditLog : BaseEntity, IMustHaveTenant
 {
     public string Timestamp { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
     public string UserName { get; set; } = string.Empty;
@@ -16,4 +16,5 @@ public class AuditLog : BaseEntity
     public int ExecutionDurationMs { get; set; } = 50;
     public string? OldValues { get; set; }
     public string? NewValues { get; set; }
+    public int? TenantId { get; set; }
 }

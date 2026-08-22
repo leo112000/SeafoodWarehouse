@@ -56,13 +56,13 @@ export const AlertsPage: React.FC = () => {
   const today = dayjs();
   const expiryAlertDays = settings.expiringAlertDays || 15;
   const expiryAlerts = fefoBatches
-    .filter((b) => b.quantity > 0 && b.expiryDate)
+    .filter((b) => (b.quantity || 0) > 0 && b.expiryDate)
     .map((b) => {
       const expiry = dayjs(b.expiryDate);
       const daysLeft = expiry.diff(today, 'day');
       return { ...b, daysLeft };
     })
-    .filter((b) => b.daysLeft <= expiryAlertDays) // Cảnh báo các lô cận date theo Cài đặt hệ thống
+    .filter((b) => b.daysLeft >= 0 && b.daysLeft <= expiryAlertDays) // Cảnh báo các lô cận date còn tồn kho theo Cài đặt hệ thống
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
   // 2. Tính toán Cảnh báo Trữ Lượng Tồn Kho Thấp từ Sản Phẩm Thực trong CSDL

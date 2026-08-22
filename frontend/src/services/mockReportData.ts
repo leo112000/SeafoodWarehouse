@@ -18,7 +18,9 @@ export interface TopItem {
   name: string;
   categoryName: string;
   inboundKg: number;
+  inboundAmount?: number;
   outboundKg: number;
+  outboundAmount?: number;
   stockKg: number;
   stockValue: number;
 }
@@ -34,6 +36,9 @@ export interface ReportSummary {
   totalInboundAmount: number;
   totalOutboundKg: number;
   totalOutboundAmount: number;
+  cogsAmount?: number;
+  grossProfit?: number;
+  profitMarginPercent?: number;
   stockKg: number;
   stockValue: number;
   wastageKg: number;

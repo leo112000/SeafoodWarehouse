@@ -5,6 +5,7 @@ public class LoginRequestDto
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string? TenantName { get; set; }
+    public int? TenantId { get; set; }
 }
 
 public class UserInfoDto
@@ -15,6 +16,9 @@ public class UserInfoDto
     public List<string> Roles { get; set; } = new();
     public string? Phone { get; set; }
     public string Status { get; set; } = "Active";
+    public int? TenantId { get; set; }
+    public string? TenantCode { get; set; }
+    public string? TenantName { get; set; }
 }
 
 public class LoginResponseDto

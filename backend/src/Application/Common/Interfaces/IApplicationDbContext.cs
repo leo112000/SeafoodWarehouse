@@ -20,6 +20,9 @@ public interface IApplicationDbContext
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<RolePermission> RolePermissions { get; }
     DbSet<SystemSetting> Settings { get; }
+    DbSet<Tenant> Tenants { get; }
+    DbSet<AppNotification> AppNotifications { get; }
+    DbSet<UserNotification> UserNotifications { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

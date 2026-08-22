@@ -2,7 +2,7 @@ using SeafoodWarehouseManagement.Domain.Common;
 
 namespace SeafoodWarehouseManagement.Domain.Entities;
 
-public class InventoryItem : BaseEntity
+public class InventoryItem : BaseEntity, IMustHaveTenant
 {
     public int WarehouseId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
@@ -12,4 +12,5 @@ public class InventoryItem : BaseEntity
 
     public string StorageBin { get; set; } = string.Empty; // Vị trí kệ/kệ hàng (VD: A-01-02)
     public decimal Quantity { get; set; }
+    public int? TenantId { get; set; }
 }

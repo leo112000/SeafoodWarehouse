@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatCurrency } from '../../utils/format';
 import type { InvoicePrintData } from '../../types';
+import { useTenantStore } from '../../stores/useTenantStore';
 
 
 /* =============================================
@@ -238,17 +239,27 @@ export const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { data: Inv
         `}</style>
 
         {/* ── Header ─────────────────────────────────────── */}
-        <div className="inv-header">
-          <div className="inv-company">
-            <h2>KHO HẢI SẢN BIỂN ĐÔNG</h2>
-            <p>📍 123 Đường Cảng Cá, Phường Thọ Quang, Đà Nẵng</p>
-            <p>📞 0236 123 4567 &nbsp;|&nbsp; 📧 kho@biendongsea.vn</p>
-            <p>🏢 MST: 0401 345 678</p>
-          </div>
-          <div className="inv-logo">
-            <span>🚢</span>
-          </div>
-        </div>
+        {(() => {
+          const tenant = useTenantStore.getState().activeTenant;
+          const name = tenant?.name || 'KHO HẢI SẢN BIỂN ĐÔNG';
+          const address = tenant?.address || '123 Đường Cảng Cá, Phường Thọ Quang, Đà Nẵng';
+          const phone = tenant?.phone || '0236 123 4567';
+          const email = tenant?.email || 'kho@biendongsea.vn';
+          const taxCode = tenant?.taxCode || '0401 345 678';
+          return (
+            <div className="inv-header">
+              <div className="inv-company">
+                <h2>{name}</h2>
+                <p>📍 {address}</p>
+                <p>📞 {phone} &nbsp;|&nbsp; 📧 {email}</p>
+                <p>🏢 MST: {taxCode}</p>
+              </div>
+              <div className="inv-logo">
+                <span>🚢</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── Title ─────────────────────────────────────── */}
         <div className="inv-title">
@@ -316,8 +327,14 @@ export const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { data: Inv
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={6} className="text-right" style={{ borderTop: '2px solid #003580' }}>
+              <td colSpan={4} className="text-right" style={{ borderTop: '2px solid #003580' }}>
                 Tổng cộng:
+              </td>
+              <td className="text-right" style={{ borderTop: '2px solid #003580' }}>
+                <strong>{data.items.reduce((s, i) => s + (i.grossWeight || (i.netWeight + (i.tareWeight || 0))), 0).toFixed(1)}</strong>
+              </td>
+              <td className="text-right" style={{ borderTop: '2px solid #003580', fontSize: '9pt', color: '#555' }}>
+                <strong>{data.items.reduce((s, i) => s + (i.tareWeight || 0), 0).toFixed(1)}</strong>
               </td>
               <td className="text-right" style={{ borderTop: '2px solid #003580', color: '#003580' }}>
                 <strong>{totalNetWeight.toFixed(1)}</strong>

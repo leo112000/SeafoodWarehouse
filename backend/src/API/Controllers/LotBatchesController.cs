@@ -69,7 +69,10 @@ public class LotBatchesController : BaseApiController
                 expiryDate   = b.ExpirationDate.ToString("yyyy-MM-dd"),
                 quantity     = (double)b.CurrentQuantity,
                 unitPrice    = (double)b.UnitPrice,
-                supplierName = b.SupplierName
+                supplierName = b.SupplierName,
+                tareWeight   = (double)b.TareWeight,
+                packagingCode = b.PackagingCode,
+                packagingQty = b.PackagingQty
             })
             .ToListAsync(cancellationToken);
 

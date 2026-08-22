@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Card, Row, Col, Radio, Select, DatePicker, Button, Table, Typography, Space, Tag, Tooltip, App,
 } from 'antd';
@@ -16,9 +16,8 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import {
-  getReportData,
+  EMPTY_REPORT_DATA,
   type ReportMode,
-  type ReportFilter,
   type TopItem,
   type TimeSeriesPoint,
   type StockByCategory,
@@ -174,6 +173,16 @@ const TOP_ITEMS_COLUMNS: ColumnsType<TopItem> = [
     sorter: (a, b) => a.inboundKg - b.inboundKg,
   },
   {
+    title: 'Tiền Nhập (VNĐ)',
+    dataIndex: 'inboundAmount',
+    key: 'inboundAmount',
+    align: 'right',
+    render: (val?: number) => (
+      <span className="text-blue-700 font-medium">{formatCurrency(val || 0)}</span>
+    ),
+    sorter: (a, b) => (a.inboundAmount || 0) - (b.inboundAmount || 0),
+  },
+  {
     title: 'Xuất (kg)',
     dataIndex: 'outboundKg',
     key: 'outboundKg',
@@ -182,6 +191,16 @@ const TOP_ITEMS_COLUMNS: ColumnsType<TopItem> = [
       <span className="text-orange-600 font-semibold">{val.toLocaleString('vi-VN')}</span>
     ),
     sorter: (a, b) => a.outboundKg - b.outboundKg,
+  },
+  {
+    title: 'Doanh Thu Xuất (VNĐ)',
+    dataIndex: 'outboundAmount',
+    key: 'outboundAmount',
+    align: 'right',
+    render: (val?: number) => (
+      <span className="text-orange-700 font-medium">{formatCurrency(val || 0)}</span>
+    ),
+    sorter: (a, b) => (a.outboundAmount || 0) - (b.outboundAmount || 0),
   },
   {
     title: 'Tồn (kg)',
@@ -196,12 +215,12 @@ const TOP_ITEMS_COLUMNS: ColumnsType<TopItem> = [
     sorter: (a, b) => a.stockKg - b.stockKg,
   },
   {
-    title: 'Giá Trị Tồn',
+    title: 'Giá Trị Tồn (VNĐ)',
     dataIndex: 'stockValue',
     key: 'stockValue',
     align: 'right',
     render: (val: number) => (
-      <span className="font-medium">{formatCurrency(val)}</span>
+      <span className="font-semibold text-purple-600 dark:text-purple-400">{formatCurrency(val)}</span>
     ),
     sorter: (a, b) => a.stockValue - b.stockValue,
   },
@@ -219,23 +238,7 @@ export const ReportsPage: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
   const [customRange, setCustomRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
-  const filter: ReportFilter = useMemo(() => {
-    switch (mode) {
-      case 'week': return { mode, singleValue: selectedWeek };
-      case 'month': return { mode, singleValue: selectedMonth };
-      case 'quarter': return { mode, singleValue: selectedQuarter };
-      case 'year': return { mode, singleValue: selectedYear };
-      case 'custom': return {
-        mode,
-        startDate: customRange?.[0]?.format('YYYY-MM-DD'),
-        endDate: customRange?.[1]?.format('YYYY-MM-DD'),
-      };
-      default: return { mode: 'month', singleValue: selectedMonth };
-    }
-  }, [mode, selectedWeek, selectedMonth, selectedQuarter, selectedYear, customRange]);
-
-  const initialMockData = useMemo(() => getReportData(filter), [filter]);
-  const [data, setData] = useState<ReportData>(initialMockData);
+  const [data, setData] = useState<ReportData>(EMPTY_REPORT_DATA);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -248,13 +251,13 @@ export const ReportsPage: React.FC = () => {
       })
       .catch(() => {
         if (isMounted) {
-          setData(initialMockData);
+          setData(EMPTY_REPORT_DATA);
         }
       });
     return () => {
       isMounted = false;
     };
-  }, [mode, initialMockData]);
+  }, [mode]);
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
     setMode(e.target.value as ReportMode);
@@ -420,7 +423,7 @@ export const ReportsPage: React.FC = () => {
 
       {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
       <Row gutter={[16, 16]} className="mb-6">
-        <Col xs={24} sm={12} xl={6}>
+        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
           <KpiCard
             title="Tổng Nhập Kho"
             primaryValue={summary.totalInboundKg.toLocaleString('vi-VN')}
@@ -433,20 +436,33 @@ export const ReportsPage: React.FC = () => {
             trendText="Tăng so với kỳ trước"
           />
         </Col>
-        <Col xs={24} sm={12} xl={6}>
+        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
           <KpiCard
             title="Tổng Xuất Kho"
             primaryValue={summary.totalOutboundKg.toLocaleString('vi-VN')}
             primaryLabel="kg"
             secondaryValue={formatCurrency(summary.totalOutboundAmount)}
-            secondaryLabel="doanh thu"
+            secondaryLabel="doanh thu bán"
             icon={<ArrowUpOutlined />}
-            color="#10b981"
+            color="#0284c7"
             trend="up"
             trendText="Tăng so với kỳ trước"
           />
         </Col>
-        <Col xs={24} sm={12} xl={6}>
+        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
+          <KpiCard
+            title="Lợi Nhuận Gộp Kho"
+            primaryValue={formatCurrency(summary.grossProfit || 0)}
+            primaryLabel=""
+            secondaryValue={`${summary.profitMarginPercent || 0}%`}
+            secondaryLabel="tỷ suất lợi nhuận"
+            icon={<RiseOutlined />}
+            color={(summary.grossProfit || 0) >= 0 ? "#10b981" : "#ef4444"}
+            trend={(summary.grossProfit || 0) >= 0 ? "up" : "down"}
+            trendText={(summary.grossProfit || 0) >= 0 ? "Kinh doanh có lãi" : "Cần điều chỉnh giá"}
+          />
+        </Col>
+        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
           <KpiCard
             title="Tồn Kho Hiện Tại"
             primaryValue={summary.stockKg.toLocaleString('vi-VN')}
@@ -459,7 +475,7 @@ export const ReportsPage: React.FC = () => {
             trendText="Ổn định"
           />
         </Col>
-        <Col xs={24} sm={12} xl={6}>
+        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
           <KpiCard
             title="Hao Hụt / Tổn Thất"
             primaryValue={summary.wastageKg.toLocaleString('vi-VN')}
@@ -606,26 +622,34 @@ export const ReportsPage: React.FC = () => {
           scroll={{ x: 'max-content' }}
           rowClassName={(_, index) => index < 3 ? 'bg-amber-50 dark:bg-amber-900/10' : ''}
           summary={(rows) => {
-            const totalIn = rows.reduce((s, r) => s + r.inboundKg, 0);
-            const totalOut = rows.reduce((s, r) => s + r.outboundKg, 0);
-            const totalStock = rows.reduce((s, r) => s + r.stockKg, 0);
-            const totalVal = rows.reduce((s, r) => s + r.stockValue, 0);
+            const totalInKg = rows.reduce((s, r) => s + r.inboundKg, 0);
+            const totalInAmount = rows.reduce((s, r) => s + (r.inboundAmount || 0), 0);
+            const totalOutKg = rows.reduce((s, r) => s + r.outboundKg, 0);
+            const totalOutAmount = rows.reduce((s, r) => s + (r.outboundAmount || 0), 0);
+            const totalStockKg = rows.reduce((s, r) => s + r.stockKg, 0);
+            const totalStockValue = rows.reduce((s, r) => s + r.stockValue, 0);
             return (
-              <Table.Summary.Row className="font-bold bg-gray-50">
+              <Table.Summary.Row className="font-bold bg-gray-50 dark:bg-slate-800">
                 <Table.Summary.Cell index={0} colSpan={2}>
                   <strong>Tổng cộng (Top 10)</strong>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <span className="text-blue-600">{totalIn.toLocaleString('vi-VN')}</span>
+                  <span className="text-blue-600">{totalInKg.toLocaleString('vi-VN')}</span>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={3} align="right">
-                  <span className="text-orange-600">{totalOut.toLocaleString('vi-VN')}</span>
+                  <span className="text-blue-700">{formatCurrency(totalInAmount)}</span>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={4} align="right">
-                  <span className="text-green-600">{totalStock.toLocaleString('vi-VN')}</span>
+                  <span className="text-orange-600">{totalOutKg.toLocaleString('vi-VN')}</span>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={5} align="right">
-                  <span>{formatCurrency(totalVal)}</span>
+                  <span className="text-orange-700">{formatCurrency(totalOutAmount)}</span>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={6} align="right">
+                  <span className="text-green-600">{totalStockKg.toLocaleString('vi-VN')}</span>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={7} align="right">
+                  <span className="text-purple-600">{formatCurrency(totalStockValue)}</span>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             );

@@ -21,7 +21,5 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
                .WithMany(l => l.InventoryItems)
                .HasForeignKey(i => i.LotBatchId)
                .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasQueryFilter(i => !i.IsDeleted);
     }
 }

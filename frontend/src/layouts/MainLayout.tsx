@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popconfirm, Popover, Tag, theme } from 'antd';
-import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, UserOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, UserOutlined } from '@ant-design/icons';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -39,13 +39,16 @@ export const MainLayout: React.FC = () => {
   const canViewCategories = usePermission('Pages.Categories.View');
   const canViewReports = usePermission('Pages.Reports.View');
   const canManageUsers = usePermission('Pages.Users.Manage');
-  const canManageSettings = usePermission('Pages.Settings.Manage');
   const canManageRoles = usePermission('Pages.Roles.Manage');
+  const canManageSettings = usePermission('Pages.Settings.Manage');
   const canViewAuditLogs = usePermission('Pages.AuditLogs.View');
+  const canManageTenantsPermission = usePermission('Pages.Tenants.Manage');
+  const isHostAdmin = (user?.tenantId === null || user?.tenantId === undefined) && (user?.roles?.includes('Admin') ?? false);
+  const canManageTenants = isHostAdmin && canManageTenantsPermission;
   const canAccessWarehouse = canCreateInbound || canViewInbound || canCreateOutbound || canViewOutbound || canCreateWastage || canViewProducts || canViewPackaging || canViewCategories || canViewReports;
 
   // Real-time system notifications from database
-  const { notifications: systemNotifications, unreadCount } = useSystemNotifications();
+  const { notifications: systemNotifications, unreadCount, markAsRead, markAllAsRead } = useSystemNotifications();
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -62,24 +65,26 @@ export const MainLayout: React.FC = () => {
 
   const menuItems = [
     { key: '/', icon: <DashboardOutlined />, label: <Link to="/">Bảng điều khiển</Link> },
-    ...(canAccessWarehouse ? [{ key: '/inventory', icon: <DatabaseOutlined />, label: 'Quản lý kho', children: [
+    ...(canAccessWarehouse ? [{ key: '/inventory-menu', icon: <DatabaseOutlined />, label: 'Quản lý kho', children: [
+      { key: '/inventory', label: <Link to="/inventory">Tồn kho hiện tại</Link> },
       { key: '/inventory/inbound', label: <Link to="/inventory/inbound">Nhập kho hải sản</Link> },
-      { key: '/inventory/inbound-history', label: <Link to="/inventory/inbound-history">Lịch sử nhập kho</Link> },
       { key: '/inventory/outbound', label: <Link to="/inventory/outbound">Xuất kho hải sản</Link> },
-      { key: '/inventory/outbound-history', label: <Link to="/inventory/outbound-history">Lịch sử xuất kho</Link> },
+      { key: '/inventory/history', label: <Link to="/inventory/history">Lịch sử giao dịch Nhập/Xuất</Link> },
       { key: '/inventory/wastage', label: <Link to="/inventory/wastage">Hao hụt & Phân loại</Link> },
       ...(canViewPackagingReturn ? [{ key: '/inventory/packaging-return', label: <Link to="/inventory/packaging-return">Thu hồi & Giao mượn vỏ sọt</Link> }] : []),
     ] },
     { key: '/master-data', icon: <FolderOutlined />, label: 'Dữ liệu nền', children: [
       ...(canViewCategories ? [{ key: '/master-data/categories', icon: <FolderOutlined />, label: <Link to="/master-data/categories">Nhóm danh mục</Link> }] : []),
       ...(canViewProducts ? [{ key: '/master-data/products', icon: <AppstoreOutlined />, label: <Link to="/master-data/products">Danh mục hải sản</Link> }] : []),
+      ...(canAccessWarehouse ? [{ key: '/master-data/warehouses', icon: <EnvironmentOutlined />, label: <Link to="/master-data/warehouses">Danh mục kho bãi</Link> }] : []),
       ...(canViewPackaging ? [{ key: '/master-data/packaging', icon: <InboxOutlined />, label: <Link to="/master-data/packaging">Danh mục bao bì</Link> }] : []),
     ] },
     { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo & Phân tích', children: [
       { key: '/reports/summary', label: <Link to="/reports/summary">Thống kê tổng hợp</Link> },
       { key: '/reports/alerts', label: <Link to="/reports/alerts">Cảnh báo & Hao hụt</Link> },
     ] }] : []),
-    ...((canManageUsers || canManageRoles || canManageSettings || canViewAuditLogs) ? [{ key: '/system', icon: <SettingOutlined />, label: 'Hệ thống', children: [
+    ...((canManageUsers || canManageRoles || canManageSettings || canViewAuditLogs || canManageTenants) ? [{ key: '/system', icon: <SettingOutlined />, label: 'Hệ thống', children: [
+      ...(canManageTenants ? [{ key: '/system/tenants', icon: <SettingOutlined />, label: <Link to="/system/tenants">Cửa hàng & Chi nhánh</Link> }] : []),
       ...(canManageUsers ? [{ key: '/system/users', icon: <UserOutlined />, label: <Link to="/system/users">Quản lý nhân viên</Link> }] : []),
       ...(canManageRoles ? [{ key: '/system/roles', icon: <SafetyCertificateOutlined />, label: <Link to="/system/roles">Vai trò & phân quyền</Link> }] : []),
       ...(canViewAuditLogs ? [{ key: '/system/audit-logs', icon: <HistoryOutlined />, label: <Link to="/system/audit-logs">Nhật ký hệ thống</Link> }] : []),
@@ -88,34 +93,57 @@ export const MainLayout: React.FC = () => {
   ];
 
   const notifications = (
-    <div className="w-80 p-1">
+    <div className="w-84 p-1">
       <div className="flex items-center justify-between mb-3 border-b pb-2">
-        <strong className="text-gray-800 dark:text-gray-100">Thông báo kho hàng</strong>
-        <Tag color="blue" className="m-0 font-medium">{unreadCount} cảnh báo</Tag>
+        <div className="flex items-center gap-2">
+          <strong className="text-gray-800 dark:text-gray-100 text-sm">Thông báo hệ thống</strong>
+          {unreadCount > 0 && <Tag color="error" className="m-0 font-medium">{unreadCount} mới</Tag>}
+        </div>
+        {unreadCount > 0 && (
+          <Button type="link" size="small" className="p-0 text-xs text-sky-600" onClick={markAllAsRead}>
+            Đọc tất cả
+          </Button>
+        )}
       </div>
-      <div className="space-y-3 text-sm max-h-80 overflow-y-auto">
-        {systemNotifications.map((n) => (
-          <div
-            key={n.id}
-            className="p-2 rounded-md hover:bg-sky-50 dark:hover:bg-gray-800 transition-colors cursor-pointer border-l-2"
-            style={{
-              borderColor: n.severity === 'error' ? '#ef4444' : n.severity === 'warning' ? '#f59e0b' : '#10b981',
-            }}
-            onClick={() => n.link && navigate(n.link)}
-          >
-            <div className="flex items-center justify-between">
-              <strong className="block text-gray-800 dark:text-gray-200 text-xs font-semibold">{n.title}</strong>
-              <span className="text-[10px] text-gray-400">{n.timeText}</span>
+      <div className="space-y-2 text-sm max-h-80 overflow-y-auto pr-1">
+        {systemNotifications.length === 0 ? (
+          <div className="text-center py-6 text-gray-400 text-xs">Không có thông báo nào</div>
+        ) : (
+          systemNotifications.map((n) => (
+            <div
+              key={n.id}
+              className={`p-2.5 rounded-md transition-colors cursor-pointer border-l-4 ${
+                !n.isRead ? 'bg-sky-50 dark:bg-gray-800/80 font-medium' : 'bg-gray-50/50 dark:bg-gray-900/40 opacity-75'
+              }`}
+              style={{
+                borderColor: n.severity === 'error' ? '#ef4444' : n.severity === 'warning' ? '#f59e0b' : '#10b981',
+              }}
+              onClick={() => {
+                if (!n.isRead) markAsRead(n.id);
+                if (n.link) navigate(n.link);
+              }}
+            >
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-sky-500 shrink-0" />}
+                  <strong className="block text-gray-800 dark:text-gray-200 text-xs truncate">{n.title}</strong>
+                </div>
+                <span className="text-[10px] text-gray-400 shrink-0">{n.timeText}</span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0 line-clamp-2 leading-relaxed">{n.message}</p>
             </div>
-            <p className="text-xs text-gray-500 mt-1 mb-0 line-clamp-2">{n.message}</p>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
   const profileContent = user && <div className="w-64 p-1" style={{ textAlign: 'left' }}>
     <div className="flex items-center gap-3 px-2 py-2"><Avatar size={48} className="bg-sky-500">{user.name.charAt(0).toLocaleUpperCase()}</Avatar><div className="min-w-0"><div className="font-semibold truncate">{user.name}</div><div className="text-xs text-gray-500 truncate">{user.email}</div><div className="mt-1 flex flex-wrap gap-1">{user.roles.map((role) => { const meta = roleMeta(role); return <Tag key={role} color={meta.color} className="m-0">{meta.label}</Tag>; })}</div></div></div>
-    <div className="px-2 text-xs text-gray-500">Kho / Tenant: <span className="font-medium text-gray-700 dark:text-gray-200">{tenantName || 'Kho Lạnh Cảng Cá'}</span></div>
+    <div className="px-2 text-xs text-gray-500">
+      Không gian: <span className="font-medium text-gray-700 dark:text-gray-200">
+        {user.tenantId ? (user.tenantName || tenantName || `Tenant #${user.tenantId}`) : '👑 Quản trị Hệ thống (Host)'}
+      </span>
+    </div>
     <Divider className="my-3" />
     <div className="flex flex-col"><Button type="text" icon={<UserOutlined />} className="text-left" style={{ justifyContent: 'flex-start' }} onClick={openProfile}>Thông tin cá nhân</Button><Button type="text" icon={<KeyOutlined />} className="text-left" style={{ justifyContent: 'flex-start' }} onClick={openChangePassword}>Đổi mật khẩu</Button><Button type="text" icon={<HistoryOutlined />} className="text-left" style={{ justifyContent: 'flex-start' }} onClick={openAuditLogs}>Nhật ký cá nhân</Button></div>
     <Divider className="my-3" />

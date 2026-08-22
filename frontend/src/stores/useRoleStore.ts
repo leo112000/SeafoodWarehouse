@@ -18,6 +18,10 @@ export const PERMISSIONS: Permission[] = [
   { code: 'Pages.Categories.Create', displayName: 'Tạo mới danh mục', category: 'Danh mục' },
   { code: 'Pages.Categories.Edit', displayName: 'Cập nhật danh mục', category: 'Danh mục' },
   { code: 'Pages.Categories.Delete', displayName: 'Xóa danh mục', category: 'Danh mục' },
+  { code: 'Pages.Warehouses.View', displayName: 'Xem danh sách kho', category: 'Danh mục' },
+  { code: 'Pages.Warehouses.Create', displayName: 'Tạo mới kho', category: 'Danh mục' },
+  { code: 'Pages.Warehouses.Edit', displayName: 'Cập nhật kho', category: 'Danh mục' },
+  { code: 'Pages.Warehouses.Delete', displayName: 'Xóa kho', category: 'Danh mục' },
   { code: 'Pages.Inbound.Create', displayName: 'Lập phiếu nhập kho', category: 'Kho' },
   { code: 'Pages.Inbound.View', displayName: 'Xem lịch sử nhập kho', category: 'Kho' },
   { code: 'Pages.Outbound.Create', displayName: 'Lập phiếu xuất kho', category: 'Kho' },
@@ -31,6 +35,7 @@ export const PERMISSIONS: Permission[] = [
   { code: 'Pages.Users.Manage', displayName: 'Quản lý nhân viên', category: 'Hệ thống' },
   { code: 'Pages.Roles.Manage', displayName: 'Quản lý vai trò & phân quyền', category: 'Hệ thống' },
   { code: 'Pages.Settings.Manage', displayName: 'Cấu hình hệ thống', category: 'Hệ thống' },
+  { code: 'Pages.Tenants.Manage', displayName: 'Quản lý cửa hàng & chi nhánh', category: 'Hệ thống' },
   { code: 'Pages.AuditLogs.View', displayName: 'Xem nhật ký hệ thống', category: 'Hệ thống' },
 ];
 
