@@ -25,8 +25,25 @@ const App: React.FC = () => {
         theme={{
           algorithm: currentTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {
-            colorPrimary: '#0ea5e9', // Sky blue for ocean / seafood context
+            colorPrimary: '#0284c7', // Ocean sky primary
+            colorSuccess: '#10b981',
+            colorWarning: '#f59e0b',
+            colorError: '#ef4444',
+            borderRadius: 8,
+            fontFamily: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`,
           },
+          components: {
+            Card: {
+              headerFontSize: 15,
+            },
+            Button: {
+              controlHeight: 36,
+              borderRadius: 8,
+            },
+            Table: {
+              borderRadius: 8,
+            }
+          }
         }}
       >
         <AntdApp>

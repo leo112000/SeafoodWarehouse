@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
 import InventoryStockPage from '../pages/inventory/InventoryStockPage';
+import WarehouseMapPage from '../pages/inventory/WarehouseMapPage';
 import WarehousesPage from '../pages/master-data/WarehousesPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { UsersPage } from '../pages/admin/UsersPage';
@@ -50,6 +51,14 @@ export const router = createBrowserRouter([
         element: (
           <PermissionGuard permission="Pages.Inbound.View">
             <InventoryStockPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: 'inventory/map',
+        element: (
+          <PermissionGuard permission="Pages.Inbound.View">
+            <WarehouseMapPage />
           </PermissionGuard>
         ),
       },

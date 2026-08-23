@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Row, Col, Alert, Statistic, Button, Table, Typography, Space, Tag, Tooltip } from 'antd';
+import { Card, Row, Col, Alert, Button, Table, Typography, Space, Tag, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import {
   AlertOutlined,
@@ -187,64 +187,86 @@ export const DashboardPage: React.FC = () => {
         />
       )}
 
-      {/* Khối 2: 4 Thẻ KPI Statistic */}
+      {/* Khối 2: 4 Thẻ KPI Statistic Sang Trọng */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} xl={6}>
-          <Card className="shadow-sm border-t-4 border-t-blue-500">
-            <Statistic
-              title={<span className="text-gray-500 font-semibold uppercase text-xs tracking-wider">Tổng Tồn Kho</span>}
-              value={kpis.totalStockKg.value}
-              suffix="kg"
-              prefix={<DatabaseOutlined className="text-blue-500 mr-2" />}
-            />
-            <div className="text-sm text-gray-500 mt-2 font-medium">
-              Giá trị: <span className="text-gray-800 font-bold">{formatCurrency(kpis.totalStockValue.value)}</span>
+          <div className="bg-gradient-to-br from-blue-500 to-sky-600 rounded-2xl p-4 text-white shadow-lg shadow-sky-500/20 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase font-semibold text-blue-100 tracking-wider">Tổng Tồn Kho Hiện Tại</div>
+                <div className="text-2xl font-black mt-1">
+                  {kpis.totalStockKg.value?.toLocaleString()} <span className="text-sm font-normal text-blue-100">kg</span>
+                </div>
+              </div>
+              <div className="p-3 bg-white/15 backdrop-blur-md rounded-xl text-white text-2xl">
+                <DatabaseOutlined />
+              </div>
             </div>
-          </Card>
+            <div className="mt-3 pt-2 border-t border-white/20 text-xs text-blue-100 flex items-center justify-between">
+              <span>Ước tính giá trị:</span>
+              <strong className="text-white text-sm">{formatCurrency(kpis.totalStockValue.value)}</strong>
+            </div>
+          </div>
         </Col>
 
         <Col xs={24} sm={12} xl={6}>
-          <Card className="shadow-sm border-t-4 border-t-indigo-500">
-            <Statistic
-              title={<span className="text-gray-500 font-semibold uppercase text-xs tracking-wider">Nhập Kho Hôm Nay</span>}
-              value={kpis.todayInboundKg.value}
-              suffix="kg"
-              prefix={<InboxOutlined className="text-indigo-500 mr-2" />}
-            />
-            <div className="text-sm text-gray-500 mt-2 font-medium">
-              Số phiếu: <span className="text-gray-800 font-bold">{kpis.todayInboundReceipts.value}</span>
+          <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-4 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase font-semibold text-indigo-100 tracking-wider">Nhập Kho Hôm Nay</div>
+                <div className="text-2xl font-black mt-1">
+                  {kpis.todayInboundKg.value?.toLocaleString()} <span className="text-sm font-normal text-indigo-100">kg</span>
+                </div>
+              </div>
+              <div className="p-3 bg-white/15 backdrop-blur-md rounded-xl text-white text-2xl">
+                <InboxOutlined />
+              </div>
             </div>
-          </Card>
+            <div className="mt-3 pt-2 border-t border-white/20 text-xs text-indigo-100 flex items-center justify-between">
+              <span>Số lượng phiếu nhập:</span>
+              <strong className="text-white text-sm">{kpis.todayInboundReceipts.value} phiếu</strong>
+            </div>
+          </div>
         </Col>
 
         <Col xs={24} sm={12} xl={6}>
-          <Card className="shadow-sm border-t-4 border-t-green-500">
-            <Statistic
-              title={<span className="text-gray-500 font-semibold uppercase text-xs tracking-wider">Xuất Kho Hôm Nay</span>}
-              value={kpis.todayOutboundKg.value}
-              suffix="kg"
-              prefix={<UploadOutlined className="text-green-500 mr-2" />}
-            />
-            <div className="text-sm text-gray-500 mt-2 font-medium">
-              Số giao dịch: <span className="text-gray-800 font-bold">{kpis.todayOutboundTransactions.value}</span>
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/20 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase font-semibold text-emerald-100 tracking-wider">Xuất Kho Hôm Nay</div>
+                <div className="text-2xl font-black mt-1">
+                  {kpis.todayOutboundKg.value?.toLocaleString()} <span className="text-sm font-normal text-emerald-100">kg</span>
+                </div>
+              </div>
+              <div className="p-3 bg-white/15 backdrop-blur-md rounded-xl text-white text-2xl">
+                <UploadOutlined />
+              </div>
             </div>
-          </Card>
+            <div className="mt-3 pt-2 border-t border-white/20 text-xs text-emerald-100 flex items-center justify-between">
+              <span>Số lượng giao dịch:</span>
+              <strong className="text-white text-sm">{kpis.todayOutboundTransactions.value} đơn</strong>
+            </div>
+          </div>
         </Col>
 
         <Col xs={24} sm={12} xl={6}>
-          <Card className="shadow-sm border-t-4 border-t-red-500">
-            <Statistic
-              title={<span className="text-gray-500 font-semibold uppercase text-xs tracking-wider">Hao Hụt Tháng Này</span>}
-              value={kpis.monthlyLossRate.value}
-              precision={1}
-              suffix="%"
-              prefix={<WarningOutlined className="text-red-500 mr-2" />}
-              valueStyle={{ color: '#cf1322' }}
-            />
-            <div className="text-sm text-gray-500 mt-2 font-medium">
-              Định mức giới hạn: <span className="text-gray-800 font-bold">2.0%</span>
+          <div className="bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl p-4 text-white shadow-lg shadow-rose-500/20 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase font-semibold text-rose-100 tracking-wider">Tỷ Lệ Hao Hụt Tháng</div>
+                <div className="text-2xl font-black mt-1">
+                  {kpis.monthlyLossRate.value}%
+                </div>
+              </div>
+              <div className="p-3 bg-white/15 backdrop-blur-md rounded-xl text-white text-2xl">
+                <WarningOutlined />
+              </div>
             </div>
-          </Card>
+            <div className="mt-3 pt-2 border-t border-white/20 text-xs text-rose-100 flex items-center justify-between">
+              <span>Định mức an toàn:</span>
+              <strong className="text-white text-sm">&le; 2.0%</strong>
+            </div>
+          </div>
         </Col>
       </Row>
 
@@ -319,7 +341,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Khối 4: Phím Tắt & Lịch Sử Giao Dịch */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} md={6}>
+        <Col xs={24} md={7} lg={6}>
           <Card
             title={
               <Space>
@@ -329,13 +351,22 @@ export const DashboardPage: React.FC = () => {
             }
             className="shadow-sm h-full"
           >
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
+              <Button
+                type="primary"
+                icon={<DatabaseOutlined />}
+                onClick={() => navigate('/inventory/map')}
+                size="large"
+                className="w-full bg-sky-600 hover:bg-sky-700 font-semibold"
+              >
+                🗺️ Sơ Đồ Kho Lạnh 2D
+              </Button>
               <Button
                 type="primary"
                 icon={<InboxOutlined />}
                 onClick={() => navigate('/inventory/inbound')}
                 size="large"
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 hover:bg-blue-700 font-semibold"
               >
                 Nhập kho hải sản
               </Button>
@@ -344,7 +375,7 @@ export const DashboardPage: React.FC = () => {
                 icon={<UploadOutlined />}
                 onClick={() => navigate('/inventory/outbound')}
                 size="large"
-                className="w-full bg-green-600 hover:bg-green-700 border-none"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 border-none font-semibold"
               >
                 Xuất kho hải sản
               </Button>
@@ -354,15 +385,15 @@ export const DashboardPage: React.FC = () => {
                 icon={<WarningOutlined />}
                 onClick={() => navigate('/inventory/wastage')}
                 size="large"
-                className="w-full"
+                className="w-full font-semibold"
               >
-                Báo hao hụt / Loại
+                Báo hao hụt / Phân loại
               </Button>
             </div>
           </Card>
         </Col>
 
-        <Col xs={24} md={18}>
+        <Col xs={24} md={17} lg={18}>
           <Card
             title={
               <Space>

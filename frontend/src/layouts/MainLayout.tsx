@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popconfirm, Popover, Tag, theme } from 'antd';
-import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, TeamOutlined, UserOutlined, QrcodeOutlined, CompassOutlined } from '@ant-design/icons';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { usePermission } from '../components/PermissionGuard';
 import { UserProfileModal } from '../components/user/UserProfileModal';
 import { ChangePasswordModal } from '../components/user/ChangePasswordModal';
+import { HandheldScannerModal } from '../components/common/HandheldScannerModal';
 import { useSystemNotifications } from '../hooks/useSystemNotifications';
 
 const { Header, Sider, Content } = Layout;
@@ -20,6 +21,7 @@ export const MainLayout: React.FC = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [pdaScannerOpen, setPdaScannerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { token: { colorBgContainer, borderRadiusLG } } = theme.useToken();
@@ -67,6 +69,7 @@ export const MainLayout: React.FC = () => {
     { key: '/', icon: <DashboardOutlined />, label: <Link to="/">Bảng điều khiển</Link> },
     ...(canAccessWarehouse ? [{ key: '/inventory-menu', icon: <DatabaseOutlined />, label: 'Quản lý kho', children: [
       { key: '/inventory', label: <Link to="/inventory">Tồn kho hiện tại</Link> },
+      { key: '/inventory/map', icon: <CompassOutlined />, label: <Link to="/inventory/map">🗺️ Sơ đồ kho 2D</Link> },
       { key: '/inventory/inbound', label: <Link to="/inventory/inbound">Nhập kho hải sản</Link> },
       { key: '/inventory/outbound', label: <Link to="/inventory/outbound">Xuất kho hải sản</Link> },
       { key: '/inventory/history', label: <Link to="/inventory/history">Lịch sử giao dịch Nhập/Xuất</Link> },
@@ -214,6 +217,14 @@ export const MainLayout: React.FC = () => {
             />
             <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6">
               <Button
+                type="primary"
+                icon={<QrcodeOutlined />}
+                onClick={() => setPdaScannerOpen(true)}
+                className="bg-sky-600 font-semibold text-xs h-9 flex items-center shadow-sm"
+              >
+                <span className="hidden sm:inline">📱 Quét PDA</span>
+              </Button>
+              <Button
                 type="text"
                 icon={currentTheme === 'dark' ? <SunOutlined className="text-yellow-400" /> : <MoonOutlined />}
                 onClick={toggleTheme}
@@ -277,6 +288,7 @@ export const MainLayout: React.FC = () => {
         tenantName={tenantName}
       />
       <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
+      <HandheldScannerModal open={pdaScannerOpen} onClose={() => setPdaScannerOpen(false)} />
     </>
   );
 };

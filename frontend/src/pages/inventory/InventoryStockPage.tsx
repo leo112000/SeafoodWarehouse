@@ -237,7 +237,15 @@ export const InventoryStockPage: React.FC = () => {
               Đặt lại
             </Button>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="primary"
+              className="bg-sky-600"
+              icon={<DatabaseOutlined />}
+              onClick={() => window.location.href = '/inventory/map'}
+            >
+              🗺️ Sơ Đồ Kho 2D
+            </Button>
             <Button
               type="default"
               className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium"
