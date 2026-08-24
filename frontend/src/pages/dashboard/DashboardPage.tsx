@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, Row, Col, Alert, Button, Table, Typography, Space, Tag, Tooltip, Drawer, Popover } from 'antd';
-import { ReloadOutlined, PrinterOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Alert, Button, Table, Typography, Space, Tag, Tooltip, Drawer } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import {
   AlertOutlined,
   ArrowRightOutlined,
@@ -38,7 +38,6 @@ export const DashboardPage: React.FC = () => {
   const [data, setData] = React.useState<DashboardData>(EMPTY_DASHBOARD_DATA);
   const [loading, setLoading] = React.useState(false);
   const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null);
-  const [hoveredTx, setHoveredTx] = React.useState<RecentTransaction | null>(null);
   const [drawerTx, setDrawerTx] = React.useState<RecentTransaction | null>(null);
   const [drawerVisible, setDrawerVisible] = React.useState(false);
 
