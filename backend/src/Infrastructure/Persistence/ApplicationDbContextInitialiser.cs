@@ -62,18 +62,29 @@ public class ApplicationDbContextInitialiser
 
                 @"CREATE TABLE IF NOT EXISTS ""Users"" (
                     ""Id"" SERIAL PRIMARY KEY,
-                    ""Username"" VARCHAR(100) NOT NULL,
-                    ""PasswordHash"" VARCHAR(500) NOT NULL,
                     ""FullName"" VARCHAR(200) NOT NULL,
-                    ""Email"" VARCHAR(100) NULL,
+                    ""Email"" VARCHAR(100) NOT NULL,
+                    ""PasswordHash"" VARCHAR(500) NOT NULL,
                     ""Phone"" VARCHAR(50) NULL,
-                    ""Role"" VARCHAR(50) NOT NULL DEFAULT 'User',
-                    ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Users' AND column_name = 'Status') THEN 
+                        ALTER TABLE ""Users"" ADD COLUMN ""Status"" VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Users' AND column_name = 'Username') THEN 
+                        ALTER TABLE ""Users"" ALTER COLUMN ""Username"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Users' AND column_name = 'Role') THEN 
+                        ALTER TABLE ""Users"" ALTER COLUMN ""Role"" DROP NOT NULL; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""Roles"" (
                     ""Id"" SERIAL PRIMARY KEY,
@@ -96,11 +107,21 @@ public class ApplicationDbContextInitialiser
                 @"CREATE TABLE IF NOT EXISTS ""RolePermissions"" (
                     ""Id"" SERIAL PRIMARY KEY,
                     ""RoleId"" INT NOT NULL,
-                    ""PermissionName"" VARCHAR(100) NOT NULL,
+                    ""PermissionCode"" VARCHAR(100) NOT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RolePermissions' AND column_name = 'PermissionCode') THEN 
+                        ALTER TABLE ""RolePermissions"" ADD COLUMN ""PermissionCode"" VARCHAR(100) NOT NULL DEFAULT ''; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RolePermissions' AND column_name = 'PermissionName') THEN 
+                        ALTER TABLE ""RolePermissions"" ALTER COLUMN ""PermissionName"" DROP NOT NULL; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""UserRoles"" (
                     ""Id"" SERIAL PRIMARY KEY,
