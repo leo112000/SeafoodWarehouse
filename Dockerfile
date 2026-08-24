@@ -20,4 +20,4 @@ COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
 ENV PORT=8080
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "SeafoodWarehouseManagement.API.dll"]
+ENTRYPOINT ["dotnet", "API.dll"]
