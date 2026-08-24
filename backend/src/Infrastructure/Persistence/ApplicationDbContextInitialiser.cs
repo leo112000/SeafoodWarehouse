@@ -79,11 +79,19 @@ public class ApplicationDbContextInitialiser
                     ""Id"" SERIAL PRIMARY KEY,
                     ""Name"" VARCHAR(100) NOT NULL,
                     ""Description"" VARCHAR(500) NULL,
+                    ""IsSystemDefault"" BOOLEAN NOT NULL DEFAULT TRUE,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Roles' AND column_name = 'IsSystemDefault') THEN 
+                        ALTER TABLE ""Roles"" ADD COLUMN ""IsSystemDefault"" BOOLEAN NOT NULL DEFAULT TRUE; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""RolePermissions"" (
                     ""Id"" SERIAL PRIMARY KEY,
@@ -192,16 +200,32 @@ public class ApplicationDbContextInitialiser
                     ""Id"" SERIAL PRIMARY KEY,
                     ""WarehouseId"" INT NOT NULL,
                     ""LotBatchId"" INT NOT NULL,
-                    ""Zone"" VARCHAR(50) NOT NULL,
-                    ""Rack"" VARCHAR(50) NOT NULL,
-                    ""Shelf"" VARCHAR(50) NOT NULL,
-                    ""Position"" VARCHAR(50) NOT NULL,
+                    ""StorageBin"" VARCHAR(100) NOT NULL DEFAULT '',
                     ""Quantity"" NUMERIC(18,3) NOT NULL,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InventoryItems' AND column_name = 'StorageBin') THEN 
+                        ALTER TABLE ""InventoryItems"" ADD COLUMN ""StorageBin"" VARCHAR(100) NOT NULL DEFAULT ''; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InventoryItems' AND column_name = 'Zone') THEN 
+                        ALTER TABLE ""InventoryItems"" ALTER COLUMN ""Zone"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InventoryItems' AND column_name = 'Rack') THEN 
+                        ALTER TABLE ""InventoryItems"" ALTER COLUMN ""Rack"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InventoryItems' AND column_name = 'Shelf') THEN 
+                        ALTER TABLE ""InventoryItems"" ALTER COLUMN ""Shelf"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InventoryItems' AND column_name = 'Position') THEN 
+                        ALTER TABLE ""InventoryItems"" ALTER COLUMN ""Position"" DROP NOT NULL; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""InventoryTransactions"" (
                     ""Id"" SERIAL PRIMARY KEY,
@@ -303,17 +327,12 @@ public class ApplicationDbContextInitialiser
 
                 @"CREATE TABLE IF NOT EXISTS ""PackagingLoans"" (
                     ""Id"" SERIAL PRIMARY KEY,
-                    ""LoanCode"" VARCHAR(100) NOT NULL,
+                    ""PartnerName"" VARCHAR(200) NOT NULL DEFAULT '',
+                    ""PartnerType"" VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER',
                     ""PackagingId"" INT NOT NULL,
-                    ""BorrowerName"" VARCHAR(200) NOT NULL,
-                    ""BorrowerType"" VARCHAR(50) NOT NULL DEFAULT 'Customer',
-                    ""QuantityLoaned"" INT NOT NULL,
-                    ""QuantityReturned"" INT NOT NULL DEFAULT 0,
-                    ""DepositAmount"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""LoanedQty"" INT NOT NULL DEFAULT 0,
+                    ""ReturnedQty"" INT NOT NULL DEFAULT 0,
                     ""LoanDate"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                    ""ExpectedReturnDate"" TIMESTAMP WITH TIME ZONE NULL,
-                    ""ActualReturnDate"" TIMESTAMP WITH TIME ZONE NULL,
-                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'BORROWED',
                     ""Note"" VARCHAR(500) NULL,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -321,19 +340,68 @@ public class ApplicationDbContextInitialiser
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
 
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingLoans' AND column_name = 'PartnerName') THEN 
+                        ALTER TABLE ""PackagingLoans"" ADD COLUMN ""PartnerName"" VARCHAR(200) NOT NULL DEFAULT ''; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingLoans' AND column_name = 'PartnerType') THEN 
+                        ALTER TABLE ""PackagingLoans"" ADD COLUMN ""PartnerType"" VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingLoans' AND column_name = 'LoanedQty') THEN 
+                        ALTER TABLE ""PackagingLoans"" ADD COLUMN ""LoanedQty"" INT NOT NULL DEFAULT 0; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingLoans' AND column_name = 'ReturnedQty') THEN 
+                        ALTER TABLE ""PackagingLoans"" ADD COLUMN ""ReturnedQty"" INT NOT NULL DEFAULT 0; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingLoans' AND column_name = 'LoanDate') THEN 
+                        ALTER TABLE ""PackagingLoans"" ADD COLUMN ""LoanDate"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(); 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingLoans' AND column_name = 'LoanCode') THEN 
+                        ALTER TABLE ""PackagingLoans"" ALTER COLUMN ""LoanCode"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingLoans' AND column_name = 'BorrowerName') THEN 
+                        ALTER TABLE ""PackagingLoans"" ALTER COLUMN ""BorrowerName"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingLoans' AND column_name = 'QuantityLoaned') THEN 
+                        ALTER TABLE ""PackagingLoans"" ALTER COLUMN ""QuantityLoaned"" DROP NOT NULL; 
+                    END IF; 
+                  END $$;",
+
                 @"CREATE TABLE IF NOT EXISTS ""PackagingReturns"" (
                     ""Id"" SERIAL PRIMARY KEY,
-                    ""LoanId"" INT NOT NULL,
-                    ""QuantityReturned"" INT NOT NULL,
-                    ""RefundDepositAmount"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""PackagingLoanId"" INT NOT NULL DEFAULT 0,
+                    ""ReturnedQty"" INT NOT NULL DEFAULT 0,
                     ""ReturnDate"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                    ""ReceivedBy"" VARCHAR(100) NOT NULL DEFAULT 'Thủ kho',
+                    ""RecordedBy"" VARCHAR(100) NOT NULL DEFAULT 'Hệ thống',
                     ""Note"" VARCHAR(500) NULL,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingReturns' AND column_name = 'PackagingLoanId') THEN 
+                        ALTER TABLE ""PackagingReturns"" ADD COLUMN ""PackagingLoanId"" INT NOT NULL DEFAULT 0; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingReturns' AND column_name = 'ReturnedQty') THEN 
+                        ALTER TABLE ""PackagingReturns"" ADD COLUMN ""ReturnedQty"" INT NOT NULL DEFAULT 0; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingReturns' AND column_name = 'ReturnDate') THEN 
+                        ALTER TABLE ""PackagingReturns"" ADD COLUMN ""ReturnDate"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(); 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingReturns' AND column_name = 'RecordedBy') THEN 
+                        ALTER TABLE ""PackagingReturns"" ADD COLUMN ""RecordedBy"" VARCHAR(100) NOT NULL DEFAULT 'Hệ thống'; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingReturns' AND column_name = 'LoanId') THEN 
+                        ALTER TABLE ""PackagingReturns"" ALTER COLUMN ""LoanId"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PackagingReturns' AND column_name = 'QuantityReturned') THEN 
+                        ALTER TABLE ""PackagingReturns"" ALTER COLUMN ""QuantityReturned"" DROP NOT NULL; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""Partners"" (
                     ""Id"" SERIAL PRIMARY KEY,
