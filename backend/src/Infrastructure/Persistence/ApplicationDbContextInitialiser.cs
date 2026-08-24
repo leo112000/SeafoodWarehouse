@@ -125,6 +125,7 @@ public class ApplicationDbContextInitialiser
                     ""ReferencePrice"" NUMERIC(18,2) NOT NULL DEFAULT 250000,
                     ""WarningDaysBeforeExpiry"" INT NOT NULL DEFAULT 15,
                     ""MinimumStock"" NUMERIC(18,3) NOT NULL DEFAULT 100.0,
+                    ""MaximumStock"" NUMERIC(18,3) NOT NULL DEFAULT 1000.0,
                     ""Unit"" VARCHAR(50) NOT NULL DEFAULT 'kg',
                     ""Status"" VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
                     ""Description"" VARCHAR(500) NULL,
@@ -133,6 +134,13 @@ public class ApplicationDbContextInitialiser
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Products' AND column_name = 'MaximumStock') THEN 
+                        ALTER TABLE ""Products"" ADD COLUMN ""MaximumStock"" NUMERIC(18,3) NOT NULL DEFAULT 1000.0; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""Warehouses"" (
                     ""Id"" SERIAL PRIMARY KEY,
