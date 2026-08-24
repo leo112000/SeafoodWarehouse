@@ -61,11 +61,24 @@ public class DashboardController : BaseApiController
             .Where(t => !t.IsDeleted && t.Type == TransactionType.Export && t.TransactionDate >= today && t.TransactionDate < todayEnd)
             .ToListAsync(cancellationToken);
 
+        var todayReceipts = await _context.OutboundReceipts
+            .Where(r => !r.IsDeleted && r.TransactionDate >= today && r.TransactionDate < todayEnd)
+            .ToListAsync(cancellationToken);
+
         double todayInboundKg = (double)todayInboundList.Sum(t => t.Quantity);
         int todayInboundCount = todayInboundList.Select(t => t.ReferenceNumber).Distinct().Count();
+        double todayInboundValue = todayInboundList.Sum(t =>
+        {
+            if (t.TotalAmount > 0) return (double)t.TotalAmount;
+            var price = t.UnitPrice > 0 ? (double)t.UnitPrice : (t.LotBatch != null && t.LotBatch.UnitPrice > 0 ? (double)t.LotBatch.UnitPrice : defaultSeafoodPrice);
+            return (double)t.Quantity * price;
+        });
 
         double todayOutboundKg = (double)todayOutboundList.Sum(t => t.Quantity);
-        int todayOutboundCount = todayOutboundList.Select(t => t.ReferenceNumber).Distinct().Count();
+        int todayOutboundCount = todayReceipts.Count > 0 ? todayReceipts.Count : todayOutboundList.Select(t => t.ReferenceNumber).Distinct().Count();
+        double todayOutboundValue = todayReceipts.Count > 0 
+            ? (double)todayReceipts.Sum(r => r.TotalAmount)
+            : (double)todayOutboundList.Sum(t => t.TotalAmount > 0 ? t.TotalAmount : (t.Quantity * 250000m));
 
         // 3. Cảnh báo lô hạn sử dụng (động theo Cài đặt) & sản phẩm tồn kho dưới định mức tối thiểu
         var expiringBatchesCount = await _context.LotBatches
@@ -103,26 +116,45 @@ public class DashboardController : BaseApiController
             ? Math.Round((monthlyDisposalKg / (monthlyInboundKg + totalStockKg)) * 100.0, 2)
             : 0.0;
 
-        // 5. Luồng nhập xuất 7 ngày gần nhất
+        // 5. Luồng nhập xuất 7 ngày gần nhất (Khối lượng Kg & Số tiền VNĐ)
         var dailyFlow = new List<object>();
         for (int d = 6; d >= 0; d--)
         {
             var dayStart = today.AddDays(-d);
             var dayNext = dayStart.AddDays(1);
 
-            var inKg = await _context.InventoryTransactions
+            var inTxs = await _context.InventoryTransactions
                 .Where(t => !t.IsDeleted && t.Type == TransactionType.Import && t.TransactionDate >= dayStart && t.TransactionDate < dayNext)
-                .SumAsync(t => (double?)t.Quantity, cancellationToken) ?? 0.0;
+                .ToListAsync(cancellationToken);
 
-            var outKg = await _context.InventoryTransactions
+            var outTxs = await _context.InventoryTransactions
                 .Where(t => !t.IsDeleted && t.Type == TransactionType.Export && t.TransactionDate >= dayStart && t.TransactionDate < dayNext)
-                .SumAsync(t => (double?)t.Quantity, cancellationToken) ?? 0.0;
+                .ToListAsync(cancellationToken);
+
+            var dayReceipts = await _context.OutboundReceipts
+                .Where(r => !r.IsDeleted && r.TransactionDate >= dayStart && r.TransactionDate < dayNext)
+                .ToListAsync(cancellationToken);
+
+            var inKg = inTxs.Sum(t => (double)t.Quantity);
+            var inAmt = inTxs.Sum(t =>
+            {
+                if (t.TotalAmount > 0) return (double)t.TotalAmount;
+                var price = t.UnitPrice > 0 ? (double)t.UnitPrice : defaultSeafoodPrice;
+                return (double)t.Quantity * price;
+            });
+
+            var outKg = outTxs.Sum(t => (double)t.Quantity);
+            var outAmt = dayReceipts.Count > 0 
+                ? (double)dayReceipts.Sum(r => r.TotalAmount)
+                : outTxs.Sum(t => (double)(t.TotalAmount > 0 ? t.TotalAmount : (t.Quantity * 250000m)));
 
             dailyFlow.Add(new
             {
                 date = dayStart.ToString("dd/MM"),
                 inboundKg = inKg,
-                outboundKg = outKg
+                outboundKg = outKg,
+                inboundAmount = inAmt,
+                outboundAmount = outAmt
             });
         }
 
@@ -146,28 +178,103 @@ public class DashboardController : BaseApiController
             color = colors[idx % colors.Length]
         }).ToList();
 
-        // 7. Giao dịch gần nhất
+        // 7. Giao dịch gần nhất (Gom nhóm theo Phiếu Giao Dịch / Lô Hàng)
         var recentTxData = await _context.InventoryTransactions
             .Where(t => !t.IsDeleted)
             .Include(t => t.LotBatch).ThenInclude(l => l.Product)
             .OrderByDescending(t => t.TransactionDate)
-            .Take(10)
+            .Take(50)
             .ToListAsync(cancellationToken);
 
-        var recentTransactions = recentTxData.Select(t =>
-        {
-            var refPrice = (double)(t.LotBatch?.Product?.ReferencePrice ?? 0);
-            var unitPrice = refPrice > 0 ? refPrice : 200000.0;
-            return new
+        var recentReceipts = await _context.OutboundReceipts
+            .Where(r => !r.IsDeleted)
+            .Include(r => r.Supplies.Where(s => !s.IsDeleted))
+            .ToDictionaryAsync(r => r.ReferenceNumber, r => r, cancellationToken);
+
+        var recentTransactions = recentTxData
+            .GroupBy(t => t.ReferenceNumber)
+            .OrderByDescending(g => g.Max(x => x.TransactionDate))
+            .Take(10)
+            .Select(g =>
             {
-                id = t.ReferenceNumber,
-                type = t.Type == TransactionType.Import ? "INBOUND" : "OUTBOUND",
-                time = t.TransactionDate.ToString("HH:mm"),
-                partnerName = string.IsNullOrWhiteSpace(t.Note) ? (t.Type == TransactionType.Import ? "Nhà cung cấp" : "Khách hàng") : t.Note,
-                weightKg = (double)t.Quantity,
-                amount = (double)t.Quantity * unitPrice
-            };
-        }).ToList();
+                var first = g.First();
+                var batchCodes = g.Select(x => x.LotBatch?.BatchCode).Where(b => !string.IsNullOrEmpty(b)).Distinct().ToList();
+                var productNames = g.Select(x => x.LotBatch?.Product?.Name).Where(p => !string.IsNullOrEmpty(p)).Distinct().ToList();
+                
+                var totalWeight = (double)g.Sum(x => x.Quantity);
+                double totalAmount = 0;
+                double subTotal = 0;
+                double suppliesTotal = 0;
+                double discountAmount = 0;
+                string discountReason = "";
+                var suppliesList = new List<object>();
+
+                if (first.Type == TransactionType.Export && recentReceipts.TryGetValue(g.Key, out var receipt))
+                {
+                    totalAmount = (double)receipt.TotalAmount;
+                    subTotal = (double)receipt.SubTotal;
+                    suppliesTotal = (double)receipt.SuppliesTotal;
+                    discountAmount = (double)receipt.DiscountAmount;
+                    discountReason = receipt.DiscountReason ?? "";
+                    suppliesList = receipt.Supplies.Select(s => (object)new
+                    {
+                        name = s.Name,
+                        packagingCode = s.PackagingCode,
+                        unit = s.Unit,
+                        quantity = s.Quantity,
+                        unitPrice = (double)s.UnitPrice,
+                        totalAmount = (double)s.TotalAmount
+                    }).ToList();
+                }
+                else
+                {
+                    subTotal = (double)g.Sum(x =>
+                    {
+                        if (x.TotalAmount > 0) return x.TotalAmount;
+                        var price = x.UnitPrice > 0 ? x.UnitPrice : (x.LotBatch != null && x.LotBatch.UnitPrice > 0 ? x.LotBatch.UnitPrice : 200000m);
+                        return x.Quantity * price;
+                    });
+                    totalAmount = subTotal;
+                }
+
+                var items = g.Select(x =>
+                {
+                    var price = x.UnitPrice > 0 ? x.UnitPrice : (x.LotBatch != null && x.LotBatch.UnitPrice > 0 ? x.LotBatch.UnitPrice : 200000m);
+                    var amt = x.TotalAmount > 0 ? x.TotalAmount : (x.Quantity * price);
+                    return (object)new
+                    {
+                        batchCode = x.LotBatch?.BatchCode ?? "LÔ-GIAODICH",
+                        productName = x.LotBatch?.Product?.Name ?? "Hải sản",
+                        netWeight = (double)x.Quantity,
+                        tareWeight = (double)x.TareWeight,
+                        grossWeight = x.GrossWeight > 0 ? (double)x.GrossWeight : (double)(x.Quantity + x.TareWeight),
+                        packagingCode = x.PackagingCode,
+                        packagingQty = x.PackagingQty,
+                        unitPrice = (double)price,
+                        totalAmount = (double)amt
+                    };
+                }).ToList();
+
+                return new
+                {
+                    id = g.Key,
+                    type = first.Type == TransactionType.Import ? "INBOUND" : "OUTBOUND",
+                    time = first.TransactionDate.ToString("yyyy-MM-dd HH:mm"),
+                    partnerName = string.IsNullOrWhiteSpace(first.Note) ? (first.Type == TransactionType.Import ? "Nhà cung cấp" : "Khách hàng") : first.Note,
+                    batchCode = batchCodes.Count > 0 ? string.Join(", ", batchCodes) : "N/A",
+                    productName = productNames.Count > 0 ? string.Join(", ", productNames) : "Hải sản",
+                    itemCount = g.Count(),
+                    weightKg = totalWeight,
+                    amount = totalAmount,
+                    subTotal,
+                    suppliesTotal,
+                    discountAmount,
+                    discountReason,
+                    supplies = suppliesList,
+                    items,
+                    createdBy = first.CreatedBy
+                };
+            }).ToList();
 
         var response = new
         {
@@ -183,8 +290,10 @@ public class DashboardController : BaseApiController
                 totalStockValue = new { value = totalStockValue },
                 todayInboundKg = new { value = todayInboundKg },
                 todayInboundReceipts = new { value = todayInboundCount },
+                todayInboundValue = new { value = todayInboundValue },
                 todayOutboundKg = new { value = todayOutboundKg },
                 todayOutboundTransactions = new { value = todayOutboundCount },
+                todayOutboundValue = new { value = todayOutboundValue },
                 monthlyLossRate = new { value = monthlyLossRate }
             },
             dailyFlow,

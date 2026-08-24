@@ -25,7 +25,6 @@ const toInvoiceData = (tx: OutboundTransaction): InvoicePrintData => {
   }));
 
   const totalNetWeight = items.reduce((sum, item) => sum + item.netWeight, 0);
-  const totalAmount = items.reduce((sum, item) => sum + item.totalAmount, 0);
 
   return {
     type: 'OUTBOUND',
@@ -35,8 +34,13 @@ const toInvoiceData = (tx: OutboundTransaction): InvoicePrintData => {
     warehouseStaff: tx.createdBy,
     note: tx.reason,
     items,
+    supplies: tx.supplies || [],
+    subTotal: tx.subTotal,
+    suppliesTotal: tx.suppliesTotal,
+    discountAmount: tx.discountAmount,
+    discountReason: tx.discountReason,
     totalNetWeight,
-    totalAmount,
+    totalAmount: tx.totalAmount,
   };
 };
 
@@ -46,10 +50,15 @@ const OutboundHistoryPage: React.FC = () => {
   React.useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
+
   const [filtered, setFiltered] = useState<OutboundTransaction[]>(transactions);
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedTx, setSelectedTx] = useState<OutboundTransaction | null>(null);
   const [printVisible, setPrintVisible] = useState(false);
+
+  React.useEffect(() => {
+    setFiltered(transactions);
+  }, [transactions]);
 
   // Simple client‑side filter (placeholder for real API / store filtering)
   const handleSearch = (value: string) => {
@@ -102,12 +111,44 @@ const OutboundHistoryPage: React.FC = () => {
   };
 
   const columns = [
-    { title: 'Mã phiếu xuất', dataIndex: 'id', key: 'id' },
+    { title: 'Mã phiếu xuất', dataIndex: 'id', key: 'id', render: (id: string) => <span className="font-bold text-sky-600">{id}</span> },
     { title: 'Ngày xuất kho', dataIndex: 'date', key: 'date', render: (d: string) => formatDate(d), responsive: ['sm'] as any },
     { title: 'Khách hàng', dataIndex: 'customerName', key: 'customerName' },
-    { title: 'Lý do xuất', dataIndex: 'reason', key: 'reason', responsive: ['md'] as any },
     { title: 'Tổng khối lượng (Kg)', dataIndex: 'totalWeightKg', key: 'totalWeightKg', render: (w: number) => formatWeight(w) },
-    { title: 'Tổng giá trị (VNĐ)', dataIndex: 'totalAmount', key: 'totalAmount', render: (a: number) => formatCurrency(a) },
+    {
+      title: 'Tiền hàng / Phụ phí',
+      key: 'subTotal',
+      render: (_: any, r: OutboundTransaction) => (
+        <div className="text-xs">
+          <div>Hải sản: {formatCurrency(r.subTotal || r.totalAmount)}</div>
+          {r.suppliesTotal && r.suppliesTotal > 0 ? (
+            <div className="text-sky-600 font-medium">+Thùng: {formatCurrency(r.suppliesTotal)}</div>
+          ) : null}
+        </div>
+      ),
+      responsive: ['md'] as any,
+    },
+    {
+      title: 'Chiết khấu / Giảm giá',
+      dataIndex: 'discountAmount',
+      key: 'discountAmount',
+      render: (d: number, r: OutboundTransaction) =>
+        d && d > 0 ? (
+          <span className="text-red-500 font-medium">
+            -{formatCurrency(d)}
+            {r.discountReason ? <div className="text-xs text-gray-400 font-normal">({r.discountReason})</div> : null}
+          </span>
+        ) : (
+          <span className="text-gray-300">-</span>
+        ),
+      responsive: ['lg'] as any,
+    },
+    {
+      title: 'Tổng thanh toán (VNĐ)',
+      dataIndex: 'totalAmount',
+      key: 'totalAmount',
+      render: (a: number) => <strong className="text-emerald-600 font-bold">{formatCurrency(a)}</strong>,
+    },
     { title: 'Người lập phiếu', dataIndex: 'createdBy', key: 'createdBy', responsive: ['md'] as any },
     {
       title: 'Hành động',
@@ -144,6 +185,14 @@ const OutboundHistoryPage: React.FC = () => {
     { title: 'Hạn sử dụng', dataIndex: 'expiryDate', key: 'expiryDate', render: (d: string) => formatDate(d), responsive: ['sm'] as any },
     { title: 'Đơn giá (VNĐ)', dataIndex: 'unitPrice', key: 'unitPrice', render: (p: number) => formatCurrency(p), responsive: ['md'] as any },
     { title: 'Thành tiền (VNĐ)', dataIndex: 'amount', key: 'amount', render: (a: number) => formatCurrency(a) },
+  ];
+
+  const supplyColumns = [
+    { title: 'Tên vật phẩm kèm / Dịch vụ', dataIndex: 'name', key: 'name' },
+    { title: 'Đơn vị', dataIndex: 'unit', key: 'unit', render: (u: string) => u || 'Cái' },
+    { title: 'Số lượng', dataIndex: 'quantity', key: 'quantity' },
+    { title: 'Đơn giá (VNĐ)', dataIndex: 'unitPrice', key: 'unitPrice', render: (p: number) => formatCurrency(p) },
+    { title: 'Thành tiền (VNĐ)', dataIndex: 'totalAmount', key: 'totalAmount', render: (a: number) => formatCurrency(a) },
   ];
 
   return (
@@ -183,13 +232,59 @@ const OutboundHistoryPage: React.FC = () => {
       {/* Detail modal */}
       <Modal
         open={detailVisible}
-        title={selectedTx?.id}
-        footer={null}
+        title={
+          <div>
+            <span style={{ fontWeight: 'bold' }}>Chi tiết phiếu xuất: {selectedTx?.id}</span>
+            <div style={{ fontSize: 13, color: '#666', fontWeight: 'normal', marginTop: 4 }}>
+              Khách hàng: <strong>{selectedTx?.customerName}</strong> &nbsp;·&nbsp; Ngày xuất: {selectedTx?.date}
+            </div>
+          </div>
+        }
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div style={{ textAlign: 'left', fontSize: 13 }}>
+              {selectedTx?.discountAmount && selectedTx.discountAmount > 0 ? (
+                <span style={{ color: '#dc2626', marginRight: 16 }}>
+                  Giảm giá: -{formatCurrency(selectedTx.discountAmount)} {selectedTx.discountReason ? `(${selectedTx.discountReason})` : ''}
+                </span>
+              ) : null}
+              <span style={{ fontWeight: 'bold', fontSize: 15, color: '#003580' }}>
+                Tổng thanh toán: {formatCurrency(selectedTx?.totalAmount || 0)}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button onClick={() => setDetailVisible(false)}>Đóng</Button>
+              <Button
+                type="primary"
+                icon={<PrinterOutlined />}
+                style={{ background: '#0ea5e9', borderColor: '#0ea5e9' }}
+                onClick={() => {
+                  setDetailVisible(false);
+                  setPrintVisible(true);
+                }}
+              >
+                In Phiếu
+              </Button>
+            </div>
+          </div>
+        }
         onCancel={() => setDetailVisible(false)}
-        width={800}
+        width={850}
       >
         {selectedTx && (
-          <Table rowKey="batchCode" dataSource={selectedTx.batches} columns={batchColumns} pagination={false} scroll={{ x: 'max-content' }} />
+          <div className="space-y-4">
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 6, color: '#0284c7' }}>1. Danh sách hải sản xuất kho:</div>
+              <Table rowKey="batchCode" dataSource={selectedTx.batches} columns={batchColumns} pagination={false} scroll={{ x: 'max-content' }} size="small" />
+            </div>
+
+            {selectedTx.supplies && selectedTx.supplies.length > 0 && (
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: 6, color: '#0284c7' }}>2. Vật phẩm bán kèm &amp; Phụ phí:</div>
+                <Table rowKey="name" dataSource={selectedTx.supplies} columns={supplyColumns} pagination={false} scroll={{ x: 'max-content' }} size="small" />
+              </div>
+            )}
+          </div>
         )}
       </Modal>
 

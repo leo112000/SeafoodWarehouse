@@ -23,8 +23,20 @@ export interface UnifiedTransactionItem {
   storageLocation?: string;
   reason?: string;
   totalWeightKg: number;
+  subTotal?: number;
+  suppliesTotal?: number;
+  discountAmount?: number;
+  discountReason?: string;
   totalAmount: number;
   createdBy: string;
+  supplies?: Array<{
+    name: string;
+    packagingCode?: string;
+    unit: string;
+    quantity: number;
+    unitPrice: number;
+    totalAmount: number;
+  }>;
   items: Array<{
     batchCode: string;
     seafoodName: string;
@@ -151,8 +163,13 @@ export const TransactionHistoryPage: React.FC = () => {
         partnerType: 'CUSTOMER',
         reason: tx.reason,
         totalWeightKg: tx.totalWeightKg,
+        subTotal: tx.subTotal,
+        suppliesTotal: tx.suppliesTotal,
+        discountAmount: tx.discountAmount,
+        discountReason: tx.discountReason,
         totalAmount: tx.totalAmount,
         createdBy: tx.createdBy,
+        supplies: tx.supplies,
         items,
       };
     });
@@ -243,6 +260,11 @@ export const TransactionHistoryPage: React.FC = () => {
       warehouseStaff: tx.createdBy,
       note: tx.reason,
       items: printItems,
+      supplies: tx.supplies || [],
+      subTotal: tx.subTotal,
+      suppliesTotal: tx.suppliesTotal,
+      discountAmount: tx.discountAmount,
+      discountReason: tx.discountReason,
       totalNetWeight: tx.totalWeightKg,
       totalAmount: tx.totalAmount,
     };
@@ -624,7 +646,7 @@ export const TransactionHistoryPage: React.FC = () => {
             </Card>
 
             <div>
-              <Title level={5} className="mb-2">Chi tiết danh sách hải sản & lô hàng</Title>
+              <Title level={5} className="mb-2">1. Chi tiết danh sách hải sản &amp; lô hàng</Title>
               <Table
                 dataSource={selectedTx.items}
                 columns={itemColumns}
@@ -634,6 +656,37 @@ export const TransactionHistoryPage: React.FC = () => {
                 scroll={{ x: 'max-content' }}
               />
             </div>
+
+            {selectedTx.supplies && selectedTx.supplies.length > 0 && (
+              <div>
+                <Title level={5} className="mb-2">2. Vật phẩm bán kèm &amp; Phụ phí đóng gói</Title>
+                <Table
+                  dataSource={selectedTx.supplies}
+                  columns={[
+                    { title: 'Tên vật phẩm kèm / Dịch vụ', dataIndex: 'name', key: 'name' },
+                    { title: 'Đơn vị', dataIndex: 'unit', key: 'unit', render: (u: string) => u || 'Cái' },
+                    { title: 'Số lượng', dataIndex: 'quantity', key: 'quantity' },
+                    { title: 'Đơn giá (VNĐ)', dataIndex: 'unitPrice', key: 'unitPrice', render: (p: number) => formatCurrency(p) },
+                    { title: 'Thành tiền (VNĐ)', dataIndex: 'totalAmount', key: 'totalAmount', render: (a: number) => formatCurrency(a) },
+                  ]}
+                  rowKey="name"
+                  pagination={false}
+                  size="small"
+                  scroll={{ x: 'max-content' }}
+                />
+              </div>
+            )}
+
+            {selectedTx.discountAmount !== undefined && selectedTx.discountAmount > 0 && (
+              <div className="bg-red-50 p-3 rounded-lg border border-red-100 flex justify-between items-center text-sm">
+                <span className="text-red-700 font-medium">
+                  Chiết khấu / Giảm giá áp dụng {selectedTx.discountReason ? `(${selectedTx.discountReason})` : ''}:
+                </span>
+                <span className="font-bold text-red-600">
+                  -{formatCurrency(selectedTx.discountAmount)}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </Modal>

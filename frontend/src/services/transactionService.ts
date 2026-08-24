@@ -26,14 +26,29 @@ export interface OutboundReceiptPayload {
   date: string;
   totalWeightKg: number;
   totalAmount: number;
+  subTotal?: number;
+  discountAmount?: number;
+  discountReason?: string;
   createdBy: string;
   batches: Array<{
     batchCode: string;
     species: string;
     quantityKg: number;
+    grossWeight?: number;
+    tareWeight?: number;
+    packagingCode?: string;
+    packagingQty?: number;
     expiryDate: string;
     unitPrice: number;
     amount: number;
+  }>;
+  supplies?: Array<{
+    name: string;
+    packagingCode?: string;
+    unit: string;
+    quantity: number;
+    unitPrice: number;
+    totalAmount: number;
   }>;
 }
 

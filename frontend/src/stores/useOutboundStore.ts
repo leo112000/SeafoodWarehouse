@@ -11,14 +11,28 @@ export interface OutboundBatch {
   amount: number; // total amount
 }
 
+export interface OutboundSupply {
+  name: string;
+  packagingCode?: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+}
+
 export interface OutboundTransaction {
   id: string; // e.g. PXK-20260812-001
   date: string; // ISO date string
   customerName: string;
   reason: string; // Bán hàng / Chuyển kho / Tiêu hủy
   totalWeightKg: number;
+  subTotal?: number;
+  suppliesTotal?: number;
+  discountAmount?: number;
+  discountReason?: string;
   totalAmount: number; // VND
   createdBy: string;
+  supplies?: OutboundSupply[];
   batches: OutboundBatch[];
 }
 

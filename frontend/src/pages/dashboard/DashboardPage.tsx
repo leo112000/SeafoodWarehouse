@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, Row, Col, Alert, Button, Table, Typography, Space, Tag, Tooltip } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Alert, Button, Table, Typography, Space, Tag, Tooltip, Drawer, Popover } from 'antd';
+import { ReloadOutlined, PrinterOutlined } from '@ant-design/icons';
 import {
   AlertOutlined,
   ArrowRightOutlined,
@@ -14,8 +14,9 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -26,7 +27,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { EMPTY_DASHBOARD_DATA, type DashboardData } from '../../services/mockDashboardData';
+import { EMPTY_DASHBOARD_DATA, type DashboardData, type RecentTransaction } from '../../services/mockDashboardData';
 import { dashboardService } from '../../services/dashboardService';
 import { formatCurrency, formatWeight } from '../../utils/format';
 
@@ -37,6 +38,9 @@ export const DashboardPage: React.FC = () => {
   const [data, setData] = React.useState<DashboardData>(EMPTY_DASHBOARD_DATA);
   const [loading, setLoading] = React.useState(false);
   const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null);
+  const [hoveredTx, setHoveredTx] = React.useState<RecentTransaction | null>(null);
+  const [drawerTx, setDrawerTx] = React.useState<RecentTransaction | null>(null);
+  const [drawerVisible, setDrawerVisible] = React.useState(false);
 
   const fetchData = React.useCallback(async () => {
     setLoading(true);
@@ -64,13 +68,24 @@ export const DashboardPage: React.FC = () => {
 
   const transactionColumns = [
     {
-      title: 'Mã Giao Dịch',
+      title: 'Mã Phiếu',
       dataIndex: 'id',
       key: 'id',
-      render: (id: string) => <Text strong>{id}</Text>,
+      render: (id: string, record: any) => (
+        <span
+          className="font-bold text-sky-600 hover:text-sky-700 cursor-pointer hover:underline"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDrawerTx(record);
+            setDrawerVisible(true);
+          }}
+        >
+          {id}
+        </span>
+      ),
     },
     {
-      title: 'Loại',
+      title: 'Loại Giao Dịch',
       dataIndex: 'type',
       key: 'type',
       render: (type: 'INBOUND' | 'OUTBOUND') => (
@@ -80,28 +95,54 @@ export const DashboardPage: React.FC = () => {
       ),
     },
     {
-      title: 'Thời Gian',
-      dataIndex: 'time',
-      key: 'time',
-      responsive: ['sm'] as any,
+      title: 'Mã Lô Sản Phẩm',
+      dataIndex: 'batchCode',
+      key: 'batchCode',
+      render: (code: string) => (
+        <Tag color="cyan" className="font-mono font-medium">
+          {code || 'N/A'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Hải Sản / Mặt Hàng',
+      dataIndex: 'productName',
+      key: 'productName',
+      render: (name: string, record: any) => (
+        <div>
+          <Text strong>{name || 'Hải sản'}</Text>
+          {record.itemCount && record.itemCount > 1 ? (
+            <Tag color="purple" className="ml-1.5 text-xs">+{record.itemCount} món</Tag>
+          ) : null}
+        </div>
+      ),
     },
     {
       title: 'Đối Tác',
       dataIndex: 'partnerName',
       key: 'partnerName',
+      render: (partner: string) => <Text type="secondary">{partner}</Text>,
+      responsive: ['md'] as any,
     },
     {
       title: 'Khối Lượng',
       dataIndex: 'weightKg',
       key: 'weightKg',
-      render: (val: number) => formatWeight(val),
+      render: (val: number) => <Text strong>{formatWeight(val)}</Text>,
     },
     {
       title: 'Giá Trị',
       dataIndex: 'amount',
       key: 'amount',
-      render: (val: number) => formatCurrency(val),
+      render: (val: number) => <span className="font-semibold text-emerald-600">{formatCurrency(val)}</span>,
       responsive: ['md'] as any,
+    },
+    {
+      title: 'Thời Gian',
+      dataIndex: 'time',
+      key: 'time',
+      render: (time: string) => <Text type="secondary">{time}</Text>,
+      responsive: ['sm'] as any,
     },
   ];
 
@@ -223,8 +264,10 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
             <div className="mt-3 pt-2 border-t border-white/20 text-xs text-indigo-100 flex items-center justify-between">
-              <span>Số lượng phiếu nhập:</span>
-              <strong className="text-white text-sm">{kpis.todayInboundReceipts.value} phiếu</strong>
+              <span>{kpis.todayInboundReceipts.value} phiếu nhập:</span>
+              <strong className="text-white text-sm">
+                {formatCurrency(kpis.todayInboundValue?.value || 0)}
+              </strong>
             </div>
           </div>
         </Col>
@@ -243,8 +286,10 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
             <div className="mt-3 pt-2 border-t border-white/20 text-xs text-emerald-100 flex items-center justify-between">
-              <span>Số lượng giao dịch:</span>
-              <strong className="text-white text-sm">{kpis.todayOutboundTransactions.value} đơn</strong>
+              <span>{kpis.todayOutboundTransactions.value} đơn xuất:</span>
+              <strong className="text-white text-sm">
+                {formatCurrency(kpis.todayOutboundValue?.value || 0)}
+              </strong>
             </div>
           </div>
         </Col>
@@ -282,16 +327,32 @@ export const DashboardPage: React.FC = () => {
             }
             className="shadow-sm"
           >
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dailyFlow} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <ComposedChart data={dailyFlow} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis dataKey="date" tickLine={false} />
-                <YAxis tickLine={false} />
-                <RechartTooltip />
+                <YAxis yAxisId="left" tickLine={false} label={{ value: 'Kg', angle: -90, position: 'insideLeft', offset: 15 }} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tickLine={false}
+                  tickFormatter={(val) => `${(val / 1_000_000).toFixed(1)} tr`}
+                  label={{ value: 'Triệu VNĐ', angle: 90, position: 'insideRight', offset: 15 }}
+                />
+                <RechartTooltip
+                  formatter={(value: any, name: any) => {
+                    if (String(name).includes('Tiền')) {
+                      return [formatCurrency(Number(value)), name];
+                    }
+                    return [`${Number(value).toLocaleString()} kg`, name];
+                  }}
+                />
                 <Legend />
-                <Bar name="Nhập kho (kg)" dataKey="inboundKg" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar name="Xuất kho (kg)" dataKey="outboundKg" fill="#10b981" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Bar yAxisId="left" name="Nhập kho (kg)" dataKey="inboundKg" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="left" name="Xuất kho (kg)" dataKey="outboundKg" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" type="monotone" name="Tiền nhập (VNĐ)" dataKey="inboundAmount" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 4 }} />
+                <Line yAxisId="right" type="monotone" name="Tiền xuất (VNĐ)" dataKey="outboundAmount" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 4 }} />
+              </ComposedChart>
             </ResponsiveContainer>
           </Card>
         </Col>
@@ -401,6 +462,11 @@ export const DashboardPage: React.FC = () => {
                 <span>Lịch Sử Giao Dịch Mới Nhất</span>
               </Space>
             }
+            extra={
+              <Text type="secondary" className="text-xs">
+                💡 Nhấp vào dòng để xem chi tiết phiếu bên góc phải
+              </Text>
+            }
             className="shadow-sm"
           >
             <Table
@@ -410,10 +476,176 @@ export const DashboardPage: React.FC = () => {
               pagination={false}
               size="middle"
               scroll={{ x: 'max-content' }}
+              rowClassName={(record) =>
+                record.id === drawerTx?.id && drawerVisible
+                  ? '!bg-sky-100 dark:!bg-sky-950/60 !border-l-4 !border-l-sky-600 font-medium transition-colors'
+                  : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors'
+              }
+              onRow={(record) => ({
+                onClick: () => {
+                  setDrawerTx(record);
+                  setDrawerVisible(true);
+                },
+              })}
             />
           </Card>
         </Col>
       </Row>
+
+      {/* Drawer xem chi tiết Phiếu Nhập / Xuất Kho khi bấm vào dòng */}
+      <Drawer
+        title={
+          <div className="flex items-center gap-2.5">
+            <Tag color={drawerTx?.type === 'INBOUND' ? 'blue' : 'green'} className="text-xs font-bold px-2.5 py-0.5 m-0">
+              {drawerTx?.type === 'INBOUND' ? '📥 PHIẾU NHẬP KHO' : '📤 PHIẾU XUẤT KHO'}
+            </Tag>
+            <span className="font-bold text-sky-600 text-sm tracking-wide">{drawerTx?.id}</span>
+          </div>
+        }
+        placement="right"
+        width={500}
+        onClose={() => {
+          setDrawerVisible(false);
+          setDrawerTx(null);
+        }}
+        open={drawerVisible}
+        bodyStyle={{ padding: '20px' }}
+      >
+        {drawerTx && (
+          <div className="space-y-4">
+            {/* Header thông tin phiếu */}
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Thời gian tạo:</span>
+                <span className="font-semibold text-gray-800">{drawerTx.time}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">
+                  {drawerTx.type === 'INBOUND' ? 'Nhà cung cấp:' : 'Khách hàng / Đại lý:'}
+                </span>
+                <span className="font-bold text-gray-900">{drawerTx.partnerName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Người lập phiếu:</span>
+                <span className="font-medium text-gray-800">{drawerTx.createdBy || 'Thủ kho'}</span>
+              </div>
+            </div>
+
+            {/* Bảng chi tiết hải sản */}
+            <div>
+              <div className="text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                <span>1. Danh sách hải sản ({drawerTx.items?.length || 1} món)</span>
+                <span className="text-blue-600 font-semibold">{formatWeight(drawerTx.weightKg)}</span>
+              </div>
+              <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gray-100 text-gray-600 border-b border-gray-200">
+                    <tr>
+                      <th className="p-2">Mã Lô / Tên</th>
+                      <th className="p-2 text-right">Khối lượng</th>
+                      <th className="p-2 text-right">Đơn giá</th>
+                      <th className="p-2 text-right">Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {drawerTx.items && drawerTx.items.length > 0 ? (
+                      drawerTx.items.map((item, idx) => (
+                        <tr key={idx} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                          <td className="p-2">
+                            <div className="font-semibold text-gray-800">{item.productName}</div>
+                            <div className="font-mono text-[10px] text-sky-600">{item.batchCode}</div>
+                          </td>
+                          <td className="p-2 text-right">
+                            <div className="font-bold">{formatWeight(item.netWeight)}</div>
+                            {item.tareWeight > 0 && (
+                              <div className="text-[10px] text-gray-400">Bì: {item.tareWeight}kg</div>
+                            )}
+                          </td>
+                          <td className="p-2 text-right">{formatCurrency(item.unitPrice)}</td>
+                          <td className="p-2 text-right font-semibold text-emerald-600">{formatCurrency(item.totalAmount)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="p-2" colSpan={4}>
+                          <div className="font-semibold">{drawerTx.productName}</div>
+                          <div className="font-mono text-xs text-sky-600">{drawerTx.batchCode}</div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Bảng thùng xốp & phụ phí (nếu có) */}
+            {drawerTx.supplies && drawerTx.supplies.length > 0 && (
+              <div>
+                <div className="text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                  <span>2. Vật phẩm bán kèm &amp; Thùng xốp</span>
+                  <span className="text-sky-600 font-semibold">{formatCurrency(drawerTx.suppliesTotal || 0)}</span>
+                </div>
+                <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-100 text-gray-600 border-b border-gray-200">
+                      <tr>
+                        <th className="p-2">Vật phẩm</th>
+                        <th className="p-2 text-center">SL</th>
+                        <th className="p-2 text-right">Đơn giá</th>
+                        <th className="p-2 text-right">Thành tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {drawerTx.supplies.map((sup, sIdx) => (
+                        <tr key={sIdx} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                          <td className="p-2 font-medium text-gray-800">{sup.name}</td>
+                          <td className="p-2 text-center">{sup.quantity} {sup.unit}</td>
+                          <td className="p-2 text-right">{formatCurrency(sup.unitPrice)}</td>
+                          <td className="p-2 text-right font-semibold text-sky-600">{formatCurrency(sup.totalAmount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Tổng kết tài chính phiếu */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+              <div className="flex justify-between text-gray-600">
+                <span>Tiền hàng hải sản:</span>
+                <span className="font-semibold">{formatCurrency(drawerTx.subTotal || drawerTx.amount)}</span>
+              </div>
+              {drawerTx.suppliesTotal && drawerTx.suppliesTotal > 0 ? (
+                <div className="flex justify-between text-sky-700">
+                  <span>Tiền thùng xốp / phụ phí:</span>
+                  <span className="font-semibold">+{formatCurrency(drawerTx.suppliesTotal)}</span>
+                </div>
+              ) : null}
+              {drawerTx.discountAmount && drawerTx.discountAmount > 0 ? (
+                <div className="flex justify-between text-red-600 font-medium">
+                  <span>Chiết khấu {drawerTx.discountReason ? `(${drawerTx.discountReason})` : ''}:</span>
+                  <span>-{formatCurrency(drawerTx.discountAmount)}</span>
+                </div>
+              ) : null}
+              <div className="pt-2 border-t border-slate-300 flex justify-between items-center text-sm font-bold">
+                <span className="text-gray-900">TỔNG THANH TOÁN:</span>
+                <span className="text-base text-emerald-600">{formatCurrency(drawerTx.amount)}</span>
+              </div>
+            </div>
+
+            <div className="pt-1 flex gap-2">
+              <Button
+                className="w-full"
+                type="dashed"
+                onClick={() => setDrawerVisible(false)}
+              >
+                Đóng
+              </Button>
+            </div>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 };

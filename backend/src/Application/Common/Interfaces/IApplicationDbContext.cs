@@ -24,6 +24,8 @@ public interface IApplicationDbContext
     DbSet<Partner> Partners { get; }
     DbSet<AppNotification> AppNotifications { get; }
     DbSet<UserNotification> UserNotifications { get; }
+    DbSet<OutboundReceipt> OutboundReceipts { get; }
+    DbSet<OutboundSupply> OutboundSupplies { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

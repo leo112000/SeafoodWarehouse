@@ -12,6 +12,15 @@ export interface InvoiceItem {
   packagingQty?: number;  // Số lượng bao bì
 }
 
+export interface SupplyItem {
+  name: string;          // Tên vật phẩm bán kèm / phụ phí (VD: Thùng xốp 30kg, Đá gel giữ lạnh)
+  packagingCode?: string;// Mã vật tư nếu có (VD: THUNG-30KG, DA-GEL)
+  unit: string;           // Đơn vị tính (Cái, Thùng, Hộp, Bộ)
+  quantity: number;      // Số lượng
+  unitPrice: number;     // Đơn giá bán
+  totalAmount: number;   // Thành tiền (quantity * unitPrice)
+}
+
 export interface InvoicePrintData {
   type: 'INBOUND' | 'OUTBOUND';
   invoiceNo: string;        // Mã phiếu (PNK-... hoặc PXK-...)
@@ -19,9 +28,14 @@ export interface InvoicePrintData {
   partnerName: string;      // Tên Nhà cung cấp (nếu Nhập) hoặc Khách hàng (nếu Xuất)
   warehouseStaff: string;   // Người lập phiếu / Thủ kho
   note?: string;            // Ghi chú
-  items: InvoiceItem[];     // Danh sách hàng
+  items: InvoiceItem[];     // Danh sách hàng hải sản
+  supplies?: SupplyItem[];  // Danh sách vật phẩm kèm / phụ phí (Thùng xốp, đá gel...)
+  subTotal?: number;        // Tổng tiền hàng hải sản
+  suppliesTotal?: number;   // Tổng tiền vật phẩm bán kèm
+  discountAmount?: number;  // Số tiền giảm giá / chiết khấu
+  discountReason?: string;  // Lý do / Mã giảm giá
   totalNetWeight: number;   // Tổng Kg thực
-  totalAmount: number;      // Tổng tiền
+  totalAmount: number;      // Tổng tiền thanh toán cuối cùng (sau giảm giá)
   storageLocation?: string; // Optional field for warehouse layout compatibility
 }
 

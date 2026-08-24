@@ -46,6 +46,11 @@ public class ReportsController : BaseApiController
             .Include(t => t.LotBatch).ThenInclude(l => l.Product)
             .ToListAsync(cancellationToken);
 
+        var outboundReceipts = await _context.OutboundReceipts
+            .Where(r => !r.IsDeleted)
+            .Include(r => r.Supplies.Where(s => !s.IsDeleted))
+            .ToListAsync(cancellationToken);
+
         // Helper: Tính Giá trị giao dịch thực tế (Doanh thu bán nếu Export, Tiền nhập nếu Import)
         static double GetTxAmount(InventoryTransaction t)
         {
@@ -83,7 +88,15 @@ public class ReportsController : BaseApiController
         double totalInboundAmount = inboundTx.Sum(t => GetTxAmount(t));
 
         double totalOutboundKg = (double)outboundTx.Sum(t => t.Quantity);
-        double totalOutboundAmount = outboundTx.Sum(t => GetTxAmount(t));
+        
+        // Doanh thu thực tế (đã cộng tiền thùng xốp và trừ chiết khấu)
+        double totalOutboundAmount = outboundReceipts.Count > 0 
+            ? (double)outboundReceipts.Sum(r => r.TotalAmount)
+            : outboundTx.Sum(t => GetTxAmount(t));
+        
+        double totalDiscountGiven = (double)outboundReceipts.Sum(r => r.DiscountAmount);
+        double totalSuppliesRevenue = (double)outboundReceipts.Sum(r => r.SuppliesTotal);
+
         double cogsAmount = outboundTx.Sum(t => GetTxCost(t));
         double grossProfit = totalOutboundAmount - cogsAmount;
         double profitMarginPercent = totalOutboundAmount > 0 ? Math.Round((grossProfit / totalOutboundAmount) * 100.0, 2) : 0.0;
@@ -117,6 +130,8 @@ public class ReportsController : BaseApiController
             totalInboundAmount,
             totalOutboundKg,
             totalOutboundAmount,
+            totalDiscountGiven,
+            totalSuppliesRevenue,
             cogsAmount,
             grossProfit,
             profitMarginPercent,

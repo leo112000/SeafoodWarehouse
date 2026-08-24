@@ -37,6 +37,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Partner> Partners => Set<Partner>();
     public DbSet<AppNotification> AppNotifications => Set<AppNotification>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<OutboundReceipt> OutboundReceipts => Set<OutboundReceipt>();
+    public DbSet<OutboundSupply> OutboundSupplies => Set<OutboundSupply>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

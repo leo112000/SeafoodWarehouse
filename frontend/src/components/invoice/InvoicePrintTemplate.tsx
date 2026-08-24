@@ -347,18 +347,65 @@ export const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { data: Inv
           </tfoot>
         </table>
 
+        {/* ── Bảng Vật phẩm bán kèm / Phụ phí (nếu có) ─────── */}
+        {data.supplies && data.supplies.length > 0 && (
+          <div style={{ marginTop: 12, marginBottom: 12 }}>
+            <div style={{ fontWeight: 'bold', color: '#003580', fontSize: '10.5pt', marginBottom: 4 }}>
+              📦 VẬT PHẨM BÁN KÈM &amp; DỊCH VỤ PHỤ PHÍ
+            </div>
+            <table className="inv-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '5%' }}>STT</th>
+                  <th style={{ width: '45%' }}>Tên Vật Phẩm / Dịch Vụ</th>
+                  <th style={{ width: '15%' }}>Đơn vị tính</th>
+                  <th style={{ width: '10%' }}>Số lượng</th>
+                  <th style={{ width: '12%' }}>Đơn giá (đ)</th>
+                  <th style={{ width: '13%' }}>Thành tiền (đ)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.supplies.map((sup, idx) => (
+                  <tr key={sup.name + idx}>
+                    <td className="text-center">{idx + 1}</td>
+                    <td><strong>{sup.name}</strong></td>
+                    <td className="text-center">{sup.unit || 'Cái'}</td>
+                    <td className="text-right"><strong>{sup.quantity}</strong></td>
+                    <td className="text-right">{sup.unitPrice.toLocaleString('vi-VN')}</td>
+                    <td className="text-right"><strong>{sup.totalAmount.toLocaleString('vi-VN')}</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {/* ── Summary block ─────────────────────────────── */}
         <div className="inv-summary">
           <div className="inv-summary-row">
-            <span>Tổng số mặt hàng:</span>
-            <span>{data.items.length} loại hải sản</span>
+            <span>Tổng số mặt hàng hải sản:</span>
+            <span>{data.items.length} loại · <strong>{totalNetWeight.toFixed(1)} kg</strong> thực</span>
           </div>
-          <div className="inv-summary-row">
-            <span>Tổng khối lượng thực tế:</span>
-            <span><strong>{totalNetWeight.toFixed(1)} kg</strong></span>
-          </div>
+          {data.subTotal !== undefined && data.subTotal > 0 && (
+            <div className="inv-summary-row">
+              <span>Tiền hàng hải sản:</span>
+              <span>{formatCurrency(data.subTotal)}</span>
+            </div>
+          )}
+          {data.suppliesTotal !== undefined && data.suppliesTotal > 0 && (
+            <div className="inv-summary-row">
+              <span>Tiền vật phẩm bán kèm (thùng xốp, phụ kiện):</span>
+              <span style={{ color: '#0284c7', fontWeight: 600 }}>+{formatCurrency(data.suppliesTotal)}</span>
+            </div>
+          )}
+          {data.discountAmount !== undefined && data.discountAmount > 0 && (
+            <div className="inv-summary-row" style={{ color: '#dc2626' }}>
+              <span>Chiết khấu / Giảm giá {data.discountReason ? `(${data.discountReason})` : ''}:</span>
+              <span style={{ fontWeight: 'bold' }}>-{formatCurrency(data.discountAmount)}</span>
+            </div>
+          )}
           <div className="inv-summary-row total">
-            <span>TỔNG GIÁ TRỊ:</span>
+            <span>TỔNG THANH TOÁN:</span>
             <span>{formatCurrency(totalAmount)}</span>
           </div>
           <div className="inv-amount-words">

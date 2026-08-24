@@ -115,6 +115,48 @@ public class ApplicationDbContextInitialiser
                   );
               END",
 
+            @"IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'OutboundReceipts')
+              BEGIN
+                  CREATE TABLE [OutboundReceipts] (
+                      [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                      [ReferenceNumber] NVARCHAR(100) NOT NULL,
+                      [CustomerName] NVARCHAR(200) NOT NULL,
+                      [Reason] NVARCHAR(200) NOT NULL DEFAULT 'Bán hàng',
+                      [TransactionDate] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                      [CreatedBy] NVARCHAR(100) NOT NULL DEFAULT 'Thủ kho',
+                      [TotalWeightKg] DECIMAL(18,3) NOT NULL DEFAULT 0,
+                      [SubTotal] DECIMAL(18,2) NOT NULL DEFAULT 0,
+                      [SuppliesTotal] DECIMAL(18,2) NOT NULL DEFAULT 0,
+                      [DiscountAmount] DECIMAL(18,2) NOT NULL DEFAULT 0,
+                      [DiscountReason] NVARCHAR(200) NULL,
+                      [TotalAmount] DECIMAL(18,2) NOT NULL DEFAULT 0,
+                      [Note] NVARCHAR(MAX) NULL,
+                      [TenantId] INT NULL,
+                      [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                      [UpdatedAt] DATETIME2 NULL,
+                      [IsDeleted] BIT NOT NULL DEFAULT 0
+                  );
+              END",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'OutboundSupplies')
+              BEGIN
+                  CREATE TABLE [OutboundSupplies] (
+                      [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                      [OutboundReceiptId] INT NOT NULL,
+                      [Name] NVARCHAR(200) NOT NULL,
+                      [PackagingCode] NVARCHAR(100) NULL,
+                      [Unit] NVARCHAR(50) NOT NULL DEFAULT 'Cái',
+                      [Quantity] INT NOT NULL DEFAULT 1,
+                      [UnitPrice] DECIMAL(18,2) NOT NULL DEFAULT 0,
+                      [TotalAmount] DECIMAL(18,2) NOT NULL DEFAULT 0,
+                      [TenantId] INT NULL,
+                      [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                      [UpdatedAt] DATETIME2 NULL,
+                      [IsDeleted] BIT NOT NULL DEFAULT 0,
+                      CONSTRAINT [FK_OutboundSupplies_OutboundReceipts] FOREIGN KEY ([OutboundReceiptId]) REFERENCES [OutboundReceipts] ([Id]) ON DELETE CASCADE
+                  );
+              END",
+
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'TenantId') ALTER TABLE [Users] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Roles') AND name = 'TenantId') ALTER TABLE [Roles] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Warehouses') AND name = 'TenantId') ALTER TABLE [Warehouses] ADD [TenantId] INT NULL;",

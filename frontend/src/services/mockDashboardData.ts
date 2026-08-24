@@ -14,8 +14,10 @@ export interface DashboardKpis {
   totalStockValue: KpiItem;
   todayInboundKg: KpiItem;
   todayInboundReceipts: KpiItem;
+  todayInboundValue?: KpiItem;
   todayOutboundKg: KpiItem;
   todayOutboundTransactions: KpiItem;
+  todayOutboundValue?: KpiItem;
   monthlyLossRate: KpiItem;
 }
 
@@ -23,6 +25,8 @@ export interface DailyFlowPoint {
   date: string;
   inboundKg: number;
   outboundKg: number;
+  inboundAmount?: number;
+  outboundAmount?: number;
 }
 
 export interface CategoryStockPoint {
@@ -36,8 +40,35 @@ export interface RecentTransaction {
   type: 'INBOUND' | 'OUTBOUND';
   time: string;
   partnerName: string;
+  batchCode?: string;
+  productName?: string;
+  itemCount?: number;
   weightKg: number;
   amount: number;
+  subTotal?: number;
+  suppliesTotal?: number;
+  discountAmount?: number;
+  discountReason?: string;
+  createdBy?: string;
+  supplies?: Array<{
+    name: string;
+    packagingCode?: string;
+    unit: string;
+    quantity: number;
+    unitPrice: number;
+    totalAmount: number;
+  }>;
+  items?: Array<{
+    batchCode: string;
+    productName: string;
+    netWeight: number;
+    tareWeight: number;
+    grossWeight: number;
+    packagingCode?: string;
+    packagingQty?: number;
+    unitPrice: number;
+    totalAmount: number;
+  }>;
 }
 
 export interface DashboardData {

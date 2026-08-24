@@ -159,7 +159,26 @@ export const OutboundPage: React.FC = () => {
     });
 
     const totalNetWeight = invoiceItems.reduce((s: number, i: any) => s + i.netWeight, 0);
-    const totalAmount = invoiceItems.reduce((s: number, i: any) => s + i.totalAmount, 0);
+    const subTotal = invoiceItems.reduce((s: number, i: any) => s + i.totalAmount, 0);
+    
+    // Vật phẩm bán kèm (Thùng xốp, phụ kiện...)
+    const formSupplies = values.supplies || [];
+    const suppliesItems = formSupplies
+      .filter((s: any) => s && s.name && s.quantity > 0)
+      .map((s: any) => ({
+        name: s.name,
+        packagingCode: s.packagingCode,
+        unit: s.unit || 'Cái',
+        quantity: Number(s.quantity) || 1,
+        unitPrice: Number(s.unitPrice) || 0,
+        totalAmount: (Number(s.quantity) || 1) * (Number(s.unitPrice) || 0),
+      }));
+    const suppliesTotal = suppliesItems.reduce((sum: number, s: any) => sum + s.totalAmount, 0);
+
+    // Giảm giá / Chiết khấu
+    const discountAmount = Number(values.discountAmount) || 0;
+    const discountReason = values.discountReason || '';
+    const finalTotalAmount = Math.max(0, subTotal + suppliesTotal - discountAmount);
 
     // Lưu vào SQL Server qua API
     await addTransaction({
@@ -168,7 +187,10 @@ export const OutboundPage: React.FC = () => {
       customerName: values.customer,
       reason: values.reason,
       totalWeightKg: totalNetWeight,
-      totalAmount,
+      totalAmount: finalTotalAmount,
+      subTotal,
+      discountAmount,
+      discountReason,
       createdBy: user?.name ?? 'Thủ kho',
       batches: items.map((i: any) => {
         const pkgWeight = packagings.find((p) => p.code === i.packagingCode)?.defaultTareWeight || 0;
@@ -188,7 +210,8 @@ export const OutboundPage: React.FC = () => {
           amount: i.totalPrice || 0,
         };
       }),
-    });
+      supplies: suppliesItems,
+    } as any);
 
     const printData: InvoicePrintData = {
       type: 'OUTBOUND',
@@ -198,8 +221,13 @@ export const OutboundPage: React.FC = () => {
       warehouseStaff: user?.name ?? 'Thủ kho',
       note: `Lý do xuất: ${values.reason}`,
       items: invoiceItems,
+      supplies: suppliesItems,
+      subTotal,
+      suppliesTotal,
+      discountAmount,
+      discountReason,
       totalNetWeight,
-      totalAmount,
+      totalAmount: finalTotalAmount,
     };
 
     setInvoiceData(printData);
@@ -258,7 +286,10 @@ export const OutboundPage: React.FC = () => {
           initialValues={{
             outboundDate: dayjs(),
             reason: 'Bán hàng',
+            discountAmount: 0,
+            discountReason: '',
             items: [{ seafoodCode: undefined, batchCode: undefined, quantity: 0, unitPrice: 0, totalPrice: 0, expiryDate: '' }],
+            supplies: [],
           }}
         >
           <Card title="Thông tin phiếu xuất" className="shadow-sm mb-6">
@@ -285,7 +316,8 @@ export const OutboundPage: React.FC = () => {
             </Row>
           </Card>
 
-          <Card title="Chi tiết sản phẩm xuất" className="shadow-sm mb-6">
+          {/* 1. Danh sách hải sản xuất kho */}
+          <Card title="1. Chi tiết hải sản xuất kho (Theo Lô &amp; FEFO)" className="shadow-sm mb-6">
             <Form.List name="items">
               {(fields, { add, remove }) => (
                 <div className="space-y-4">
@@ -458,11 +490,206 @@ export const OutboundPage: React.FC = () => {
                   })}
 
                   <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} className="py-4">
-                    Thêm mặt hàng xuất kho
+                    Thêm mặt hàng hải sản xuất kho
                   </Button>
                 </div>
               )}
             </Form.List>
+          </Card>
+
+          {/* 2. Vật phẩm bán kèm & Phụ phí (Thùng xốp, đá gel...) */}
+          <Card
+            title={
+              <div className="flex items-center gap-2">
+                <span>📦 2. Vật phẩm bán kèm &amp; Phụ phí đóng gói (Thùng xốp, đá gel...)</span>
+                <Tag color="cyan">Tùy chọn</Tag>
+              </div>
+            }
+            className="shadow-sm mb-6"
+          >
+            <Form.List name="supplies">
+              {(fields, { add, remove }) => (
+                <div className="space-y-3">
+                  {fields.map(({ key, name, ...restField }) => (
+                    <Card key={key} size="small" type="inner" className="bg-slate-50 border border-slate-200">
+                      <Row gutter={[12, 12]} align="middle">
+                        <Col xs={24} md={8}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'name']}
+                            label="Tên vật phẩm / Dịch vụ kèm"
+                            rules={[{ required: true, message: 'Nhập tên vật phẩm!' }]}
+                          >
+                            <Select
+                              placeholder="Chọn vật phẩm hoặc tự gõ..."
+                              showSearch
+                              allowClear
+                              onChange={(val) => {
+                                const pkg = packagings.find((p) => p.name === val || p.code === val);
+                                const supplies = form.getFieldValue('supplies') || [];
+                                if (supplies[name] && pkg) {
+                                  supplies[name].name = pkg.name;
+                                  supplies[name].packagingCode = pkg.code;
+                                  supplies[name].unit = pkg.unit || 'Cái';
+                                  form.setFieldsValue({ supplies });
+                                }
+                              }}
+                              options={[
+                                ...packagings.map((p) => ({ label: `[${p.code}] ${p.name}`, value: p.name })),
+                                { label: 'Thùng xốp nhỏ (10kg)', value: 'Thùng xốp nhỏ (10kg)' },
+                                { label: 'Thùng xốp trung (20kg)', value: 'Thùng xốp trung (20kg)' },
+                                { label: 'Thùng xốp lớn (30kg)', value: 'Thùng xốp lớn (30kg)' },
+                                { label: 'Túi hút chân không', value: 'Túi hút chân không' },
+                                { label: 'Đá gel bảo quản', value: 'Đá gel bảo quản' },
+                                { label: 'Công sơ chế / Cắt lát', value: 'Công sơ chế / Cắt lát' },
+                                { label: 'Phí vận chuyển giao hàng', value: 'Phí vận chuyển giao hàng' },
+                              ]}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={12} md={3}>
+                          <Form.Item {...restField} name={[name, 'unit']} label="Đơn vị">
+                            <Input placeholder="Cái/Thùng" defaultValue="Cái" />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={12} md={3}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'quantity']}
+                            label="Số lượng"
+                            rules={[{ required: true, message: 'SL!' }]}
+                          >
+                            <InputNumber
+                              min={1}
+                              precision={0}
+                              className="w-full"
+                              onChange={(qty) => {
+                                const supplies = form.getFieldValue('supplies') || [];
+                                const item = supplies[name];
+                                if (item) {
+                                  item.totalAmount = (qty || 0) * (item.unitPrice || 0);
+                                  form.setFieldsValue({ supplies });
+                                }
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={12} md={4}>
+                          <Form.Item {...restField} name={[name, 'unitPrice']} label="Đơn giá (đ)">
+                            <InputNumber
+                              min={0}
+                              className="w-full"
+                              formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
+                              onChange={(price) => {
+                                const supplies = form.getFieldValue('supplies') || [];
+                                const item = supplies[name];
+                                if (item) {
+                                  item.totalAmount = (item.quantity || 0) * (price || 0);
+                                  form.setFieldsValue({ supplies });
+                                }
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={10} md={4}>
+                          <Form.Item {...restField} name={[name, 'totalAmount']} label="Thành tiền (đ)">
+                            <InputNumber
+                              disabled
+                              className="w-full font-semibold"
+                              formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={2} md={2} className="flex items-end justify-center pt-6">
+                          <Button danger type="text" icon={<DeleteOutlined />} onClick={() => remove(name)} />
+                        </Col>
+                      </Row>
+                    </Card>
+                  ))}
+
+                  <Button
+                    type="dashed"
+                    onClick={() => add({ name: '', unit: 'Cái', quantity: 1, unitPrice: 0, totalAmount: 0 })}
+                    block
+                    icon={<PlusOutlined />}
+                  >
+                    + Thêm thùng xốp / đá gel / vật phẩm kèm
+                  </Button>
+                </div>
+              )}
+            </Form.List>
+          </Card>
+
+          {/* 3. Chiết khấu & Tổng kết đơn hàng */}
+          <Card title="3. Chiết khấu &amp; Tổng kết thanh toán" className="shadow-sm mb-6 bg-gradient-to-br from-slate-50 to-sky-50/30">
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={12}>
+                <Row gutter={12}>
+                  <Col xs={24} sm={12}>
+                    <Form.Item name="discountAmount" label="Số tiền giảm giá / Chiết khấu (VNĐ)">
+                      <InputNumber
+                        min={0}
+                        className="w-full"
+                        placeholder="Ví dụ: 50,000"
+                        formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item name="discountReason" label="Lý do / Mã Voucher giảm giá">
+                      <Input placeholder="VIP-10%, Khai trương, Khách quen..." />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </Col>
+
+              <Col xs={24} md={12}>
+                <Form.Item shouldUpdate noStyle>
+                  {() => {
+                    const formValues = form.getFieldsValue();
+                    const items = formValues.items || [];
+                    const supplies = formValues.supplies || [];
+                    const discount = Number(formValues.discountAmount) || 0;
+
+                    const seafoodTotal = items.reduce((s: number, i: any) => s + (Number(i?.totalPrice) || 0), 0);
+                    const totalWeight = items.reduce((s: number, i: any) => s + (Number(i?.quantity) || 0), 0);
+                    const suppliesTotal = supplies.reduce((s: number, sup: any) => s + (Number(sup?.totalAmount) || (Number(sup?.quantity || 0) * Number(sup?.unitPrice || 0))), 0);
+                    const grandTotal = Math.max(0, seafoodTotal + suppliesTotal - discount);
+
+                    return (
+                      <div className="bg-white p-4 rounded-xl border border-sky-200 shadow-sm space-y-2">
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>Tổng khối lượng hải sản:</span>
+                          <span className="font-semibold text-slate-800">{totalWeight.toFixed(1)} kg</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>Tiền hàng hải sản:</span>
+                          <span className="font-semibold text-slate-800">{formatCurrency(seafoodTotal)}</span>
+                        </div>
+                        {suppliesTotal > 0 && (
+                          <div className="flex justify-between text-sm text-sky-600">
+                            <span>Tiền thùng xốp / vật phẩm kèm:</span>
+                            <span className="font-semibold">+{formatCurrency(suppliesTotal)}</span>
+                          </div>
+                        )}
+                        {discount > 0 && (
+                          <div className="flex justify-between text-sm text-rose-600">
+                            <span>Giảm giá / Voucher {formValues.discountReason ? `(${formValues.discountReason})` : ''}:</span>
+                            <span className="font-semibold">-{formatCurrency(discount)}</span>
+                          </div>
+                        )}
+                        <div className="border-t border-sky-100 pt-2 flex justify-between items-center">
+                          <span className="font-bold text-base text-sky-900">TỔNG THANH TOÁN:</span>
+                          <span className="text-2xl font-black text-emerald-600">{formatCurrency(grandTotal)}</span>
+                        </div>
+                      </div>
+                    );
+                  }}
+                </Form.Item>
+              </Col>
+            </Row>
           </Card>
 
           <div className="flex justify-end gap-4">
@@ -475,7 +702,7 @@ export const OutboundPage: React.FC = () => {
               disabled={fefoBatches.length === 0}
               style={{ background: '#0ea5e9', borderColor: '#0ea5e9' }}
             >
-              Xác nhận xuất kho
+              Xác nhận xuất kho &amp; In hóa đơn
             </Button>
           </div>
         </Form>
