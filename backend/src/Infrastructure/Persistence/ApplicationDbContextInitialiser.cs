@@ -257,16 +257,35 @@ public class ApplicationDbContextInitialiser
                     ""Id"" SERIAL PRIMARY KEY,
                     ""Code"" VARCHAR(50) NOT NULL,
                     ""Name"" VARCHAR(200) NOT NULL,
-                    ""Type"" VARCHAR(50) NOT NULL,
-                    ""TareWeightKg"" NUMERIC(18,2) NOT NULL,
-                    ""DepositPrice"" NUMERIC(18,2) NOT NULL DEFAULT 0,
-                    ""TotalQuantity"" INT NOT NULL DEFAULT 0,
-                    ""InUseQuantity"" INT NOT NULL DEFAULT 0,
+                    ""Category"" VARCHAR(50) NOT NULL DEFAULT 'CONTAINER',
+                    ""DefaultTareWeight"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""Unit"" VARCHAR(50) NOT NULL DEFAULT 'Cái',
+                    ""StockQuantity"" INT NOT NULL DEFAULT 0,
+                    ""Note"" VARCHAR(500) NULL,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Packagings' AND column_name = 'Category') THEN 
+                        ALTER TABLE ""Packagings"" ADD COLUMN ""Category"" VARCHAR(50) NOT NULL DEFAULT 'CONTAINER'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Packagings' AND column_name = 'DefaultTareWeight') THEN 
+                        ALTER TABLE ""Packagings"" ADD COLUMN ""DefaultTareWeight"" NUMERIC(18,2) NOT NULL DEFAULT 0; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Packagings' AND column_name = 'Unit') THEN 
+                        ALTER TABLE ""Packagings"" ADD COLUMN ""Unit"" VARCHAR(50) NOT NULL DEFAULT 'Cái'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Packagings' AND column_name = 'StockQuantity') THEN 
+                        ALTER TABLE ""Packagings"" ADD COLUMN ""StockQuantity"" INT NOT NULL DEFAULT 0; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Packagings' AND column_name = 'Note') THEN 
+                        ALTER TABLE ""Packagings"" ADD COLUMN ""Note"" VARCHAR(500) NULL; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""PackagingLoans"" (
                     ""Id"" SERIAL PRIMARY KEY,
