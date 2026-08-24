@@ -24,7 +24,13 @@ public class ApplicationDbContextInitialiser
             // Ignore if database already exists
         }
 
-        // Run DDL migrations independently
+        // Nếu là PostgreSQL (Supabase), EnsureCreatedAsync đã tự động tạo đầy đủ 100% bảng & quan hệ chuẩn PostgreSQL
+        if (_context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return;
+        }
+
+        // Run DDL migrations independently for SQL Server
         string[] ddlStatements = new[]
         {
             @"IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Settings')

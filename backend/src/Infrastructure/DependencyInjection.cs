@@ -15,8 +15,24 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("DefaultConnection") 
             ?? "Server=(localdb)\\mssqllocaldb;Database=SeafoodWarehouseDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
 
+        // Tự động nhận diện Supabase / PostgreSQL hoặc SQL Server
+        bool isPostgreSql = connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase) ||
+                            connectionString.Contains("postgres", StringComparison.OrdinalIgnoreCase) ||
+                            connectionString.Contains("5432") ||
+                            connectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase) ||
+                            connectionString.Contains("User Id=postgres", StringComparison.OrdinalIgnoreCase);
+
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(connectionString, b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+        {
+            if (isPostgreSql)
+            {
+                options.UseNpgsql(connectionString, b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
+            }
+            else
+            {
+                options.UseSqlServer(connectionString, b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
+            }
+        });
 
         services.AddHttpContextAccessor();
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
