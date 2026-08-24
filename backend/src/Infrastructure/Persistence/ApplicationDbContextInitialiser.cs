@@ -470,20 +470,60 @@ public class ApplicationDbContextInitialiser
 
                 @"CREATE TABLE IF NOT EXISTS ""AuditLogs"" (
                     ""Id"" SERIAL PRIMARY KEY,
-                    ""UserId"" INT NULL,
-                    ""UserName"" VARCHAR(100) NULL,
-                    ""Action"" VARCHAR(100) NOT NULL,
-                    ""EntityName"" VARCHAR(100) NOT NULL,
-                    ""EntityId"" VARCHAR(100) NULL,
+                    ""Timestamp"" VARCHAR(50) NOT NULL DEFAULT '',
+                    ""UserName"" VARCHAR(100) NOT NULL DEFAULT 'System',
+                    ""UserRole"" VARCHAR(100) NOT NULL DEFAULT 'Nhân viên',
+                    ""Action"" VARCHAR(100) NOT NULL DEFAULT 'UPDATE',
+                    ""TargetModule"" VARCHAR(100) NOT NULL DEFAULT 'Hệ thống',
+                    ""Details"" TEXT NOT NULL DEFAULT '',
+                    ""IpAddress"" VARCHAR(500) NOT NULL DEFAULT '127.0.0.1',
+                    ""Browser"" VARCHAR(500) NOT NULL DEFAULT 'Chrome',
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'SUCCESS',
+                    ""ExecutionDurationMs"" INT NOT NULL DEFAULT 0,
                     ""OldValues"" TEXT NULL,
                     ""NewValues"" TEXT NULL,
-                    ""IpAddress"" VARCHAR(50) NULL,
-                    ""UserAgent"" VARCHAR(500) NULL,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
-                );"
+                );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'Timestamp') THEN 
+                        ALTER TABLE ""AuditLogs"" ADD COLUMN ""Timestamp"" VARCHAR(50) NOT NULL DEFAULT ''; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'UserRole') THEN 
+                        ALTER TABLE ""AuditLogs"" ADD COLUMN ""UserRole"" VARCHAR(100) NOT NULL DEFAULT 'Nhân viên'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'TargetModule') THEN 
+                        ALTER TABLE ""AuditLogs"" ADD COLUMN ""TargetModule"" VARCHAR(100) NOT NULL DEFAULT 'Hệ thống'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'Details') THEN 
+                        ALTER TABLE ""AuditLogs"" ADD COLUMN ""Details"" TEXT NOT NULL DEFAULT ''; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'Browser') THEN 
+                        ALTER TABLE ""AuditLogs"" ADD COLUMN ""Browser"" VARCHAR(500) NOT NULL DEFAULT 'Chrome'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'Status') THEN 
+                        ALTER TABLE ""AuditLogs"" ADD COLUMN ""Status"" VARCHAR(50) NOT NULL DEFAULT 'SUCCESS'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'ExecutionDurationMs') THEN 
+                        ALTER TABLE ""AuditLogs"" ADD COLUMN ""ExecutionDurationMs"" INT NOT NULL DEFAULT 0; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'UserId') THEN 
+                        ALTER TABLE ""AuditLogs"" ALTER COLUMN ""UserId"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'EntityName') THEN 
+                        ALTER TABLE ""AuditLogs"" ALTER COLUMN ""EntityName"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'EntityId') THEN 
+                        ALTER TABLE ""AuditLogs"" ALTER COLUMN ""EntityId"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'UserAgent') THEN 
+                        ALTER TABLE ""AuditLogs"" ALTER COLUMN ""UserAgent"" DROP NOT NULL; 
+                    END IF; 
+                  END $$;"
             };
 
             foreach (var stmt in pgDdlStatements)
