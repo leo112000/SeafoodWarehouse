@@ -25,9 +25,349 @@ public class ApplicationDbContextInitialiser
             Console.WriteLine($"[Database Init Warning]: {ex.Message}");
         }
 
-        // Nếu là PostgreSQL (Npgsql), EnsureCreatedAsync đã tự động tạo đầy đủ 100% bảng & quan hệ chuẩn
+        // Nếu là PostgreSQL (Supabase / Npgsql), chạy DDL tạo bảng Postgres chắc chắn 100%
         if (_context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
         {
+            string[] pgDdlStatements = new[]
+            {
+                @"CREATE TABLE IF NOT EXISTS ""Tenants"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""Code"" VARCHAR(50) NOT NULL,
+                    ""Name"" VARCHAR(200) NOT NULL,
+                    ""Address"" VARCHAR(500) NULL,
+                    ""Phone"" VARCHAR(50) NULL,
+                    ""Email"" VARCHAR(100) NULL,
+                    ""TaxCode"" VARCHAR(50) NULL,
+                    ""LogoUrl"" VARCHAR(500) NULL,
+                    ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ""CreatedBy"" VARCHAR(100) NULL,
+                    ""UpdatedBy"" VARCHAR(100) NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""Settings"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""ExpiringAlertDays"" INT NOT NULL DEFAULT 15,
+                    ""TempDeviationThreshold"" DOUBLE PRECISION NOT NULL DEFAULT 3.0,
+                    ""DefaultSeafoodPrice"" NUMERIC(18,2) NOT NULL DEFAULT 250000,
+                    ""AutoRefreshIntervalSeconds"" INT NOT NULL DEFAULT 30,
+                    ""LowStockWarningPercent"" DOUBLE PRECISION NOT NULL DEFAULT 100.0,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""Users"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""Username"" VARCHAR(100) NOT NULL,
+                    ""PasswordHash"" VARCHAR(500) NOT NULL,
+                    ""FullName"" VARCHAR(200) NOT NULL,
+                    ""Email"" VARCHAR(100) NULL,
+                    ""Phone"" VARCHAR(50) NULL,
+                    ""Role"" VARCHAR(50) NOT NULL DEFAULT 'User',
+                    ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""Roles"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""Name"" VARCHAR(100) NOT NULL,
+                    ""Description"" VARCHAR(500) NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""RolePermissions"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""RoleId"" INT NOT NULL,
+                    ""PermissionName"" VARCHAR(100) NOT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""UserRoles"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""UserId"" INT NOT NULL,
+                    ""RoleId"" INT NOT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""Categories"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""Code"" VARCHAR(50) NOT NULL,
+                    ""Name"" VARCHAR(200) NOT NULL,
+                    ""Description"" VARCHAR(500) NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""Products"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""CategoryId"" INT NOT NULL,
+                    ""Code"" VARCHAR(50) NOT NULL,
+                    ""Name"" VARCHAR(200) NOT NULL,
+                    ""ScientificName"" VARCHAR(200) NULL,
+                    ""StorageType"" VARCHAR(50) NOT NULL DEFAULT 'FROZEN',
+                    ""TargetTemperature"" DOUBLE PRECISION NOT NULL DEFAULT -18.0,
+                    ""ReferencePrice"" NUMERIC(18,2) NOT NULL DEFAULT 250000,
+                    ""WarningDaysBeforeExpiry"" INT NOT NULL DEFAULT 15,
+                    ""MinimumStock"" NUMERIC(18,3) NOT NULL DEFAULT 100.0,
+                    ""Unit"" VARCHAR(50) NOT NULL DEFAULT 'kg',
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+                    ""Description"" VARCHAR(500) NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""Warehouses"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""Code"" VARCHAR(50) NOT NULL,
+                    ""Name"" VARCHAR(200) NOT NULL,
+                    ""Location"" VARCHAR(500) NOT NULL,
+                    ""Type"" INT NOT NULL DEFAULT 0,
+                    ""TargetTemperature"" DOUBLE PRECISION NOT NULL DEFAULT -18.0,
+                    ""MaxCapacityTon"" NUMERIC(18,2) NOT NULL DEFAULT 100.0,
+                    ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""LotBatches"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""ProductId"" INT NOT NULL,
+                    ""BatchCode"" VARCHAR(100) NOT NULL,
+                    ""InitialQuantity"" NUMERIC(18,3) NOT NULL,
+                    ""CurrentQuantity"" NUMERIC(18,3) NOT NULL,
+                    ""SupplierName"" VARCHAR(200) NULL,
+                    ""OriginLocation"" VARCHAR(200) NULL,
+                    ""CertificateCode"" VARCHAR(100) NULL,
+                    ""ProductionDate"" TIMESTAMP WITH TIME ZONE NOT NULL,
+                    ""ExpirationDate"" TIMESTAMP WITH TIME ZONE NOT NULL,
+                    ""UnitPrice"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""TareWeight"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""PackagingCode"" VARCHAR(50) NULL,
+                    ""PackagingQty"" INT NOT NULL DEFAULT 0,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'IN_STOCK',
+                    ""Note"" VARCHAR(500) NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""InventoryItems"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""WarehouseId"" INT NOT NULL,
+                    ""LotBatchId"" INT NOT NULL,
+                    ""Zone"" VARCHAR(50) NOT NULL,
+                    ""Rack"" VARCHAR(50) NOT NULL,
+                    ""Shelf"" VARCHAR(50) NOT NULL,
+                    ""Position"" VARCHAR(50) NOT NULL,
+                    ""Quantity"" NUMERIC(18,3) NOT NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""InventoryTransactions"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""ReferenceNumber"" VARCHAR(100) NOT NULL,
+                    ""Type"" INT NOT NULL,
+                    ""LotBatchId"" INT NOT NULL,
+                    ""SourceWarehouseId"" INT NOT NULL,
+                    ""DestinationWarehouseId"" INT NULL,
+                    ""Quantity"" NUMERIC(18,3) NOT NULL,
+                    ""TareWeight"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""GrossWeight"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""PackagingCode"" VARCHAR(50) NULL,
+                    ""PackagingQty"" INT NOT NULL DEFAULT 0,
+                    ""UnitPrice"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""TotalAmount"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""TransactionDate"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""CreatedBy"" VARCHAR(100) NOT NULL DEFAULT 'System',
+                    ""Note"" VARCHAR(500) NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""OutboundReceipts"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""ReferenceNumber"" VARCHAR(100) NOT NULL,
+                    ""CustomerName"" VARCHAR(200) NOT NULL,
+                    ""Reason"" VARCHAR(200) NOT NULL DEFAULT 'Bán hàng',
+                    ""TransactionDate"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""CreatedBy"" VARCHAR(100) NOT NULL DEFAULT 'Thủ kho',
+                    ""TotalWeightKg"" NUMERIC(18,3) NOT NULL DEFAULT 0,
+                    ""SubTotal"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""SuppliesTotal"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""DiscountAmount"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""DiscountReason"" VARCHAR(200) NULL,
+                    ""TotalAmount"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""Note"" TEXT NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""OutboundSupplies"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""OutboundReceiptId"" INT NOT NULL,
+                    ""Name"" VARCHAR(200) NOT NULL,
+                    ""PackagingCode"" VARCHAR(100) NULL,
+                    ""Unit"" VARCHAR(50) NOT NULL DEFAULT 'Cái',
+                    ""Quantity"" INT NOT NULL DEFAULT 1,
+                    ""UnitPrice"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""TotalAmount"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""Packagings"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""Code"" VARCHAR(50) NOT NULL,
+                    ""Name"" VARCHAR(200) NOT NULL,
+                    ""Type"" VARCHAR(50) NOT NULL,
+                    ""TareWeightKg"" NUMERIC(18,2) NOT NULL,
+                    ""DepositPrice"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""TotalQuantity"" INT NOT NULL DEFAULT 0,
+                    ""InUseQuantity"" INT NOT NULL DEFAULT 0,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""PackagingLoans"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""LoanCode"" VARCHAR(100) NOT NULL,
+                    ""PackagingId"" INT NOT NULL,
+                    ""BorrowerName"" VARCHAR(200) NOT NULL,
+                    ""BorrowerType"" VARCHAR(50) NOT NULL DEFAULT 'Customer',
+                    ""QuantityLoaned"" INT NOT NULL,
+                    ""QuantityReturned"" INT NOT NULL DEFAULT 0,
+                    ""DepositAmount"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""LoanDate"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""ExpectedReturnDate"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""ActualReturnDate"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'BORROWED',
+                    ""Note"" VARCHAR(500) NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""PackagingReturns"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""LoanId"" INT NOT NULL,
+                    ""QuantityReturned"" INT NOT NULL,
+                    ""RefundDepositAmount"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                    ""ReturnDate"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""ReceivedBy"" VARCHAR(100) NOT NULL DEFAULT 'Thủ kho',
+                    ""Note"" VARCHAR(500) NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""Partners"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""Code"" VARCHAR(50) NOT NULL,
+                    ""Name"" VARCHAR(200) NOT NULL,
+                    ""Type"" INT NOT NULL DEFAULT 0,
+                    ""Phone"" VARCHAR(50) NULL,
+                    ""Email"" VARCHAR(100) NULL,
+                    ""Address"" VARCHAR(500) NULL,
+                    ""TaxCode"" VARCHAR(50) NULL,
+                    ""ContactPerson"" VARCHAR(100) NULL,
+                    ""Note"" TEXT NULL,
+                    ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""AppNotifications"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""NotificationName"" VARCHAR(100) NOT NULL,
+                    ""Title"" VARCHAR(200) NOT NULL,
+                    ""Message"" TEXT NOT NULL,
+                    ""Severity"" VARCHAR(50) NOT NULL DEFAULT 'info',
+                    ""Link"" VARCHAR(500) NULL,
+                    ""DataJson"" TEXT NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""UserNotifications"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""UserId"" INT NOT NULL,
+                    ""NotificationId"" INT NOT NULL,
+                    ""State"" INT NOT NULL DEFAULT 0,
+                    ""ReadAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
+                @"CREATE TABLE IF NOT EXISTS ""AuditLogs"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""UserId"" INT NULL,
+                    ""UserName"" VARCHAR(100) NULL,
+                    ""Action"" VARCHAR(100) NOT NULL,
+                    ""EntityName"" VARCHAR(100) NOT NULL,
+                    ""EntityId"" VARCHAR(100) NULL,
+                    ""OldValues"" TEXT NULL,
+                    ""NewValues"" TEXT NULL,
+                    ""IpAddress"" VARCHAR(50) NULL,
+                    ""UserAgent"" VARCHAR(500) NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );"
+            };
+
+            foreach (var stmt in pgDdlStatements)
+            {
+                try
+                {
+                    await _context.Database.ExecuteSqlRawAsync(stmt);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Postgres DDL Info]: {ex.Message}");
+                }
+            }
+
             return;
         }
 
