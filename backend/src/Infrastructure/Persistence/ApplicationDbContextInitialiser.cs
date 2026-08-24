@@ -165,6 +165,7 @@ public class ApplicationDbContextInitialiser
                     ""CurrentQuantity"" NUMERIC(18,3) NOT NULL,
                     ""SupplierName"" VARCHAR(200) NULL,
                     ""OriginLocation"" VARCHAR(200) NULL,
+                    ""Grade"" INT NOT NULL DEFAULT 0,
                     ""CertificateCode"" VARCHAR(100) NULL,
                     ""ProductionDate"" TIMESTAMP WITH TIME ZONE NOT NULL,
                     ""ExpirationDate"" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -179,6 +180,13 @@ public class ApplicationDbContextInitialiser
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'LotBatches' AND column_name = 'Grade') THEN 
+                        ALTER TABLE ""LotBatches"" ADD COLUMN ""Grade"" INT NOT NULL DEFAULT 0; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""InventoryItems"" (
                     ""Id"" SERIAL PRIMARY KEY,
@@ -270,6 +278,12 @@ public class ApplicationDbContextInitialiser
 
                 @"DO $$ 
                   BEGIN 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Packagings' AND column_name = 'Type') THEN 
+                        ALTER TABLE ""Packagings"" ALTER COLUMN ""Type"" DROP NOT NULL; 
+                    END IF; 
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Packagings' AND column_name = 'TareWeightKg') THEN 
+                        ALTER TABLE ""Packagings"" ALTER COLUMN ""TareWeightKg"" DROP NOT NULL; 
+                    END IF; 
                     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Packagings' AND column_name = 'Category') THEN 
                         ALTER TABLE ""Packagings"" ADD COLUMN ""Category"" VARCHAR(50) NOT NULL DEFAULT 'CONTAINER'; 
                     END IF; 
