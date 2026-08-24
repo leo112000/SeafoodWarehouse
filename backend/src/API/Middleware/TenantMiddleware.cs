@@ -79,10 +79,17 @@ public class TenantMiddleware
 
     private static async Task SetDefaultTenantAsync(IApplicationDbContext dbContext, ICurrentTenant currentTenant)
     {
-        var defaultTenant = await dbContext.Tenants.FirstOrDefaultAsync(t => !t.IsDeleted);
-        if (defaultTenant != null)
+        try
         {
-            currentTenant.SetTenant(defaultTenant.Id, defaultTenant.Code, defaultTenant.Name);
+            var defaultTenant = await dbContext.Tenants.FirstOrDefaultAsync(t => !t.IsDeleted);
+            if (defaultTenant != null)
+            {
+                currentTenant.SetTenant(defaultTenant.Id, defaultTenant.Code, defaultTenant.Name);
+            }
+        }
+        catch
+        {
+            // Fail gracefully if database is still initializing
         }
     }
 }

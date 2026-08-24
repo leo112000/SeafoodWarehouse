@@ -17,14 +17,15 @@ public class ApplicationDbContextInitialiser
     {
         try
         {
+            // Tự động sinh bảng trên Supabase / PostgreSQL hoặc SQL Server
             await _context.Database.EnsureCreatedAsync();
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore if database already exists
+            Console.WriteLine($"[Database Init Warning]: {ex.Message}");
         }
 
-        // Nếu là PostgreSQL (Supabase), EnsureCreatedAsync đã tự động tạo đầy đủ 100% bảng & quan hệ chuẩn PostgreSQL
+        // Nếu là PostgreSQL (Npgsql), EnsureCreatedAsync đã tự động tạo đầy đủ 100% bảng & quan hệ chuẩn
         if (_context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
         {
             return;
