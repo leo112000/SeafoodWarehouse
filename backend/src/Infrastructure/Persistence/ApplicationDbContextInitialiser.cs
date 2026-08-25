@@ -961,6 +961,64 @@ public class ApplicationDbContextInitialiser
             }
         }
 
+        // 5.1. Seed Tài khoản Quản trị viên tối cao (Host Super Admin - TenantId = null)
+        var hostAdmin = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Email == "admin@gmail.com");
+
+        var adminRoleEntity = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
+
+        if (hostAdmin == null)
+        {
+            hostAdmin = new User
+            {
+                FullName = "Quản trị viên Hệ thống (Host Admin)",
+                Email = "admin@gmail.com",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("qazwsxedc@123A"),
+                Phone = "0900000000",
+                Status = "ACTIVE",
+                TenantId = null,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(hostAdmin);
+            await _context.SaveChangesAsync();
+
+            if (adminRoleEntity != null)
+            {
+                _context.UserRoles.Add(new UserRole
+                {
+                    UserId = hostAdmin.Id,
+                    RoleId = adminRoleEntity.Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            // Cập nhật lại mật khẩu chuẩn và TenantId = null nếu tài khoản đã tồn tại
+            hostAdmin.TenantId = null;
+            hostAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("qazwsxedc@123A");
+            hostAdmin.Status = "ACTIVE";
+            await _context.SaveChangesAsync();
+
+            if (adminRoleEntity != null)
+            {
+                var hasAdminRole = await _context.UserRoles
+                    .AnyAsync(ur => ur.UserId == hostAdmin.Id && ur.RoleId == adminRoleEntity.Id);
+                if (!hasAdminRole)
+                {
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        UserId = hostAdmin.Id,
+                        RoleId = adminRoleEntity.Id,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+
         // 6. Seed Mượn / Trả Bao bì (PackagingLoans & PackagingReturns)
         if (!await _context.PackagingLoans.AnyAsync())
         {

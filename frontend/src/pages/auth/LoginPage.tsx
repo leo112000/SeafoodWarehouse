@@ -210,15 +210,6 @@ export const LoginPage: React.FC = () => {
             </Button>
           </Form.Item>
         </Form>
-
-        <div className="mt-6 p-4 border border-dashed border-gray-300 dark:border-gray-700 rounded-md text-xs text-gray-500">
-          <p className="font-semibold mb-1">Tài khoản mẫu:</p>
-          <ul className="list-disc pl-4 space-y-1">
-            <li>Admin Hệ thống: <code className="font-semibold">admin@gmail.com</code> / <code className="font-semibold">admin123</code></li>
-            <li>Admin Chi nhánh (sau khi tạo mới Tenant): <code className="font-semibold">admin@tenancode.com</code> / <code className="font-semibold">Admin@123</code></li>
-            <li>Thủ kho: <code className="font-semibold">thukho@gmail.com</code> / <code className="font-semibold">thukho123</code></li>
-          </ul>
-        </div>
       </Card>
 
       {/* Modal Chuyển đổi Tenant (ABP Change Tenant Modal) */}
