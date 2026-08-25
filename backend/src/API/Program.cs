@@ -13,6 +13,9 @@ using SeafoodWarehouseManagement.Application.Common.Interfaces;
 using SeafoodWarehouseManagement.Infrastructure;
 using SeafoodWarehouseManagement.Infrastructure.Persistence;
 
+// Hỗ trợ lưu trữ DateTime tương thích PostgreSQL (Npgsql) trên Render/Supabase
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

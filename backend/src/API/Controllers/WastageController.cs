@@ -111,7 +111,7 @@ public class WastageController : BaseApiController
                 BatchCode = $"LOT-{lotBatch.Product?.Code}-NGOP-{DateTime.UtcNow:yyyyMMddHHmm}",
                 ProductId = lotBatch.ProductId,
                 ProductionDate = DateTime.UtcNow,
-                ExpirationDate = DateTime.TryParse(dto.NewExpiryDate, out var exp) ? exp : DateTime.UtcNow.AddDays(3),
+                ExpirationDate = DateTime.TryParse(dto.NewExpiryDate, out var exp) ? DateTime.SpecifyKind(exp, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(3),
                 InitialQuantity = dto.Weight,
                 CurrentQuantity = dto.Weight,
                 UnitPrice = dto.NewUnitPrice ?? (lotBatch.UnitPrice * 0.6m),

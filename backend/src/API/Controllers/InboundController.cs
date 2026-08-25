@@ -135,16 +135,16 @@ public class InboundController : BaseApiController
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        DateTime nowLocal = DateTime.UtcNow.AddHours(7);
-        DateTime txDate = nowLocal;
+        DateTime nowUtc = DateTime.UtcNow;
+        DateTime txDate = nowUtc;
 
         if (!string.IsNullOrWhiteSpace(request.InboundDate) && DateTime.TryParse(request.InboundDate, out var parsedInDate))
         {
-            txDate = new DateTime(parsedInDate.Year, parsedInDate.Month, parsedInDate.Day, nowLocal.Hour, nowLocal.Minute, nowLocal.Second, nowLocal.Millisecond);
+            txDate = DateTime.SpecifyKind(parsedInDate.Date.Add(nowUtc.TimeOfDay), DateTimeKind.Utc);
         }
 
         // Sinh mã phiếu duy nhất PNK-yyyyMMddHHmmss-XX không bao giờ trùng lặp
-        string refNo = $"PNK-{txDate:yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
+        string refNo = $"PNK-{txDate.AddHours(7):yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
 
         var category = await _context.Categories.FirstOrDefaultAsync(c => !c.IsDeleted, cancellationToken);
         if (category == null)
@@ -205,8 +205,8 @@ public class InboundController : BaseApiController
             {
                 BatchCode = bCode,
                 ProductId = product.Id,
-                ProductionDate = DateTime.TryParse(item.CatchDate, out var pDate) ? pDate : txDate,
-                ExpirationDate = DateTime.TryParse(item.ExpiryDate, out var eDate) ? eDate : txDate.AddMonths(6),
+                ProductionDate = DateTime.TryParse(item.CatchDate, out var pDate) ? DateTime.SpecifyKind(pDate, DateTimeKind.Utc) : txDate,
+                ExpirationDate = DateTime.TryParse(item.ExpiryDate, out var eDate) ? DateTime.SpecifyKind(eDate, DateTimeKind.Utc) : txDate.AddMonths(6),
                 InitialQuantity = netQty,
                 CurrentQuantity = netQty,
                 UnitPrice = item.UnitPrice > 0 ? item.UnitPrice : (product.ReferencePrice > 0 ? product.ReferencePrice : 250000m),

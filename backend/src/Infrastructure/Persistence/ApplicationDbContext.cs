@@ -55,6 +55,20 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             }
         }
 
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
+            {
+                foreach (var property in entry.Properties)
+                {
+                    if (property.CurrentValue is DateTime dt && dt.Kind == DateTimeKind.Unspecified)
+                    {
+                        property.CurrentValue = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+                    }
+                }
+            }
+        }
+
         return base.SaveChangesAsync(cancellationToken);
     }
 

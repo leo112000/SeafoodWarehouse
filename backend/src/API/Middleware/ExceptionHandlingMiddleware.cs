@@ -39,7 +39,8 @@ public class ExceptionHandlingMiddleware
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
-            await HandleExceptionAsync(context, HttpStatusCode.InternalServerError, "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại sau.");
+            var errorMessage = ex.InnerException != null ? $"{ex.Message} -> {ex.InnerException.Message}" : ex.Message;
+            await HandleExceptionAsync(context, HttpStatusCode.InternalServerError, errorMessage);
         }
     }
 

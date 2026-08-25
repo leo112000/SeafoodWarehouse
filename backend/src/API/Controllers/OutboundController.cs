@@ -220,16 +220,16 @@ public class OutboundController : BaseApiController
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        DateTime nowLocal = DateTime.UtcNow.AddHours(7);
-        DateTime txDate = nowLocal;
+        DateTime nowUtc = DateTime.UtcNow;
+        DateTime txDate = nowUtc;
 
         if (!string.IsNullOrWhiteSpace(request.Date) && DateTime.TryParse(request.Date, out var parsedDate))
         {
-            txDate = new DateTime(parsedDate.Year, parsedDate.Month, parsedDate.Day, nowLocal.Hour, nowLocal.Minute, nowLocal.Second, nowLocal.Millisecond);
+            txDate = DateTime.SpecifyKind(parsedDate.Date.Add(nowUtc.TimeOfDay), DateTimeKind.Utc);
         }
 
         // Sinh mã phiếu duy nhất PXK-yyyyMMddHHmmss-XX không bao giờ trùng lặp
-        string refNo = $"PXK-{txDate:yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
+        string refNo = $"PXK-{txDate.AddHours(7):yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
 
         // 1. Tính toán tài chính chuẩn
         decimal seafoodSubTotal = 0;
