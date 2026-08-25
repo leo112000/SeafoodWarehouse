@@ -58,13 +58,16 @@ public class UsersController : BaseApiController
     public async Task<ActionResult<Result<List<UserDto>>>> GetAll(CancellationToken cancellationToken = default)
     {
         var users = await _context.Users
+            .IgnoreQueryFilters()
             .Where(u => !u.IsDeleted)
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
+            .AsNoTracking()
             .ToListAsync(cancellationToken);
 
         var tenants = await _context.Tenants
             .IgnoreQueryFilters()
+            .AsNoTracking()
             .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
 
         var dtos = users.Select(u => new UserDto
@@ -90,6 +93,7 @@ public class UsersController : BaseApiController
     public async Task<ActionResult<Result<UserDto>>> GetById(int id, CancellationToken cancellationToken = default)
     {
         var user = await _context.Users
+            .IgnoreQueryFilters()
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
@@ -112,13 +116,16 @@ public class UsersController : BaseApiController
             Name = user.FullName,
             Email = user.Email,
             Phone = user.Phone,
-            Status = user.Status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase) ? "Active" : "Blocked",
+            Status = uStatusToClient(user.Status),
             Roles = user.UserRoles.Select(ur => ur.Role.Name).ToList(),
             TenantName = tenantName
         };
 
         return Ok(Result<UserDto>.Success(dto));
     }
+
+    private static string uStatusToClient(string status) =>
+        status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase) ? "Active" : "Blocked";
 
     /// <summary>
     /// Tạo mới nhân viên
@@ -131,7 +138,7 @@ public class UsersController : BaseApiController
             return BadRequest(Result<UserDto>.Failure("Tên và Email không được để trống."));
         }
 
-        var exists = await _context.Users.AnyAsync(u => u.Email == request.Email && !u.IsDeleted, cancellationToken);
+        var exists = await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == request.Email && !u.IsDeleted, cancellationToken);
         if (exists)
         {
             return BadRequest(Result<UserDto>.Failure("Email này đã được sử dụng."));
@@ -153,7 +160,7 @@ public class UsersController : BaseApiController
         // Assign Roles
         if (request.Roles != null && request.Roles.Count > 0)
         {
-            var dbRoles = await _context.Roles.Where(r => request.Roles.Contains(r.Name)).ToListAsync(cancellationToken);
+            var dbRoles = await _context.Roles.IgnoreQueryFilters().Where(r => request.Roles.Contains(r.Name)).ToListAsync(cancellationToken);
             foreach (var role in dbRoles)
             {
                 _context.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
@@ -182,6 +189,7 @@ public class UsersController : BaseApiController
     public async Task<ActionResult<Result<UserDto>>> Update(int id, [FromBody] UpdateUserRequestDto request, CancellationToken cancellationToken = default)
     {
         var user = await _context.Users
+            .IgnoreQueryFilters()
             .Include(u => u.UserRoles)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
@@ -198,7 +206,7 @@ public class UsersController : BaseApiController
         _context.UserRoles.RemoveRange(user.UserRoles);
         if (request.Roles != null && request.Roles.Count > 0)
         {
-            var dbRoles = await _context.Roles.Where(r => request.Roles.Contains(r.Name)).ToListAsync(cancellationToken);
+            var dbRoles = await _context.Roles.IgnoreQueryFilters().Where(r => request.Roles.Contains(r.Name)).ToListAsync(cancellationToken);
             foreach (var role in dbRoles)
             {
                 _context.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
@@ -227,7 +235,7 @@ public class UsersController : BaseApiController
     [HttpPatch("{id}/status")]
     public async Task<ActionResult<Result<bool>>> ToggleStatus(int id, CancellationToken cancellationToken = default)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
+        var user = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
         if (user == null)
         {
             return NotFound(Result<bool>.Failure("Không tìm thấy nhân viên."));
@@ -245,7 +253,7 @@ public class UsersController : BaseApiController
     [HttpDelete("{id}")]
     public async Task<ActionResult<Result<bool>>> Delete(int id, CancellationToken cancellationToken = default)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
+        var user = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
         if (user == null)
         {
             return NotFound(Result<bool>.Failure("Không tìm thấy nhân viên."));
