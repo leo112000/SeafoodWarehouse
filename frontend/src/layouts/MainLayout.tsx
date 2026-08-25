@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popconfirm, Popover, Tag, theme } from 'antd';
+import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popconfirm, Popover, Tag, theme, App } from 'antd';
 import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, TeamOutlined, UserOutlined, QrcodeOutlined, CompassOutlined } from '@ant-design/icons';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { usePermission } from '../components/PermissionGuard';
 import { UserProfileModal } from '../components/user/UserProfileModal';
 import { ChangePasswordModal } from '../components/user/ChangePasswordModal';
 import { HandheldScannerModal } from '../components/common/HandheldScannerModal';
+import { MultiTabBar } from '../components/layout/MultiTabBar';
+import { TabContentRenderer } from '../components/layout/TabContentRenderer';
+import { useTabStore } from '../stores/useTabStore';
 import { useSystemNotifications } from '../hooks/useSystemNotifications';
 
 const { Header, Sider, Content } = Layout;
@@ -15,6 +18,7 @@ const { Header, Sider, Content } = Layout;
 const roleMeta = (role: string) => role === 'Admin' ? { label: 'Admin', color: 'blue' } : role === 'Thukho' ? { label: 'Thủ kho', color: 'orange' } : { label: 'Nhân viên', color: 'green' };
 
 export const MainLayout: React.FC = () => {
+  const { message } = App.useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -52,13 +56,59 @@ export const MainLayout: React.FC = () => {
   // Real-time system notifications from database
   const { notifications: systemNotifications, unreadCount, markAsRead, markAllAsRead } = useSystemNotifications();
 
+  const addTab = useTabStore((state) => state.addTab);
+  const setActiveKey = useTabStore((state) => state.setActiveKey);
+
+  // Map route to human-readable title
+  const getRouteTitle = (path: string): string => {
+    switch (path) {
+      case '/':
+      case '/dashboard': return 'Bảng điều khiển';
+      case '/inventory': return 'Tồn kho hiện tại';
+      case '/inventory/map': return 'Sơ đồ kho 2D';
+      case '/inventory/inbound': return 'Nhập kho hải sản';
+      case '/inventory/outbound': return 'Xuất kho hải sản';
+      case '/inventory/history': return 'Lịch sử giao dịch';
+      case '/inventory/wastage': return 'Hao hụt & Phân loại';
+      case '/inventory/packaging-return': return 'Thu hồi vỏ sọt';
+      case '/master-data/categories': return 'Nhóm danh mục';
+      case '/master-data/products': return 'Danh mục hải sản';
+      case '/master-data/warehouses': return 'Danh mục kho bãi';
+      case '/master-data/packaging': return 'Danh mục bao bì';
+      case '/master-data/partners': return 'Đối tác & Tàu cá';
+      case '/reports/summary': return 'Thống kê tổng hợp';
+      case '/reports/alerts': return 'Cảnh báo & Hao hụt';
+      case '/system/tenants': return 'Cửa hàng & Chi nhánh';
+      case '/system/users': return 'Quản lý nhân viên';
+      case '/system/roles': return 'Vai trò & Phân quyền';
+      case '/system/audit-logs': return 'Nhật ký hệ thống';
+      case '/system/settings': return 'Cài đặt hệ thống';
+      default: return path.split('/').filter(Boolean).pop() || 'Trang';
+    }
+  };
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  useEffect(() => { setDrawerVisible(false); }, [location.pathname]);
+
+  useEffect(() => {
+    setDrawerVisible(false);
+    if (location.pathname && location.pathname !== '/login') {
+      const added = addTab({
+        key: location.pathname,
+        title: getRouteTitle(location.pathname),
+      });
+
+      if (added) {
+        setActiveKey(location.pathname);
+      } else {
+        message.warning('Bạn đã mở tối đa 7 tab! Vui lòng đóng bớt các tab không dùng để mở tab mới.');
+      }
+    }
+  }, [location.pathname, addTab, setActiveKey, message]);
 
   const handleLogout = () => { setProfileOpen(false); logout(); navigate('/login', { replace: true }); };
   const openProfile = () => { setProfileOpen(false); setProfileModalOpen(true); };
@@ -270,6 +320,7 @@ export const MainLayout: React.FC = () => {
               )}
             </div>
           </Header>
+          <MultiTabBar />
           <Content
             className="m-3 md:m-6 p-4 md:p-6 min-h-[280px]"
             style={{
@@ -277,7 +328,7 @@ export const MainLayout: React.FC = () => {
               borderRadius: borderRadiusLG,
             }}
           >
-            <Outlet />
+            <TabContentRenderer />
           </Content>
         </Layout>
       </Layout>
