@@ -10,7 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTabStore, type TabItem } from '../../stores/useTabStore';
 
 export const MultiTabBar: React.FC = () => {
-  const { tabs, activeKey, removeTab, closeOtherTabs, closeAllTabs, maxTabs } = useTabStore();
+  const { tabs, activeKey, removeTab, closeOtherTabs, closeAllTabs } = useTabStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -112,7 +112,7 @@ export const MultiTabBar: React.FC = () => {
 
       <div className="hidden sm:flex items-center gap-2 pl-3 pb-1 text-xs text-gray-400">
         <span className="px-2 py-0.5 rounded bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 font-medium">
-          {tabs.length}/{maxTabs} tabs
+          {tabs.length} tabs
         </span>
         {tabs.length > 1 && (
           <Button

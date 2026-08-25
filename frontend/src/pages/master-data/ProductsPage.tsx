@@ -7,7 +7,7 @@ import {
   PlusOutlined, EditOutlined, DeleteOutlined,
   FireOutlined, SlidersOutlined, DropboxOutlined,
   SunOutlined, BarChartOutlined, CheckCircleOutlined,
-  FileOutlined,
+  FileOutlined, SearchOutlined, ReloadOutlined,
 } from '@ant-design/icons';
 import type { Product } from '../../types/seafood';
 import { formatCurrency } from '../../utils/format';
@@ -49,6 +49,12 @@ export const ProductsPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [storageFilter, setStorageFilter] = useState<Product['storageType'] | 'ALL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [appliedFilters, setAppliedFilters] = useState({
+    search: '',
+    category: 'ALL',
+    storage: 'ALL' as Product['storageType'] | 'ALL',
+    status: 'ALL' as 'ALL' | 'ACTIVE' | 'INACTIVE',
+  });
   const [selectedProductQr, setSelectedProductQr] = useState<Product | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
@@ -64,17 +70,43 @@ export const ProductsPage: React.FC = () => {
   const frozenCount = useMemo(() => products.filter(p => p.storageType === 'FROZEN').length, [products]);
   const categoryCount = useMemo(() => new Set(products.map(p => p.categoryId)).size, [products]);
 
+  // ── filter handlers ─────────────────────────────────────────────────────────
+  const handleFilter = () => {
+    setAppliedFilters({
+      search: searchQuery,
+      category: categoryFilter,
+      storage: storageFilter,
+      status: statusFilter,
+    });
+    setPagination((prev) => ({ ...prev, current: 1 }));
+  };
+
+  const handleReset = () => {
+    setSearchQuery('');
+    setCategoryFilter('ALL');
+    setStorageFilter('ALL');
+    setStatusFilter('ALL');
+    setAppliedFilters({
+      search: '',
+      category: 'ALL',
+      storage: 'ALL',
+      status: 'ALL',
+    });
+    setPagination((prev) => ({ ...prev, current: 1 }));
+    fetchProducts();
+  };
+
   // ── filtered list ────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     return products.filter((p) => {
-      const q = searchQuery.toLowerCase();
+      const q = appliedFilters.search.trim().toLowerCase();
       const matchSearch = !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
-      const matchCategory = categoryFilter === 'ALL' || p.categoryId === categoryFilter;
-      const matchStorage = storageFilter === 'ALL' || p.storageType === storageFilter;
-      const matchStatus = statusFilter === 'ALL' || p.status === statusFilter;
+      const matchCategory = appliedFilters.category === 'ALL' || p.categoryId === appliedFilters.category;
+      const matchStorage = appliedFilters.storage === 'ALL' || p.storageType === appliedFilters.storage;
+      const matchStatus = appliedFilters.status === 'ALL' || p.status === appliedFilters.status;
       return matchSearch && matchCategory && matchStorage && matchStatus;
     });
-  }, [products, searchQuery, categoryFilter, storageFilter, statusFilter]);
+  }, [products, appliedFilters]);
 
   // ── CRUD handlers ─────────────────────────────────────────────────────────────
   const openAdd = () => {
@@ -340,16 +372,19 @@ export const ProductsPage: React.FC = () => {
       <Card bordered={false} className="shadow-sm">
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-5 items-center">
-          <Input.Search
+          <Input
             placeholder="Tìm theo tên hoặc mã hàng..."
+            prefix={<SearchOutlined />}
+            value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
+            onPressEnter={handleFilter}
             allowClear
-            className="w-60"
+            className="w-full sm:w-60"
           />
           <Select
             value={categoryFilter}
             onChange={setCategoryFilter}
-            className="w-44"
+            className="w-full sm:w-44"
             options={[
               { value: 'ALL', label: 'Tất cả danh mục' },
               ...categories.map(c => ({ value: c.id, label: c.name })),
@@ -358,7 +393,7 @@ export const ProductsPage: React.FC = () => {
           <Select
             value={storageFilter}
             onChange={setStorageFilter}
-            className="w-40"
+            className="w-full sm:w-40"
             options={[
               { value: 'ALL', label: 'Tất cả bảo quản' },
               ...Object.entries(STORAGE_TYPE_CONFIG).map(([k, v]) => ({ value: k, label: v.label })),
@@ -367,13 +402,19 @@ export const ProductsPage: React.FC = () => {
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
-            className="w-44"
+            className="w-full sm:w-44"
             options={[
               { value: 'ALL', label: 'Tất cả trạng thái' },
               { value: 'ACTIVE', label: 'Đang hoạt động' },
               { value: 'INACTIVE', label: 'Ngừng kinh doanh' },
             ]}
           />
+          <Button type="primary" icon={<SearchOutlined />} onClick={handleFilter}>
+            Lọc Dữ Liệu
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={handleReset}>
+            Đặt lại
+          </Button>
         </div>
 
         <Table

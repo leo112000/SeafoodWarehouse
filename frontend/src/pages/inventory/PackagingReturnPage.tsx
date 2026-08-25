@@ -46,10 +46,10 @@ const PackagingReturnPage: React.FC = () => {
   const [loanForm] = Form.useForm();
 
   // ── derived stats ────────────────────────────────────────────────────────────
-  const totalLoaned   = useMemo(() => loans.reduce((s, l) => s + l.loanedQty, 0), [loans]);
+  const totalLoaned = useMemo(() => loans.reduce((s, l) => s + l.loanedQty, 0), [loans]);
   const totalReturned = useMemo(() => loans.reduce((s, l) => s + l.returnedQty, 0), [loans]);
-  const totalDebt     = totalLoaned - totalReturned;
-  const pendingLoans  = loans.filter((l) => l.loanedQty > l.returnedQty).length;
+  const totalDebt = totalLoaned - totalReturned;
+  const pendingLoans = loans.filter((l) => l.loanedQty > l.returnedQty).length;
 
   // ── unique partner list for filter ───────────────────────────────────────────
   const partners = useMemo(() => {
@@ -492,6 +492,7 @@ const PackagingReturnPage: React.FC = () => {
         open={loanModalOpen}
         onCancel={() => { setLoanModalOpen(false); loanForm.resetFields(); }}
         footer={null}
+        width={850}
         destroyOnClose
       >
         <Form

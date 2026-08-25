@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popconfirm, Popover, Tag, theme, App } from 'antd';
-import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, TeamOutlined, UserOutlined, QrcodeOutlined } from '@ant-design/icons';
+import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popconfirm, Popover, Tag, theme, Tooltip } from 'antd';
+import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, TeamOutlined, UserOutlined, QrcodeOutlined, PhoneOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -13,12 +13,11 @@ import { TabContentRenderer } from '../components/layout/TabContentRenderer';
 import { useTabStore } from '../stores/useTabStore';
 import { useSystemNotifications } from '../hooks/useSystemNotifications';
 
-const { Header, Sider, Content } = Layout;
+const { Header, Sider, Content, Footer } = Layout;
 
 const roleMeta = (role: string) => role === 'Admin' ? { label: 'Admin', color: 'blue' } : role === 'Thukho' ? { label: 'Thủ kho', color: 'orange' } : { label: 'Nhân viên', color: 'green' };
 
 export const MainLayout: React.FC = () => {
-  const { message } = App.useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -58,7 +57,6 @@ export const MainLayout: React.FC = () => {
 
   const addTab = useTabStore((state) => state.addTab);
   const setActiveKey = useTabStore((state) => state.setActiveKey);
-  const MAX_TABS_LIMIT = useTabStore((state) => state.maxTabs);
   // Map route to human-readable title
   const getRouteTitle = (path: string): string => {
     switch (path) {
@@ -97,18 +95,13 @@ export const MainLayout: React.FC = () => {
   useEffect(() => {
     setDrawerVisible(false);
     if (location.pathname && location.pathname !== '/login') {
-      const added = addTab({
+      addTab({
         key: location.pathname,
         title: getRouteTitle(location.pathname),
       });
-
-      if (added) {
-        setActiveKey(location.pathname);
-      } else {
-        message.warning(`Bạn đã mở tối đa ${MAX_TABS_LIMIT} tab! Vui lòng đóng bớt các tab không dùng để mở tab mới.`);
-      }
+      setActiveKey(location.pathname);
     }
-  }, [location.pathname, addTab, setActiveKey, message]);
+  }, [location.pathname, addTab, setActiveKey]);
 
   const handleLogout = () => { setProfileOpen(false); logout(); navigate('/login', { replace: true }); };
   const openProfile = () => { setProfileOpen(false); setProfileModalOpen(true); };
@@ -235,7 +228,6 @@ export const MainLayout: React.FC = () => {
             collapsedWidth={80}
             theme="dark"
             style={{
-              overflowY: 'auto',
               height: '100vh',
               position: 'sticky',
               top: 0,
@@ -243,24 +235,63 @@ export const MainLayout: React.FC = () => {
               zIndex: 100,
             }}
           >
-            <div className="p-4 text-white text-center font-bold text-lg overflow-hidden whitespace-nowrap sticky top-0 bg-[#001529] z-10">
-              {collapsed ? '🚢' : '🚢 KHO HẢI SẢN'}
+            <div className="flex flex-col h-full">
+              <div className="p-4 text-white text-center font-bold text-lg overflow-hidden whitespace-nowrap bg-[#001529] z-10 flex-shrink-0 border-b border-slate-800">
+                {collapsed ? '🚢' : '🚢 KHO HẢI SẢN'}
+              </div>
+              <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                <Menu
+                  theme="dark"
+                  mode="inline"
+                  selectedKeys={[location.pathname]}
+                  defaultOpenKeys={
+                    location.pathname.startsWith('/master-data')
+                      ? ['/master-data']
+                      : location.pathname.startsWith('/reports')
+                        ? ['/reports']
+                        : location.pathname.startsWith('/system')
+                          ? ['/system']
+                          : []
+                  }
+                  items={menuItems}
+                />
+              </div>
+              {/* Sidebar Footer */}
+              <div className="flex-shrink-0 p-3 bg-[#000c17] border-t border-slate-800/80 text-gray-400 text-xs text-center">
+                {collapsed ? (
+                  <div className="flex flex-col items-center justify-center py-1">
+                    <Tooltip
+                      title={
+                        <div>
+                          <div className="font-semibold text-white">Hotline: 0965540075</div>
+                          <div className="text-gray-300">Hỗ trợ kỹ thuật 24/7</div>
+                          <div className="text-gray-400 mt-1">Phát triển: Leo11</div>
+                        </div>
+                      }
+                      placement="right"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-sky-400 cursor-pointer hover:bg-slate-700 transition-colors">
+                        <PhoneOutlined />
+                      </div>
+                    </Tooltip>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 px-1 flex flex-col items-center justify-center text-center">
+                    <div className="flex items-center justify-center gap-2 text-sky-400 font-semibold">
+                      <PhoneOutlined className="animate-pulse" />
+                      <span>Hotline: <a href="tel:0965540075" className="text-sky-300 hover:underline font-bold">0965540075</a></span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 text-[11px] text-gray-400">
+                      <span>Hỗ trợ kỹ thuật 24/7</span>
+                      <span className="text-slate-500">• v1.0</span>
+                    </div>
+                    <div className="text-[11px] text-gray-400 pt-1 border-t border-slate-800/60 w-full text-center">
+                      👨‍💻 Người thực hiện: <span className="text-gray-300 font-medium">{'Leo11'}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <Menu
-              theme="dark"
-              mode="inline"
-              selectedKeys={[location.pathname]}
-              defaultOpenKeys={
-                location.pathname.startsWith('/master-data')
-                  ? ['/master-data']
-                  : location.pathname.startsWith('/reports')
-                    ? ['/reports']
-                    : location.pathname.startsWith('/system')
-                      ? ['/system']
-                      : []
-              }
-              items={menuItems}
-            />
           </Sider>
         ) : (
           <Drawer
@@ -268,24 +299,39 @@ export const MainLayout: React.FC = () => {
             placement="left"
             onClose={() => setDrawerVisible(false)}
             open={drawerVisible}
-            bodyStyle={{ padding: 0 }}
+            styles={{ body: { padding: 0 } }}
             width={280}
           >
-            <Menu
-              theme={currentTheme === 'dark' ? 'dark' : 'light'}
-              mode="inline"
-              selectedKeys={[location.pathname]}
-              defaultOpenKeys={
-                location.pathname.startsWith('/master-data')
-                  ? ['/master-data']
-                  : location.pathname.startsWith('/reports')
-                    ? ['/reports']
-                    : location.pathname.startsWith('/system')
-                      ? ['/system']
-                      : []
-              }
-              items={menuItems}
-            />
+            <div className="flex flex-col h-full">
+              <div className="flex-1 overflow-y-auto">
+                <Menu
+                  theme={currentTheme === 'dark' ? 'dark' : 'light'}
+                  mode="inline"
+                  selectedKeys={[location.pathname]}
+                  defaultOpenKeys={
+                    location.pathname.startsWith('/master-data')
+                      ? ['/master-data']
+                      : location.pathname.startsWith('/reports')
+                        ? ['/reports']
+                        : location.pathname.startsWith('/system')
+                          ? ['/system']
+                          : []
+                  }
+                  items={menuItems}
+                />
+              </div>
+              <div className="flex-shrink-0 p-3 bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 text-xs text-gray-500 dark:text-gray-400 text-center">
+                <div className="space-y-1 flex flex-col items-center justify-center">
+                  <div className="flex items-center justify-center gap-2 text-sky-600 dark:text-sky-400 font-semibold">
+                    <PhoneOutlined />
+                    <span>Hotline: <a href="tel:0965540075" className="text-sky-600 dark:text-sky-400 hover:underline">0965540075</a></span>
+                  </div>
+                  <div className="text-[11px] text-center">
+                    👨‍💻 Người thực hiện: <span className="font-medium text-gray-700 dark:text-gray-200">{'Leo11'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </Drawer>
         )}
         <Layout className="min-w-0">
@@ -371,6 +417,9 @@ export const MainLayout: React.FC = () => {
           >
             <TabContentRenderer />
           </Content>
+          <Footer className="text-center text-xs text-gray-400 py-3 bg-transparent border-t border-gray-100 dark:border-gray-800/40">
+            Hệ Thống Quản Lý Kho Hải Sản & Kho Lạnh • Hotline: <span className="text-sky-600 font-medium">0965540075</span> • Phát triển: <span className="font-medium text-gray-600 dark:text-gray-300">{'Leo11'}</span>
+          </Footer>
         </Layout>
       </Layout>
       <UserProfileModal

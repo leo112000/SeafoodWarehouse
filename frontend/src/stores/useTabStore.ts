@@ -43,21 +43,13 @@ export const useTabStore = create<TabState>()(
           return true;
         }
 
-        // Đã đạt giới hạn 5 tab -> Không tự ý đóng tab cũ, chặn và báo cho người dùng
-        if (tabs.length >= MAX_TABS_LIMIT) {
-          return false;
-        }
+        const newTabItem: TabItem = {
+          key: newTab.key,
+          title: newTab.title,
+          closable: newTab.key !== '/' && newTab.key !== '/dashboard',
+        };
 
-        const updatedTabs = [
-          ...tabs,
-          {
-            key: newTab.key,
-            title: newTab.title,
-            closable: newTab.key !== '/' && newTab.key !== '/dashboard',
-          },
-        ];
-
-        set({ tabs: updatedTabs, activeKey: newTab.key });
+        set({ tabs: [...tabs, newTabItem], activeKey: newTab.key });
         return true;
       },
 
