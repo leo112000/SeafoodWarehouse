@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popconfirm, Popover, Tag, theme, App } from 'antd';
-import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, TeamOutlined, UserOutlined, QrcodeOutlined, CompassOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, TeamOutlined, UserOutlined, QrcodeOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useAuthStore } from '../stores/useAuthStore';
