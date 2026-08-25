@@ -194,7 +194,7 @@ export const TenantsPage: React.FC = () => {
       </div>
 
       <Card className="shadow-sm">
-        <Table dataSource={tenants} columns={columns} rowKey="id" />
+        <Table dataSource={tenants} columns={columns} rowKey="id" scroll={{ x: 850 }} />
       </Card>
 
       <Modal

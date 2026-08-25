@@ -121,6 +121,7 @@ export const Dashboard: React.FC = () => {
           rowKey="id"
           loading={isLoading}
           pagination={{ pageSize: 5 }}
+          scroll={{ x: 800 }}
         />
       </Card>
     </div>

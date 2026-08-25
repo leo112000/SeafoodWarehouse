@@ -124,6 +124,7 @@ export const WarehousesPage: React.FC = () => {
           dataSource={warehouses}
           loading={loading}
           pagination={{ pageSize: 10 }}
+          scroll={{ x: 750 }}
         />
       </Card>
 

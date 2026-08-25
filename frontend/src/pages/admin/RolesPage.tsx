@@ -109,12 +109,12 @@ export const RolesPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 m-0">Quản Lý Vai Trò & Phân Quyền</h1>
           <p className="text-gray-500 mt-1">Cấu hình vai trò và gán quyền chi tiết cho nhân viên trong hệ thống.</p>
         </div>
-        <Space>
+        <Space wrap>
           <Button icon={<ReloadOutlined />} onClick={fetchRoles} loading={loading}>
             Làm mới
           </Button>
@@ -125,7 +125,7 @@ export const RolesPage: React.FC = () => {
       </div>
 
       <Card className="shadow-sm">
-        <Table dataSource={roles} columns={columns} rowKey="id" loading={loading} pagination={false} />
+        <Table dataSource={roles} columns={columns} rowKey="id" loading={loading} pagination={false} scroll={{ x: 700 }} />
       </Card>
 
       <Modal
