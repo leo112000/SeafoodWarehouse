@@ -36,7 +36,8 @@ public class ProductService : IProductService
         var productList = filtered.ToList();
         var totalCount = productList.Count;
         var items = productList
-            .OrderBy(p => p.Code)
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
             .Skip((pagination.PageNumber - 1) * pagination.PageSize)
             .Take(pagination.PageSize)
             .Select(MapToDto)
@@ -66,10 +67,28 @@ public class ProductService : IProductService
     {
         // Kiểm tra trùng mã sản phẩm
         var repository = _unitOfWork.Repository<Product>();
-        var existing = await repository.FindAsync(p => p.Code == dto.Code && !p.IsDeleted, cancellationToken);
-        if (existing.Any())
+        var allProducts = await repository.GetAllAsync(cancellationToken);
+
+        // Tự động sinh mã sản phẩm nếu để trống
+        if (string.IsNullOrWhiteSpace(dto.Code))
         {
-            return Result<ProductDto>.Failure($"Mã sản phẩm '{dto.Code}' đã tồn tại.");
+            var baseCode = SeafoodWarehouseManagement.Application.Common.Helpers.CodeGeneratorHelper.GenerateCode(dto.Name, "SP");
+            var generatedCode = baseCode;
+            var counter = 1;
+            while (allProducts.Any(p => string.Equals(p.Code, generatedCode, StringComparison.OrdinalIgnoreCase) && !p.IsDeleted))
+            {
+                generatedCode = $"{baseCode}-{counter:D2}";
+                counter++;
+            }
+            dto.Code = generatedCode;
+        }
+        else
+        {
+            dto.Code = dto.Code.Trim().ToUpper();
+            if (allProducts.Any(p => string.Equals(p.Code, dto.Code, StringComparison.OrdinalIgnoreCase) && !p.IsDeleted))
+            {
+                return Result<ProductDto>.Failure($"Mã sản phẩm '{dto.Code}' đã tồn tại.");
+            }
         }
 
         // Kiểm tra danh mục tồn tại
@@ -119,11 +138,13 @@ public class ProductService : IProductService
             return Result<ProductDto>.Failure($"Không tìm thấy sản phẩm với Id = {id}.");
         }
 
+        var codeToUse = !string.IsNullOrWhiteSpace(dto.Code) ? dto.Code.Trim().ToUpper() : product.Code;
+
         // Kiểm tra trùng mã (loại trừ chính nó)
-        var existing = await repository.FindAsync(p => p.Code == dto.Code && p.Id != id && !p.IsDeleted, cancellationToken);
-        if (existing.Any())
+        var allProducts = await repository.GetAllAsync(cancellationToken);
+        if (allProducts.Any(p => string.Equals(p.Code, codeToUse, StringComparison.OrdinalIgnoreCase) && p.Id != id && !p.IsDeleted))
         {
-            return Result<ProductDto>.Failure($"Mã sản phẩm '{dto.Code}' đã tồn tại.");
+            return Result<ProductDto>.Failure($"Mã sản phẩm '{codeToUse}' đã tồn tại.");
         }
 
         // Kiểm tra danh mục tồn tại
@@ -134,7 +155,7 @@ public class ProductService : IProductService
             return Result<ProductDto>.Failure($"Không tìm thấy danh mục với Id = {dto.CategoryId}.");
         }
 
-        product.Code = dto.Code.Trim();
+        product.Code = codeToUse;
         product.Name = dto.Name.Trim();
         product.Unit = dto.Unit.Trim();
         product.MinimumStock = dto.MinimumStock;

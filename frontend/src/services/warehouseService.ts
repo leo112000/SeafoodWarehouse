@@ -10,6 +10,7 @@ export interface WarehouseItem {
   temperatureCelsius: number;
   status: 'OPERATIONAL' | 'MAINTENANCE' | 'FULL';
   storageType: 'FROZEN' | 'FRESH' | 'ALIVE' | 'DRY';
+  description?: string;
   totalZones?: number;
   totalSlots?: number;
   occupiedSlots?: number;
@@ -30,6 +31,7 @@ export const warehouseService = {
           temperatureCelsius: w.temperatureCelsius ?? -18,
           status: w.status || 'OPERATIONAL',
           storageType: w.storageType || 'FROZEN',
+          description: w.description || '',
         }));
       }
       return [];
@@ -39,29 +41,46 @@ export const warehouseService = {
   },
 
   async create(data: Omit<WarehouseItem, 'id'>): Promise<WarehouseItem> {
+    const maxCapacityTon = data.capacityKg ? data.capacityKg / 1000 : 10;
+    const targetTemperature = data.temperatureCelsius ?? (data as any).temperatureCelcius ?? -18;
+    const description = data.description || '';
     const response = await api.post('/warehouses', {
-      code: data.code,
+      code: data.code || '',
       name: data.name,
-      address: data.location,
-      totalCapacityKg: data.capacityKg,
-      temperatureCelsius: data.temperatureCelsius,
-      storageType: data.storageType,
+      location: data.location || 'Khu vực chính',
+      type: 0,
+      targetTemperature: targetTemperature,
+      maxCapacityTon: maxCapacityTon,
+      description: description,
     });
     const item = response.data.data || response.data;
     return {
       id: String(item.id || Date.now()),
-      ...data,
+      code: item.code || data.code || '',
+      name: item.name || data.name,
+      location: item.location || data.location,
+      capacityKg: data.capacityKg,
+      currentStockKg: 0,
+      temperatureCelsius: targetTemperature,
+      status: 'OPERATIONAL',
+      storageType: 'FROZEN',
+      description: description,
     };
   },
 
   async update(id: string, data: Omit<WarehouseItem, 'id'>): Promise<void> {
+    const maxCapacityTon = data.capacityKg ? data.capacityKg / 1000 : 10;
+    const targetTemperature = data.temperatureCelsius ?? (data as any).temperatureCelcius ?? -18;
+    const description = data.description || '';
     await api.put(`/warehouses/${id}`, {
-      code: data.code,
+      code: data.code || '',
       name: data.name,
-      address: data.location,
-      totalCapacityKg: data.capacityKg,
-      temperatureCelsius: data.temperatureCelsius,
-      storageType: data.storageType,
+      location: data.location || 'Khu vực chính',
+      type: 0,
+      targetTemperature: targetTemperature,
+      maxCapacityTon: maxCapacityTon,
+      description: description,
+      isActive: true,
     });
   },
 

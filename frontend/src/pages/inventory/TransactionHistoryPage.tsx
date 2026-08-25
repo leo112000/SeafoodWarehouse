@@ -311,7 +311,16 @@ export const TransactionHistoryPage: React.FC = () => {
     );
   };
 
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: unknown, __: unknown, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     {
       title: 'Mã phiếu',
       dataIndex: 'id',
@@ -401,6 +410,13 @@ export const TransactionHistoryPage: React.FC = () => {
   ];
 
   const itemColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: unknown, __: unknown, index: number) => index + 1,
+    },
     {
       title: 'Tên hải sản',
       dataIndex: 'seafoodName',
@@ -587,7 +603,13 @@ export const TransactionHistoryPage: React.FC = () => {
           dataSource={filteredTransactions}
           columns={columns}
           rowKey="id"
-          pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: ['10', '20', '50'] }}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
           scroll={{ x: 'max-content' }}
         />
       </Card>
@@ -663,6 +685,13 @@ export const TransactionHistoryPage: React.FC = () => {
                 <Table
                   dataSource={selectedTx.supplies}
                   columns={[
+                    {
+                      title: 'STT',
+                      key: 'stt',
+                      width: 60,
+                      align: 'center' as const,
+                      render: (_: any, __: any, index: number) => index + 1,
+                    },
                     { title: 'Tên vật phẩm kèm / Dịch vụ', dataIndex: 'name', key: 'name' },
                     { title: 'Đơn vị', dataIndex: 'unit', key: 'unit', render: (u: string) => u || 'Cái' },
                     { title: 'Số lượng', dataIndex: 'quantity', key: 'quantity' },

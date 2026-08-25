@@ -96,7 +96,7 @@ export const MultiTabBar: React.FC = () => {
   }));
 
   return (
-    <div className="bg-slate-100/90 dark:bg-slate-900/90 px-3 pt-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+    <div className="bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md px-3 pt-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
       <div className="flex-1 overflow-hidden">
         <Tabs
           type="editable-card"

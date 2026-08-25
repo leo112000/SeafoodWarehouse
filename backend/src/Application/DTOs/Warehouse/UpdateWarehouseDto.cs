@@ -12,15 +12,15 @@ public class UpdateWarehouseDto
     public double TargetTemperature { get; set; }
     public decimal MaxCapacityTon { get; set; }
     public bool IsActive { get; set; } = true;
+    public string? Description { get; set; }
 }
 
 public class UpdateWarehouseDtoValidator : AbstractValidator<UpdateWarehouseDto>
 {
     public UpdateWarehouseDtoValidator()
     {
-        RuleFor(x => x.Code).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
-        RuleFor(x => x.Location).NotEmpty().MaximumLength(250);
-        RuleFor(x => x.MaxCapacityTon).GreaterThan(0);
+        RuleFor(x => x.Name).NotEmpty().WithMessage("Vui lòng nhập tên kho.").MaximumLength(150);
+        RuleFor(x => x.Code).MaximumLength(50);
+        RuleFor(x => x.Location).MaximumLength(250);
     }
 }

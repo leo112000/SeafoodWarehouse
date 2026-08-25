@@ -31,6 +31,7 @@ export const AuditLogPage: React.FC = () => {
   const [status, setStatus] = useState<AuditLog['status']>();
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [selected, setSelected] = useState<AuditLog | null>(null);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -63,6 +64,7 @@ export const AuditLogPage: React.FC = () => {
     setModule(undefined);
     setStatus(undefined);
     setDateRange(null);
+    setPagination((prev) => ({ ...prev, current: 1 }));
     fetchLogs();
   };
 
@@ -77,6 +79,13 @@ export const AuditLogPage: React.FC = () => {
   };
 
   const columns: ColumnsType<AuditLog> = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     { title: 'Thời gian', dataIndex: 'timestamp', width: 165, sorter: (a, b) => a.timestamp.localeCompare(b.timestamp) },
     { title: 'Người thực hiện', width: 160, render: (_, log) => <Space direction="vertical" size={0}><strong>{log.userName}</strong><span className="text-xs text-gray-500">{log.userRole}</span></Space> },
     { title: 'Hành động', dataIndex: 'action', width: 115, render: (value: AuditLog['action']) => <Tag color={actionMeta[value]?.color || 'blue'}>{actionMeta[value]?.label || value}</Tag> },
@@ -109,7 +118,21 @@ export const AuditLogPage: React.FC = () => {
           <Select allowClear value={status} onChange={setStatus} placeholder="Trạng thái" className="w-full sm:w-36" options={[{ value: 'SUCCESS', label: 'Thành công' }, { value: 'FAILED', label: 'Thất bại' }]} />
           <Button icon={<ReloadOutlined />} onClick={reset}>Đặt lại</Button>
         </div>
-        <Table columns={columns} dataSource={filtered} rowKey="id" loading={loading} pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `${total} bản ghi` }} scroll={{ x: 1120 }} />
+        <Table
+          columns={columns}
+          dataSource={filtered}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+            showTotal: (total) => `${total} bản ghi`,
+          }}
+          scroll={{ x: 1120 }}
+        />
       </Card>
 
       <Drawer title="Chi tiết nhật ký" width={620} open={!!selected} onClose={() => setSelected(null)}>

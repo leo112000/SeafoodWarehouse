@@ -3,6 +3,7 @@ import { Card, Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Spac
 import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined, ShoppingOutlined, CalculatorOutlined, ReloadOutlined, WarningOutlined, PlusCircleOutlined } from '@ant-design/icons';
 import type { PackagingType } from '../../types/seafood';
 import { packagingService } from '../../services/packagingService';
+import { generateCodeFromName } from '../../utils/codeGenerator';
 
 export const PackagingPage: React.FC = () => {
   const { message, modal } = App.useApp();
@@ -17,6 +18,7 @@ export const PackagingPage: React.FC = () => {
   const [editingPkg, setEditingPkg] = useState<PackagingType | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'CONTAINER' | 'CONSUMABLE'>('ALL');
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
   const [adjustForm] = Form.useForm();
 
@@ -128,6 +130,7 @@ export const PackagingPage: React.FC = () => {
         message.success('Cập nhật danh mục bao bì thành công!');
       } else {
         await packagingService.create(payload);
+        setPagination((prev) => ({ ...prev, current: 1 }));
         message.success('Thêm danh mục bao bì mới thành công!');
       }
       setIsModalOpen(false);
@@ -149,6 +152,13 @@ export const PackagingPage: React.FC = () => {
   });
 
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     {
       title: 'Mã số',
       dataIndex: 'code',
@@ -339,7 +349,13 @@ export const PackagingPage: React.FC = () => {
           columns={columns}
           rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10 }}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
           scroll={{ x: 'max-content' }}
         />
       </Card>
@@ -361,19 +377,31 @@ export const PackagingPage: React.FC = () => {
           className="mt-4"
         >
           <Form.Item
-            name="code"
-            label="Mã Bao bì / Sọt"
-            rules={[{ required: true, message: 'Vui lòng nhập mã!' }]}
-          >
-            <Input placeholder="VD: SOT-RED, THUNG-30KG" disabled={!!editingPkg} />
-          </Form.Item>
-
-          <Form.Item
             name="name"
             label="Tên hiển thị"
             rules={[{ required: true, message: 'Vui lòng nhập tên bao bì!' }]}
           >
-            <Input placeholder="VD: Sọt nhựa đỏ tiêu chuẩn" />
+            <Input
+              placeholder="VD: Sọt nhựa đỏ tiêu chuẩn, Thùng xốp 20kg..."
+              onChange={(e) => {
+                if (!editingPkg) {
+                  const autoCode = generateCodeFromName(e.target.value, 'PKG');
+                  form.setFieldsValue({ code: autoCode });
+                }
+              }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="code"
+            label="Mã Bao bì / Sọt (Tự sinh theo tên)"
+            rules={[{ required: true, message: 'Vui lòng nhập mã!' }]}
+          >
+            <Input
+              placeholder="Tự động sinh (VD: PKG-SOT-NHUA-DO)"
+              disabled={!!editingPkg}
+              className="font-mono bg-slate-50 dark:bg-slate-800/60"
+            />
           </Form.Item>
 
           <Row gutter={16}>

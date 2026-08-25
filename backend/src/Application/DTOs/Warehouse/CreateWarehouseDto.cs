@@ -11,16 +11,16 @@ public class CreateWarehouseDto
     public StorageType Type { get; set; } = StorageType.FrozenStorage;
     public double TargetTemperature { get; set; } = -18.0;
     public decimal MaxCapacityTon { get; set; }
+    public string? Description { get; set; }
 }
 
 public class CreateWarehouseDtoValidator : AbstractValidator<CreateWarehouseDto>
 {
     public CreateWarehouseDtoValidator()
     {
-        RuleFor(x => x.Code).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
-        RuleFor(x => x.Location).NotEmpty().MaximumLength(250);
-        RuleFor(x => x.MaxCapacityTon).GreaterThan(0).WithMessage("Sức chứa phải lớn hơn 0 tấn.");
+        RuleFor(x => x.Name).NotEmpty().WithMessage("Vui lòng nhập tên kho.").MaximumLength(150);
+        RuleFor(x => x.Code).MaximumLength(50);
+        RuleFor(x => x.Location).MaximumLength(250);
         RuleFor(x => x.TargetTemperature).InclusiveBetween(-80, 30);
     }
 }

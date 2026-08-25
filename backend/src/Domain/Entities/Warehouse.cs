@@ -12,6 +12,7 @@ public class Warehouse : BaseEntity, IMustHaveTenant
     public double TargetTemperature { get; set; } = -18.0;
     public decimal MaxCapacityTon { get; set; }
     public bool IsActive { get; set; } = true;
+    public string? Description { get; set; }
     public int? TenantId { get; set; }
 
     public ICollection<InventoryItem> InventoryItems { get; set; } = new List<InventoryItem>();

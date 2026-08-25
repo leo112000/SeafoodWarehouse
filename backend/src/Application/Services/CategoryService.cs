@@ -33,7 +33,8 @@ public class CategoryService : ICategoryService
 
         var totalCount = activeCategories.Count;
         var items = activeCategories
-            .OrderBy(c => c.Code)
+            .OrderByDescending(c => c.CreatedAt)
+            .ThenByDescending(c => c.Id)
             .Skip((pagination.PageNumber - 1) * pagination.PageSize)
             .Take(pagination.PageSize)
             .Select(c => new CategoryDto
@@ -77,12 +78,29 @@ public class CategoryService : ICategoryService
     /// </summary>
     public async Task<Result<CategoryDto>> CreateAsync(CreateCategoryDto dto, CancellationToken cancellationToken = default)
     {
-        // Kiểm tra trùng mã danh mục
         var repository = _unitOfWork.Repository<Category>();
-        var existing = await repository.FindAsync(c => c.Code == dto.Code && !c.IsDeleted, cancellationToken);
-        if (existing.Any())
+        var allCategories = await repository.GetAllAsync(cancellationToken);
+
+        // Tự động sinh mã danh mục nếu để trống
+        if (string.IsNullOrWhiteSpace(dto.Code))
         {
-            return Result<CategoryDto>.Failure($"Mã danh mục '{dto.Code}' đã tồn tại.");
+            var baseCode = SeafoodWarehouseManagement.Application.Common.Helpers.CodeGeneratorHelper.GenerateCode(dto.Name);
+            var generatedCode = baseCode;
+            var counter = 1;
+            while (allCategories.Any(c => string.Equals(c.Code, generatedCode, StringComparison.OrdinalIgnoreCase) && !c.IsDeleted))
+            {
+                generatedCode = $"{baseCode}-{counter:D2}";
+                counter++;
+            }
+            dto.Code = generatedCode;
+        }
+        else
+        {
+            dto.Code = dto.Code.Trim().ToUpper();
+            if (allCategories.Any(c => string.Equals(c.Code, dto.Code, StringComparison.OrdinalIgnoreCase) && !c.IsDeleted))
+            {
+                return Result<CategoryDto>.Failure($"Mã danh mục '{dto.Code}' đã tồn tại.");
+            }
         }
 
         var category = new Category
@@ -119,14 +137,16 @@ public class CategoryService : ICategoryService
             return Result<CategoryDto>.Failure($"Không tìm thấy danh mục với Id = {id}.");
         }
 
+        var codeToUse = !string.IsNullOrWhiteSpace(dto.Code) ? dto.Code.Trim().ToUpper() : category.Code;
+
         // Kiểm tra trùng mã (loại trừ chính nó)
-        var existing = await repository.FindAsync(c => c.Code == dto.Code && c.Id != id && !c.IsDeleted, cancellationToken);
-        if (existing.Any())
+        var allCategories = await repository.GetAllAsync(cancellationToken);
+        if (allCategories.Any(c => string.Equals(c.Code, codeToUse, StringComparison.OrdinalIgnoreCase) && c.Id != id && !c.IsDeleted))
         {
-            return Result<CategoryDto>.Failure($"Mã danh mục '{dto.Code}' đã tồn tại.");
+            return Result<CategoryDto>.Failure($"Mã danh mục '{codeToUse}' đã tồn tại.");
         }
 
-        category.Code = dto.Code.Trim();
+        category.Code = codeToUse;
         category.Name = dto.Name.Trim();
         category.Description = dto.Description?.Trim();
         category.UpdatedAt = DateTime.UtcNow;

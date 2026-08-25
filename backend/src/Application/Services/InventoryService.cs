@@ -44,8 +44,7 @@ public class InventoryService : IInventoryService
         var itemList = filtered.ToList();
         var totalCount = itemList.Count;
         var result = itemList
-            .OrderBy(i => i.Warehouse?.Code)
-            .ThenBy(i => i.LotBatch?.BatchCode)
+            .OrderByDescending(i => i.Id)
             .Skip((pagination.PageNumber - 1) * pagination.PageSize)
             .Take(pagination.PageSize)
             .Select(i => new InventoryItemDto

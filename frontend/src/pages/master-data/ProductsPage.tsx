@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import type { Product } from '../../types/seafood';
 import { formatCurrency } from '../../utils/format';
+import { generateCodeFromName } from '../../utils/codeGenerator';
 import { useProductStore } from '../../stores/useProductStore';
 import { useCategoryStore } from '../../stores/useCategoryStore';
 import { QRCodeSVG } from 'qrcode.react';
@@ -50,6 +51,7 @@ export const ProductsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [selectedProductQr, setSelectedProductQr] = useState<Product | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
 
   React.useEffect(() => {
@@ -128,6 +130,7 @@ export const ProductsPage: React.FC = () => {
       message.success('Cập nhật sản phẩm thành công!');
     } else {
       addProduct(productData);
+      setPagination((prev) => ({ ...prev, current: 1 }));
       message.success('Thêm sản phẩm mới thành công!');
     }
     setIsModalOpen(false);
@@ -135,6 +138,13 @@ export const ProductsPage: React.FC = () => {
 
   // ── table columns ─────────────────────────────────────────────────────────────
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     {
       title: 'Mã Hàng',
       dataIndex: 'code',
@@ -370,7 +380,14 @@ export const ProductsPage: React.FC = () => {
           columns={columns}
           dataSource={filtered}
           rowKey="id"
-          pagination={{ pageSize: 10, showTotal: (t) => `Tổng ${t} sản phẩm` }}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+            showTotal: (t) => `Tổng ${t} sản phẩm`,
+          }}
           rowClassName={(r) => r.status === 'INACTIVE' ? 'opacity-50' : ''}
           className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden"
           scroll={{ x: 1000 }}
@@ -393,24 +410,36 @@ export const ProductsPage: React.FC = () => {
           className="mt-4"
           initialValues={{ statusSwitch: true, storageType: 'FROZEN', unit: 'Kg', warningDaysBeforeExpiry: 3 }}
         >
-          {/* Row 1 — Code & Name */}
+          {/* Row 1 — Name & Code */}
           <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item
-                name="code"
-                label="Mã Hàng"
-                rules={[{ required: true, message: 'Nhập mã hàng!' }]}
-              >
-                <Input placeholder="HS-CA-CAHOI" disabled={!!editingProduct} className="font-mono" />
-              </Form.Item>
-            </Col>
-            <Col span={16}>
+            <Col span={14}>
               <Form.Item
                 name="name"
                 label="Tên Sản Phẩm"
                 rules={[{ required: true, message: 'Nhập tên sản phẩm!' }]}
               >
-                <Input placeholder="VD: Cá Hồi Na Uy" />
+                <Input
+                  placeholder="VD: Cá Hồi Na Uy, Tôm Càng Xanh..."
+                  onChange={(e) => {
+                    if (!editingProduct) {
+                      const autoCode = generateCodeFromName(e.target.value, 'SP');
+                      form.setFieldsValue({ code: autoCode });
+                    }
+                  }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={10}>
+              <Form.Item
+                name="code"
+                label="Mã Hàng (Tự sinh theo tên)"
+                rules={[{ required: true, message: 'Nhập mã hàng!' }]}
+              >
+                <Input
+                  placeholder="Tự động sinh (VD: SP-CA-HOI-NA-UY)"
+                  disabled={!!editingProduct}
+                  className="font-mono bg-slate-50 dark:bg-slate-800/60"
+                />
               </Form.Item>
             </Col>
           </Row>

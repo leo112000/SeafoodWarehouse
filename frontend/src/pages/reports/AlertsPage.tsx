@@ -107,6 +107,13 @@ export const AlertsPage: React.FC = () => {
   // Table Columns Definition
   const expiryColumns = [
     {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
+    {
       title: 'Mã Lô Hàng',
       dataIndex: 'batchCode',
       key: 'batchCode',
@@ -154,6 +161,13 @@ export const AlertsPage: React.FC = () => {
 
   const lowStockColumns = [
     {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
+    {
       title: 'Mã & Tên Hải Sản',
       dataIndex: 'name',
       key: 'name',
@@ -189,6 +203,13 @@ export const AlertsPage: React.FC = () => {
   ];
 
   const tempColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
     {
       title: 'Kho Hàng / Tủ Đông',
       dataIndex: 'name',

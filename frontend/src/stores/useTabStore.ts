@@ -24,7 +24,7 @@ const DEFAULT_TAB: TabItem = {
   closable: false,
 };
 
-const MAX_TABS_LIMIT = 7;
+const MAX_TABS_LIMIT = 10;
 
 export const useTabStore = create<TabState>()(
   persist(

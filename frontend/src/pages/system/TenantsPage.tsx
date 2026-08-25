@@ -3,6 +3,7 @@ import { Card, Table, Button, Modal, Form, Input, Tag, Space, App, Typography, B
 import { ShopOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PhoneOutlined, MailOutlined, HomeOutlined, NumberOutlined, LoginOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { tenantService, type TenantItem, type CreateTenantDto } from '../../services/tenantService';
+import { generateCodeFromName } from '../../utils/codeGenerator';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useTenantStore } from '../../stores/useTenantStore';
 import { authService } from '../../services/authService';
@@ -18,6 +19,7 @@ export const TenantsPage: React.FC = () => {
   const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editingTenant, setEditingTenant] = useState<TenantItem | null>(null);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -74,6 +76,7 @@ export const TenantsPage: React.FC = () => {
         await tenantService.update(editingTenant.id, values);
       } else {
         await tenantService.create(values as CreateTenantDto);
+        setPagination((prev) => ({ ...prev, current: 1 }));
       }
       setModalOpen(false);
       fetchTenants();
@@ -86,6 +89,13 @@ export const TenantsPage: React.FC = () => {
   };
 
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     {
       title: 'Mã & Tên Doanh Nghiệp',
       dataIndex: 'name',
@@ -194,7 +204,19 @@ export const TenantsPage: React.FC = () => {
       </div>
 
       <Card className="shadow-sm">
-        <Table dataSource={tenants} columns={columns} rowKey="id" scroll={{ x: 850 }} />
+        <Table
+          dataSource={tenants}
+          columns={columns}
+          rowKey="id"
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
+          scroll={{ x: 850 }}
+        />
       </Card>
 
       <Modal
@@ -208,15 +230,23 @@ export const TenantsPage: React.FC = () => {
         width={600}
       >
         <Form form={form} layout="vertical" className="mt-4">
+          <Form.Item name="name" label="Tên Cửa Hàng / Kho Hải Sản" rules={[{ required: true, message: 'Vui lòng nhập tên cửa hàng!' }]}>
+            <Input
+              placeholder="VD: KHO HẢI SẢN BIỂN ĐÔNG"
+              onChange={(e) => {
+                if (!editingTenant) {
+                  const autoCode = generateCodeFromName(e.target.value, 'CN');
+                  form.setFieldsValue({ code: autoCode });
+                }
+              }}
+            />
+          </Form.Item>
+
           {!editingTenant && (
-            <Form.Item name="code" label="Mã chi nhánh (Subdomain / Code)" rules={[{ required: true, message: 'Vui lòng nhập mã chi nhánh!' }]}>
-              <Input placeholder="VD: BIENDONG, DAIBIENDONG..." className="uppercase" />
+            <Form.Item name="code" label="Mã chi nhánh (Tự sinh theo tên)" rules={[{ required: true, message: 'Vui lòng nhập mã chi nhánh!' }]}>
+              <Input placeholder="Tự động sinh (VD: CN-BIEN-DONG)" className="uppercase font-mono bg-slate-50 dark:bg-slate-800/60" />
             </Form.Item>
           )}
-
-          <Form.Item name="name" label="Tên Cửa Hàng / Kho Hải Sản" rules={[{ required: true, message: 'Vui lòng nhập tên cửa hàng!' }]}>
-            <Input placeholder="VD: KHO HẢI SẢN BIỂN ĐÔNG" />
-          </Form.Item>
 
           <Form.Item name="address" label="Địa chỉ kho / Cửa hàng">
             <Input.TextArea rows={2} placeholder="VD: 123 Đường Cảng Cá, Phường Thọ Quang, Đà Nẵng" />

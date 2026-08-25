@@ -92,7 +92,16 @@ export const WastagePage: React.FC = () => {
     fetchWastageLogs();
   }, []);
 
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 5 });
+
   const logColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     { title: 'Mã số', dataIndex: 'id', key: 'id' },
     { title: 'Ngày ghi nhận', dataIndex: 'date', key: 'date' },
     { title: 'Loại hình', dataIndex: 'type', key: 'type', render: (t: string) => <Tag color={t === 'Hao hụt' ? 'red' : 'blue'}>{t}</Tag> },
@@ -247,6 +256,13 @@ export const WastagePage: React.FC = () => {
             <Table
               dataSource={monthlyStats}
               columns={[
+                {
+                  title: 'STT',
+                  key: 'stt',
+                  width: 55,
+                  align: 'center' as const,
+                  render: (_: any, __: any, index: number) => index + 1,
+                },
                 { title: 'Tháng', dataIndex: 'month', key: 'month' },
                 { title: 'Tổng khối lượng nhập (kg)', dataIndex: 'totalInbound', key: 'totalInbound', render: (val) => `${val.toLocaleString()} kg` },
                 { title: 'Hao hụt (kg)', dataIndex: 'totalWastage', key: 'totalWastage', render: (val) => `${val} kg` },
@@ -270,7 +286,19 @@ export const WastagePage: React.FC = () => {
       </Row>
 
       <Card title="Lịch sử nhật ký hao hụt & chuyển đổi phân loại" className="shadow-sm mt-6">
-        <Table dataSource={logs} columns={logColumns} rowKey="id" pagination={{ pageSize: 5 }} scroll={{ x: 'max-content' }} />
+        <Table
+          dataSource={logs}
+          columns={logColumns}
+          rowKey="id"
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
+          scroll={{ x: 'max-content' }}
+        />
       </Card>
     </div>
   );

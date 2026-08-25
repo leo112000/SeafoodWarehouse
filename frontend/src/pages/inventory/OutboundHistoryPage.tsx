@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Row, Col, DatePicker, Select, Input, Button, Modal } from 'antd';
 import { PrinterOutlined, InfoCircleOutlined, FileExcelOutlined } from '@ant-design/icons';
 import type { OutboundTransaction } from '../../stores/useOutboundStore';
@@ -46,71 +46,89 @@ const toInvoiceData = (tx: OutboundTransaction): InvoicePrintData => {
 
 const OutboundHistoryPage: React.FC = () => {
   const { transactions, fetchTransactions } = useOutboundStore();
+  const [selectedTx, setSelectedTx] = useState<OutboundTransaction | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [printVisible, setPrintVisible] = useState(false);
+  const [filtered, setFiltered] = useState<OutboundTransaction[]>([]);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
 
-  const [filtered, setFiltered] = useState<OutboundTransaction[]>(transactions);
-  const [detailVisible, setDetailVisible] = useState(false);
-  const [selectedTx, setSelectedTx] = useState<OutboundTransaction | null>(null);
-  const [printVisible, setPrintVisible] = useState(false);
-
-  React.useEffect(() => {
+  useEffect(() => {
     setFiltered(transactions);
   }, [transactions]);
 
-  // Simple client‑side filter (placeholder for real API / store filtering)
   const handleSearch = (value: string) => {
-    const lower = value.toLowerCase();
+    if (!value) {
+      setFiltered(transactions);
+      return;
+    }
+    const q = value.toLowerCase();
     setFiltered(
       transactions.filter(
-        (tx) =>
-          tx.id.toLowerCase().includes(lower) ||
-          tx.customerName.toLowerCase().includes(lower) ||
-          tx.reason.toLowerCase().includes(lower),
-      ),
+        (t) =>
+          t.id.toLowerCase().includes(q) ||
+          t.customerName.toLowerCase().includes(q) ||
+          t.batches.some((b) => b.batchCode.toLowerCase().includes(q) || b.species.toLowerCase().includes(q))
+      )
     );
+    setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
   const handleExportExcel = () => {
-    const listToExport = filtered.length > 0 ? filtered : transactions;
-    const exportData = listToExport.flatMap((tx) =>
-      tx.batches.map((b) => ({
-        id: tx.id,
-        date: formatDate(tx.date),
-        customerName: tx.customerName,
-        reason: tx.reason,
-        createdBy: tx.createdBy,
+    const exportData = filtered.flatMap((t) =>
+      t.batches.map((b) => ({
+        id: t.id,
+        date: formatDate(t.date),
+        customerName: t.customerName,
+        createdBy: t.createdBy,
         batchCode: b.batchCode,
         species: b.species,
         quantityKg: b.quantityKg,
-        expiryDate: formatDate(b.expiryDate),
         unitPrice: b.unitPrice,
         amount: b.amount,
+        expiryDate: formatDate(b.expiryDate),
+        subTotal: t.subTotal || t.totalAmount,
+        suppliesTotal: t.suppliesTotal || 0,
+        discountAmount: t.discountAmount || 0,
+        discountReason: t.discountReason || '',
+        totalAmount: t.totalAmount,
       }))
     );
 
     exportToExcel(
       exportData,
       [
-        { header: 'Mã Phiếu Xuất', key: 'id', width: 20 },
-        { header: 'Ngày Xuất Kho', key: 'date', width: 15 },
-        { header: 'Khách Hàng / Đại Lý', key: 'customerName', width: 25 },
-        { header: 'Lý Do Xuất', key: 'reason', width: 20 },
-        { header: 'Người Lập Phiếu', key: 'createdBy', width: 18 },
+        { header: 'Mã Phiếu', key: 'id', width: 18 },
+        { header: 'Ngày Xuất', key: 'date', width: 18 },
+        { header: 'Khách Hàng', key: 'customerName', width: 25 },
+        { header: 'Người Lập', key: 'createdBy', width: 18 },
         { header: 'Mã Lô', key: 'batchCode', width: 18 },
-        { header: 'Loại Hải Sản', key: 'species', width: 20 },
-        { header: 'Số Kg Xuất', key: 'quantityKg', width: 15 },
-        { header: 'Hạn Sử Dụng', key: 'expiryDate', width: 15 },
+        { header: 'Tên Mặt Hàng', key: 'species', width: 20 },
+        { header: 'Khối Lượng (kg)', key: 'quantityKg', width: 15 },
         { header: 'Đơn Giá (VNĐ)', key: 'unitPrice', width: 15, formatter: (val) => formatCurrency(val) },
         { header: 'Thành Tiền (VNĐ)', key: 'amount', width: 18, formatter: (val) => formatCurrency(val) },
+        { header: 'Hạn Sử Dụng', key: 'expiryDate', width: 15 },
+        { header: 'Tiền Hàng (VNĐ)', key: 'subTotal', width: 18, formatter: (val) => formatCurrency(val) },
+        { header: 'Tiền Thùng/Phụ Phí (VNĐ)', key: 'suppliesTotal', width: 18, formatter: (val) => formatCurrency(val) },
+        { header: 'Chiết Khấu (VNĐ)', key: 'discountAmount', width: 15, formatter: (val) => formatCurrency(val) },
+        { header: 'Lý Do Chiết Khấu', key: 'discountReason', width: 20 },
+        { header: 'Tổng Thanh Toán (VNĐ)', key: 'totalAmount', width: 20, formatter: (val) => formatCurrency(val) },
       ],
       'LichSu_XuatKho_HaiSan'
     );
   };
 
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     { title: 'Mã phiếu xuất', dataIndex: 'id', key: 'id', render: (id: string) => <span className="font-bold text-sky-600">{id}</span> },
     { title: 'Ngày xuất kho', dataIndex: 'date', key: 'date', render: (d: string) => formatDate(d), responsive: ['sm'] as any },
     { title: 'Khách hàng', dataIndex: 'customerName', key: 'customerName' },
@@ -179,6 +197,13 @@ const OutboundHistoryPage: React.FC = () => {
   ];
 
   const batchColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
     { title: 'Mã lô', dataIndex: 'batchCode', key: 'batchCode' },
     { title: 'Loại hải sản', dataIndex: 'species', key: 'species' },
     { title: 'Số kg', dataIndex: 'quantityKg', key: 'quantityKg', render: (v: number) => formatWeight(v) },
@@ -188,6 +213,13 @@ const OutboundHistoryPage: React.FC = () => {
   ];
 
   const supplyColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
     { title: 'Tên vật phẩm kèm / Dịch vụ', dataIndex: 'name', key: 'name' },
     { title: 'Đơn vị', dataIndex: 'unit', key: 'unit', render: (u: string) => u || 'Cái' },
     { title: 'Số lượng', dataIndex: 'quantity', key: 'quantity' },
@@ -227,7 +259,19 @@ const OutboundHistoryPage: React.FC = () => {
           </div>
         </Col>
       </Row>
-      <Table rowKey="id" dataSource={filtered} columns={columns} pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
+      <Table
+        rowKey="id"
+        dataSource={filtered}
+        columns={columns}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          showSizeChanger: true,
+          pageSizeOptions: ['5', '10', '20', '50'],
+          onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+        }}
+        scroll={{ x: 'max-content' }}
+      />
 
       {/* Detail modal */}
       <Modal

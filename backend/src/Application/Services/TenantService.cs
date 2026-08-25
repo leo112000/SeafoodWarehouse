@@ -20,7 +20,8 @@ public class TenantService : ITenantService
     {
         var tenants = await _context.Tenants
             .Where(t => !t.IsDeleted)
-            .OrderBy(t => t.Id)
+            .OrderByDescending(t => t.CreatedAt)
+            .ThenByDescending(t => t.Id)
             .ToListAsync(cancellationToken);
 
         return tenants.Select(MapToDto).ToList();
@@ -44,16 +45,32 @@ public class TenantService : ITenantService
 
     public async Task<Result<TenantDto>> CreateAsync(CreateTenantDto dto, CancellationToken cancellationToken = default)
     {
-        var codeLower = dto.Code.Trim().ToLower();
-        var exists = await _context.Tenants.AnyAsync(t => t.Code.ToLower() == codeLower && !t.IsDeleted, cancellationToken);
-        if (exists)
+        var existingCodes = await _context.Tenants.Where(t => !t.IsDeleted).Select(t => t.Code).ToListAsync(cancellationToken);
+
+        var code = dto.Code;
+        if (string.IsNullOrWhiteSpace(code))
         {
-            return Result<TenantDto>.Failure($"Mã cửa hàng '{dto.Code}' đã tồn tại trong hệ thống.");
+            var baseCode = SeafoodWarehouseManagement.Application.Common.Helpers.CodeGeneratorHelper.GenerateCode(dto.Name, "CN");
+            code = baseCode;
+            var counter = 1;
+            while (existingCodes.Any(c => string.Equals(c, code, StringComparison.OrdinalIgnoreCase)))
+            {
+                code = $"{baseCode}-{counter:D2}";
+                counter++;
+            }
+        }
+        else
+        {
+            code = code.Trim().ToUpper();
+            if (existingCodes.Any(c => string.Equals(c, code, StringComparison.OrdinalIgnoreCase)))
+            {
+                return Result<TenantDto>.Failure($"Mã cửa hàng '{code}' đã tồn tại trong hệ thống.");
+            }
         }
 
         var tenant = new Tenant
         {
-            Code = dto.Code.Trim().ToUpper(),
+            Code = code,
             Name = dto.Name.Trim(),
             Address = dto.Address?.Trim(),
             Phone = dto.Phone?.Trim(),

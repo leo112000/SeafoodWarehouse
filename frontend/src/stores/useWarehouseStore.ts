@@ -79,7 +79,7 @@ export const useWarehouseStore = create<WarehouseState>((set) => ({
         id: Math.random().toString(36).substring(2, 9),
         lastUpdated: new Date().toISOString(),
       };
-      return { products: [...state.products, newProduct] };
+      return { products: [newProduct, ...state.products] };
     }),
   updateProduct: (id, updated) =>
     set((state) => ({

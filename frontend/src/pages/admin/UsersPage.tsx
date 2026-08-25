@@ -10,6 +10,7 @@ export const UsersPage: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
 
   const fetchUsers = useCallback(async () => {
@@ -75,6 +76,7 @@ export const UsersPage: React.FC = () => {
           status,
           tenantName: values.tenantName || 'Default',
         });
+        setPagination((prev) => ({ ...prev, current: 1 }));
         message.success('Thêm nhân viên mới thành công!');
       }
       setIsModalOpen(false);
@@ -114,6 +116,13 @@ export const UsersPage: React.FC = () => {
   };
 
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     {
       title: 'Họ và Tên',
       dataIndex: 'name',
@@ -236,7 +245,20 @@ export const UsersPage: React.FC = () => {
       </div>
 
       <Card className="shadow-sm">
-        <Table dataSource={users} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
+        <Table
+          dataSource={users}
+          columns={columns}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
+          scroll={{ x: 'max-content' }}
+        />
       </Card>
 
       <Modal

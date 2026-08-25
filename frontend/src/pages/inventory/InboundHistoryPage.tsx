@@ -60,6 +60,7 @@ export const InboundHistoryPage: React.FC = () => {
   // Filters state
   const [supplierQuery, setSupplierQuery] = useState('');
   const [filterDate, setFilterDate] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
   const handleOpenDetail = (receipt: InboundReceipt) => {
     setSelectedReceipt(receipt);
@@ -74,6 +75,7 @@ export const InboundHistoryPage: React.FC = () => {
   const handleResetFilters = () => {
     setSupplierQuery('');
     setFilterDate(null);
+    setPagination((prev) => ({ ...prev, current: 1 }));
   };
 
   const handleExportExcel = () => {
@@ -122,6 +124,13 @@ export const InboundHistoryPage: React.FC = () => {
   });
 
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: unknown, __: unknown, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     {
       title: 'Mã phiếu',
       dataIndex: 'id',
@@ -181,6 +190,13 @@ export const InboundHistoryPage: React.FC = () => {
   ];
 
   const itemColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: unknown, __: unknown, index: number) => index + 1,
+    },
     {
       title: 'Tên hải sản',
       dataIndex: 'seafoodName',
@@ -244,7 +260,10 @@ export const InboundHistoryPage: React.FC = () => {
               placeholder="Tìm theo nhà cung cấp..."
               prefix={<SearchOutlined className="text-gray-400" />}
               value={supplierQuery}
-              onChange={(e) => setSupplierQuery(e.target.value)}
+              onChange={(e) => {
+                setSupplierQuery(e.target.value);
+                setPagination((prev) => ({ ...prev, current: 1 }));
+              }}
               size="large"
             />
           </Col>
@@ -254,7 +273,10 @@ export const InboundHistoryPage: React.FC = () => {
               className="w-full"
               size="large"
               value={filterDate ? dayjs(filterDate) : null}
-              onChange={(date) => setFilterDate(date ? date.format('YYYY-MM-DD') : null)}
+              onChange={(date) => {
+                setFilterDate(date ? date.format('YYYY-MM-DD') : null);
+                setPagination((prev) => ({ ...prev, current: 1 }));
+              }}
             />
           </Col>
           <Col xs={24} md={8}>
@@ -282,7 +304,13 @@ export const InboundHistoryPage: React.FC = () => {
           dataSource={filteredReceipts}
           columns={columns}
           rowKey="id"
-          pagination={{ pageSize: 5 }}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
           scroll={{ x: 'max-content' }}
         />
       </Card>

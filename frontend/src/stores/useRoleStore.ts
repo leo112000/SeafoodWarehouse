@@ -104,7 +104,7 @@ export const useRoleStore = create<RoleState>((set) => ({
     set((state) => {
       const roles = state.rolesByTenant[key] ?? createDefaultRoles();
       const newRole: Role = created || { ...roleData, id: `role-${Date.now()}` };
-      return { rolesByTenant: { ...state.rolesByTenant, [key]: [...roles, newRole] } };
+      return { rolesByTenant: { ...state.rolesByTenant, [key]: [newRole, ...roles] } };
     });
   },
 

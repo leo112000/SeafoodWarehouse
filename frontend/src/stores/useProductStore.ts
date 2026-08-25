@@ -32,11 +32,11 @@ export const useProductStore = create<ProductState>()(
       addProduct: async (productData) => {
         try {
           const newProduct = await productService.create(productData);
-          set((state) => ({ products: [...state.products, newProduct] }));
+          set((state) => ({ products: [newProduct, ...state.products] }));
           return newProduct;
         } catch {
           const newProduct: Product = { ...productData, id: `p-${Date.now()}` };
-          set((state) => ({ products: [...state.products, newProduct] }));
+          set((state) => ({ products: [newProduct, ...state.products] }));
           return newProduct;
         }
       },

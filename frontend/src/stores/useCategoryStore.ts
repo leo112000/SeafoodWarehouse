@@ -33,7 +33,7 @@ export const useCategoryStore = create<CategoryState>()(
       addCategory: async (categoryData) => {
         try {
           const newCategory = await categoryService.create(categoryData);
-          set((state) => ({ categories: [...state.categories, newCategory] }));
+          set((state) => ({ categories: [newCategory, ...state.categories] }));
           return newCategory;
         } catch {
           const newCategory: Category = {
@@ -42,7 +42,7 @@ export const useCategoryStore = create<CategoryState>()(
             productCount: 0,
             createdAt: new Date().toISOString(),
           };
-          set((state) => ({ categories: [...state.categories, newCategory] }));
+          set((state) => ({ categories: [newCategory, ...state.categories] }));
           return newCategory;
         }
       },

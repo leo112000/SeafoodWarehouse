@@ -3,11 +3,13 @@ import { Table, Card, Button, Modal, Form, Input, InputNumber, Tag, Space, Popco
 import { PlusOutlined, EditOutlined, DeleteOutlined, EnvironmentOutlined, FireOutlined } from '@ant-design/icons';
 import { useWarehouseStore } from '../../stores/useWarehouseStore';
 import { warehouseService, type WarehouseItem } from '../../services/warehouseService';
+import { generateCodeFromName } from '../../utils/codeGenerator';
 
 export const WarehousesPage: React.FC = () => {
   const { warehouses, loading, fetchWarehouses } = useWarehouseStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | number | null>(null);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -22,24 +24,28 @@ export const WarehousesPage: React.FC = () => {
         message.success('Cập nhật kho lạnh thành công');
       } else {
         await warehouseService.create(values as Omit<WarehouseItem, 'id'>);
+        setPagination((prev) => ({ ...prev, current: 1 }));
         message.success('Tạo mới kho lạnh thành công');
       }
       setModalOpen(false);
       form.resetFields();
       setEditingId(null);
       fetchWarehouses();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      if (err?.errorFields) return;
+      message.error(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi lưu kho.');
     }
   };
 
   const handleEdit = (record: any) => {
     setEditingId(record.id);
     form.setFieldsValue({
+      code: record.code,
       name: record.name,
       location: record.location,
       capacityKg: record.capacityKg,
-      temperatureCelcius: record.temperatureCelcius,
+      temperatureCelcius: record.temperatureCelsius ?? record.temperatureCelcius ?? -18,
+      description: record.description || '',
     });
     setModalOpen(true);
   };
@@ -49,17 +55,29 @@ export const WarehousesPage: React.FC = () => {
       await warehouseService.delete(String(id));
       message.success('Đã xóa kho lạnh');
       fetchWarehouses();
-    } catch (err) {
-      message.error('Không thể xóa kho');
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || err?.message || 'Không thể xóa kho');
     }
   };
 
   const columns = [
     {
-      title: 'Tên kho lạnh',
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
+    {
+      title: 'Mã & Tên kho lạnh',
       dataIndex: 'name',
       key: 'name',
-      render: (text: string) => <span className="font-semibold text-gray-800 dark:text-gray-100">{text}</span>,
+      render: (text: string, record: any) => (
+        <div>
+          <div className="font-semibold text-gray-800 dark:text-gray-100">{text}</div>
+          <div className="text-xs text-sky-600 font-mono font-medium">Mã: {record.code || 'N/A'}</div>
+        </div>
+      ),
     },
     {
       title: 'Vị trí / Địa chỉ',
@@ -79,9 +97,22 @@ export const WarehousesPage: React.FC = () => {
       title: 'Nhiệt độ tiêu chuẩn (°C)',
       dataIndex: 'temperatureCelcius',
       key: 'temperatureCelcius',
-      render: (val: number) => (
-        <Tag icon={<FireOutlined />} color="cyan">{val !== undefined ? `${val}°C` : '-18°C'}</Tag>
-      ),
+      render: (val: number, record: any) => {
+        const temp = val ?? record.temperatureCelsius ?? -18;
+        return <Tag icon={<FireOutlined />} color="cyan">{temp}°C</Tag>;
+      },
+    },
+    {
+      title: 'Mô tả',
+      dataIndex: 'description',
+      key: 'description',
+      render: (text: string) => {
+        return text ? (
+          <span className="text-gray-600 dark:text-gray-300 text-xs">{text}</span>
+        ) : (
+          <span className="text-gray-400 text-xs italic">Không có</span>
+        );
+      },
     },
     {
       title: 'Thao tác',
@@ -123,7 +154,13 @@ export const WarehousesPage: React.FC = () => {
           columns={columns}
           dataSource={warehouses}
           loading={loading}
-          pagination={{ pageSize: 10 }}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
           scroll={{ x: 750 }}
         />
       </Card>
@@ -138,7 +175,18 @@ export const WarehousesPage: React.FC = () => {
       >
         <Form form={form} layout="vertical" className="mt-4">
           <Form.Item name="name" label="Tên kho lạnh" rules={[{ required: true, message: 'Vui lòng nhập tên kho' }]}>
-            <Input placeholder="Ví dụ: Kho Lạnh Cảng Cá A1" />
+            <Input
+              placeholder="Ví dụ: Kho Lạnh Cảng Cá A1"
+              onChange={(e) => {
+                if (!editingId) {
+                  const autoCode = generateCodeFromName(e.target.value, 'KHO');
+                  form.setFieldsValue({ code: autoCode });
+                }
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="code" label="Mã kho lạnh (Tự sinh theo tên)">
+            <Input placeholder="Tự động sinh theo tên (VD: KHO-CANG-CA-A1)" className="font-mono bg-slate-50 dark:bg-slate-800/60" />
           </Form.Item>
           <Form.Item name="location" label="Vị trí / Khu vực">
             <Input placeholder="Ví dụ: Khung A, Khu vực bến cảng" />
@@ -148,6 +196,9 @@ export const WarehousesPage: React.FC = () => {
           </Form.Item>
           <Form.Item name="temperatureCelcius" label="Nhiệt độ bảo quản (°C)">
             <InputNumber className="w-full" placeholder="Ví dụ: -18" />
+          </Form.Item>
+          <Form.Item name="description" label="Mô tả kho lạnh">
+            <Input.TextArea rows={3} placeholder="Ví dụ: Kho chuyên bảo quản tôm cá xuất khẩu, dàn lạnh Nhật Bản công suất cao..." />
           </Form.Item>
         </Form>
       </Modal>

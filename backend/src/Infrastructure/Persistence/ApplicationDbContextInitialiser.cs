@@ -179,12 +179,24 @@ public class ApplicationDbContextInitialiser
                     ""Type"" INT NOT NULL DEFAULT 0,
                     ""TargetTemperature"" DOUBLE PRECISION NOT NULL DEFAULT -18.0,
                     ""MaxCapacityTon"" NUMERIC(18,2) NOT NULL DEFAULT 100.0,
+                    ""Description"" VARCHAR(500) NULL,
+                    ""Note"" VARCHAR(500) NULL,
                     ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Warehouses' AND column_name = 'Description') THEN 
+                        ALTER TABLE ""Warehouses"" ADD COLUMN ""Description"" VARCHAR(500) NULL; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Warehouses' AND column_name = 'Note') THEN 
+                        ALTER TABLE ""Warehouses"" ADD COLUMN ""Note"" VARCHAR(500) NULL; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""LotBatches"" (
                     ""Id"" SERIAL PRIMARY KEY,
@@ -677,6 +689,8 @@ public class ApplicationDbContextInitialiser
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'TenantId') ALTER TABLE [Users] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Roles') AND name = 'TenantId') ALTER TABLE [Roles] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Warehouses') AND name = 'TenantId') ALTER TABLE [Warehouses] ADD [TenantId] INT NULL;",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Warehouses') AND name = 'Description') ALTER TABLE [Warehouses] ADD [Description] NVARCHAR(500) NULL;",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Warehouses') AND name = 'Note') ALTER TABLE [Warehouses] ADD [Note] NVARCHAR(500) NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'TenantId') ALTER TABLE [Products] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Categories') AND name = 'TenantId') ALTER TABLE [Categories] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LotBatches') AND name = 'TenantId') ALTER TABLE [LotBatches] ADD [TenantId] INT NULL;",

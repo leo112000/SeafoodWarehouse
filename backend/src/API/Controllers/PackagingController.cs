@@ -80,6 +80,8 @@ public class PackagingController : BaseApiController
     {
         var packagings = await _context.Packagings
             .Where(p => !p.IsDeleted)
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
             .ToListAsync(cancellationToken);
 
         var dtos = packagings.Select(p => new PackagingDto
@@ -103,9 +105,32 @@ public class PackagingController : BaseApiController
     [HttpPost]
     public async Task<ActionResult<Result<PackagingDto>>> Create([FromBody] CreatePackagingDto dto, CancellationToken cancellationToken = default)
     {
+        var existingCodes = await _context.Packagings.Where(p => !p.IsDeleted).Select(p => p.Code).ToListAsync(cancellationToken);
+
+        var code = dto.Code;
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            var baseCode = SeafoodWarehouseManagement.Application.Common.Helpers.CodeGeneratorHelper.GenerateCode(dto.Name, "PKG");
+            code = baseCode;
+            var counter = 1;
+            while (existingCodes.Any(c => string.Equals(c, code, StringComparison.OrdinalIgnoreCase)))
+            {
+                code = $"{baseCode}-{counter:D2}";
+                counter++;
+            }
+        }
+        else
+        {
+            code = code.Trim().ToUpper();
+            if (existingCodes.Any(c => string.Equals(c, code, StringComparison.OrdinalIgnoreCase)))
+            {
+                return BadRequest(Result<PackagingDto>.Failure($"Mã bao bì '{code}' đã tồn tại."));
+            }
+        }
+
         var packaging = new Packaging
         {
-            Code = dto.Code,
+            Code = code,
             Name = dto.Name,
             Category = dto.Category,
             DefaultTareWeight = dto.DefaultTareWeight,
@@ -196,6 +221,8 @@ public class PackagingController : BaseApiController
         var loans = await _context.PackagingLoans
             .Where(l => !l.IsDeleted)
             .Include(l => l.Packaging)
+            .OrderByDescending(l => l.LoanDate)
+            .ThenByDescending(l => l.Id)
             .ToListAsync(cancellationToken);
 
         var dtos = loans.Select(l => new PackagingLoanDto

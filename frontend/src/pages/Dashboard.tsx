@@ -7,6 +7,7 @@ import type { SeafoodProduct } from '../types';
 
 export const Dashboard: React.FC = () => {
   const { products, isLoading } = useSeafood();
+  const [pagination, setPagination] = React.useState({ current: 1, pageSize: 5 });
 
   // Compute stats
   const totalProducts = products.length;
@@ -14,6 +15,13 @@ export const Dashboard: React.FC = () => {
   const lowStockAlerts = products.filter((p) => p.status === 'LowStock' || p.status === 'OutofStock').length;
 
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     {
       title: 'Tên Sản Phẩm',
       dataIndex: 'name',
@@ -120,7 +128,13 @@ export const Dashboard: React.FC = () => {
           columns={columns}
           rowKey="id"
           loading={isLoading}
-          pagination={{ pageSize: 5 }}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
           scroll={{ x: 800 }}
         />
       </Card>

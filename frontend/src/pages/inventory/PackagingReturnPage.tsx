@@ -112,9 +112,19 @@ const PackagingReturnPage: React.FC = () => {
     loanForm.resetFields();
   };
 
+  const [loanPagination, setLoanPagination] = useState({ current: 1, pageSize: 10 });
+  const [returnPagination, setReturnPagination] = useState({ current: 1, pageSize: 10 });
+
   // ── loan table columns ────────────────────────────────────────────────────────
 
   const loanColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (loanPagination.current - 1) * loanPagination.pageSize + index + 1,
+    },
     {
       title: 'Đối Tác',
       dataIndex: 'partnerName',
@@ -217,6 +227,13 @@ const PackagingReturnPage: React.FC = () => {
   // ── returns history columns ───────────────────────────────────────────────────
 
   const returnColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (returnPagination.current - 1) * returnPagination.pageSize + index + 1,
+    },
     { title: 'Mã Phiếu', dataIndex: 'id', key: 'id', render: (id: string) => <Tag color="geekblue" className="font-mono text-xs">{id}</Tag> },
     { title: 'Đối Tác', dataIndex: 'partnerName', key: 'partnerName', render: (n: string) => <strong>{n}</strong> },
     { title: 'Loại Khay', dataIndex: 'packagingName', key: 'packagingName' },
@@ -346,7 +363,13 @@ const PackagingReturnPage: React.FC = () => {
                     columns={loanColumns}
                     dataSource={filteredLoans}
                     rowKey="id"
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                      current: loanPagination.current,
+                      pageSize: loanPagination.pageSize,
+                      showSizeChanger: true,
+                      pageSizeOptions: ['5', '10', '20', '50'],
+                      onChange: (page, pageSize) => setLoanPagination({ current: page, pageSize }),
+                    }}
                     rowClassName={(record) => {
                       const debt = record.loanedQty - record.returnedQty;
                       if (debt > 5) return 'bg-red-50 dark:bg-red-950';
@@ -372,7 +395,13 @@ const PackagingReturnPage: React.FC = () => {
                   columns={returnColumns}
                   dataSource={returns}
                   rowKey="id"
-                  pagination={{ pageSize: 10 }}
+                  pagination={{
+                    current: returnPagination.current,
+                    pageSize: returnPagination.pageSize,
+                    showSizeChanger: true,
+                    pageSizeOptions: ['5', '10', '20', '50'],
+                    onChange: (page, pageSize) => setReturnPagination({ current: page, pageSize }),
+                  }}
                   locale={{ emptyText: 'Chưa có lịch sử trả vỏ nào.' }}
                   scroll={{ x: 'max-content' }}
                 />

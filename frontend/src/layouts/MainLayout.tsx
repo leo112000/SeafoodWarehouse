@@ -58,7 +58,7 @@ export const MainLayout: React.FC = () => {
 
   const addTab = useTabStore((state) => state.addTab);
   const setActiveKey = useTabStore((state) => state.setActiveKey);
-
+  const MAX_TABS_LIMIT = useTabStore((state) => state.maxTabs);
   // Map route to human-readable title
   const getRouteTitle = (path: string): string => {
     switch (path) {
@@ -105,7 +105,7 @@ export const MainLayout: React.FC = () => {
       if (added) {
         setActiveKey(location.pathname);
       } else {
-        message.warning('Bạn đã mở tối đa 7 tab! Vui lòng đóng bớt các tab không dùng để mở tab mới.');
+        message.warning(`Bạn đã mở tối đa ${MAX_TABS_LIMIT} tab! Vui lòng đóng bớt các tab không dùng để mở tab mới.`);
       }
     }
   }, [location.pathname, addTab, setActiveKey, message]);
@@ -116,34 +116,54 @@ export const MainLayout: React.FC = () => {
   const openAuditLogs = () => { setProfileOpen(false); navigate('/system/audit-logs'); };
 
   const menuItems = [
-    { key: '/', icon: <DashboardOutlined />, label: <Link to="/">Bảng điều khiển</Link> },
-    ...(canAccessWarehouse ? [{ key: '/inventory-menu', icon: <DatabaseOutlined />, label: 'Quản lý kho', children: [
-      { key: '/inventory', label: <Link to="/inventory">Tồn kho hiện tại</Link> },
-      { key: '/inventory/map', icon: <CompassOutlined />, label: <Link to="/inventory/map">🗺️ Sơ đồ kho 2D</Link> },
-      { key: '/inventory/inbound', label: <Link to="/inventory/inbound">Nhập kho hải sản</Link> },
-      { key: '/inventory/outbound', label: <Link to="/inventory/outbound">Xuất kho hải sản</Link> },
-      { key: '/inventory/history', label: <Link to="/inventory/history">Lịch sử giao dịch Nhập/Xuất</Link> },
-      { key: '/inventory/wastage', label: <Link to="/inventory/wastage">Hao hụt & Phân loại</Link> },
-      ...(canViewPackagingReturn ? [{ key: '/inventory/packaging-return', label: <Link to="/inventory/packaging-return">Thu hồi & Giao mượn vỏ sọt</Link> }] : []),
-    ] },
-    { key: '/master-data', icon: <FolderOutlined />, label: 'Dữ liệu nền', children: [
-      ...(canViewCategories ? [{ key: '/master-data/categories', icon: <FolderOutlined />, label: <Link to="/master-data/categories">Nhóm danh mục</Link> }] : []),
-      ...(canViewProducts ? [{ key: '/master-data/products', icon: <AppstoreOutlined />, label: <Link to="/master-data/products">Danh mục hải sản</Link> }] : []),
-      ...(canAccessWarehouse ? [{ key: '/master-data/warehouses', icon: <EnvironmentOutlined />, label: <Link to="/master-data/warehouses">Danh mục kho bãi</Link> }] : []),
-      ...(canViewPackaging ? [{ key: '/master-data/packaging', icon: <InboxOutlined />, label: <Link to="/master-data/packaging">Danh mục bao bì</Link> }] : []),
-      { key: '/master-data/partners', icon: <TeamOutlined />, label: <Link to="/master-data/partners">Đối tác (Tàu cá & Khách hàng)</Link> },
-    ] },
-    { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo & Phân tích', children: [
-      { key: '/reports/summary', label: <Link to="/reports/summary">Thống kê tổng hợp</Link> },
-      { key: '/reports/alerts', label: <Link to="/reports/alerts">Cảnh báo & Hao hụt</Link> },
-    ] }] : []),
-    ...((canManageUsers || canManageRoles || canManageSettings || canViewAuditLogs || canManageTenants) ? [{ key: '/system', icon: <SettingOutlined />, label: 'Hệ thống', children: [
-      ...(canManageTenants ? [{ key: '/system/tenants', icon: <SettingOutlined />, label: <Link to="/system/tenants">Cửa hàng & Chi nhánh</Link> }] : []),
-      ...(canManageUsers ? [{ key: '/system/users', icon: <UserOutlined />, label: <Link to="/system/users">Quản lý nhân viên</Link> }] : []),
-      ...(canManageRoles ? [{ key: '/system/roles', icon: <SafetyCertificateOutlined />, label: <Link to="/system/roles">Vai trò & phân quyền</Link> }] : []),
-      ...(canViewAuditLogs ? [{ key: '/system/audit-logs', icon: <HistoryOutlined />, label: <Link to="/system/audit-logs">Nhật ký hệ thống</Link> }] : []),
-      ...(canManageSettings ? [{ key: '/system/settings', icon: <SettingOutlined />, label: <Link to="/system/settings">Cài đặt</Link> }] : []),
-    ] }] : []),
+    { key: '/', icon: <DashboardOutlined />, label: <Link to="/">1. Bảng điều khiển</Link> },
+    ...(canAccessWarehouse ? [{
+      key: '/inventory-menu',
+      icon: <DatabaseOutlined />,
+      label: '2. Quản lý kho',
+      children: [
+        { key: '/inventory', label: <Link to="/inventory">2.1. Tồn kho hiện tại</Link> },
+        { key: '/inventory/map', label: <Link to="/inventory/map">2.2. Sơ đồ kho 2D</Link> },
+        { key: '/inventory/inbound', label: <Link to="/inventory/inbound">2.3. Nhập kho hải sản</Link> },
+        { key: '/inventory/outbound', label: <Link to="/inventory/outbound">2.4. Xuất kho hải sản</Link> },
+        { key: '/inventory/history', label: <Link to="/inventory/history">2.5. Lịch sử Nhập/Xuất</Link> },
+        { key: '/inventory/wastage', label: <Link to="/inventory/wastage">2.6. Hao hụt & Phân loại</Link> },
+        ...(canViewPackagingReturn ? [{ key: '/inventory/packaging-return', label: <Link to="/inventory/packaging-return">2.7. Thu hồi vỏ sọt</Link> }] : []),
+      ]
+    },
+    {
+      key: '/reports',
+      icon: <BarChartOutlined />,
+      label: '3. Báo cáo & Phân tích',
+      children: [
+        { key: '/reports/summary', label: <Link to="/reports/summary">3.1. Thống kê tổng hợp</Link> },
+        { key: '/reports/alerts', label: <Link to="/reports/alerts">3.2. Hệ thống cảnh báo</Link> },
+      ]
+    },
+    {
+      key: '/master-data',
+      icon: <FolderOutlined />,
+      label: '4. Dữ liệu nền',
+      children: [
+        ...(canViewCategories ? [{ key: '/master-data/categories', icon: <FolderOutlined />, label: <Link to="/master-data/categories">4.1. Nhóm danh mục</Link> }] : []),
+        ...(canViewProducts ? [{ key: '/master-data/products', icon: <AppstoreOutlined />, label: <Link to="/master-data/products">4.2. Danh mục hải sản</Link> }] : []),
+        ...(canAccessWarehouse ? [{ key: '/master-data/warehouses', icon: <EnvironmentOutlined />, label: <Link to="/master-data/warehouses">4.3. Danh mục kho bãi</Link> }] : []),
+        ...(canViewPackaging ? [{ key: '/master-data/packaging', icon: <InboxOutlined />, label: <Link to="/master-data/packaging">4.4. Danh mục bao bì</Link> }] : []),
+        { key: '/master-data/partners', icon: <TeamOutlined />, label: <Link to="/master-data/partners">4.5. Đối tác & Tàu cá</Link> },
+      ]
+    }] : []),
+    ...((canManageUsers || canManageRoles || canManageSettings || canViewAuditLogs || canManageTenants) ? [{
+      key: '/system',
+      icon: <SettingOutlined />,
+      label: '5. Hệ thống',
+      children: [
+        ...(canManageTenants ? [{ key: '/system/tenants', icon: <SettingOutlined />, label: <Link to="/system/tenants">5.1. Cửa hàng & Chi nhánh</Link> }] : []),
+        ...(canManageUsers ? [{ key: '/system/users', icon: <UserOutlined />, label: <Link to="/system/users">5.2. Quản lý nhân viên</Link> }] : []),
+        ...(canManageRoles ? [{ key: '/system/roles', icon: <SafetyCertificateOutlined />, label: <Link to="/system/roles">5.3. Vai trò & phân quyền</Link> }] : []),
+        ...(canViewAuditLogs ? [{ key: '/system/audit-logs', icon: <HistoryOutlined />, label: <Link to="/system/audit-logs">5.4. Nhật ký hệ thống</Link> }] : []),
+        ...(canManageSettings ? [{ key: '/system/settings', icon: <SettingOutlined />, label: <Link to="/system/settings">5.5. Cài đặt hệ thống</Link> }] : []),
+      ]
+    }] : []),
   ];
 
   const notifications = (
@@ -166,9 +186,8 @@ export const MainLayout: React.FC = () => {
           systemNotifications.map((n) => (
             <div
               key={n.id}
-              className={`p-2.5 rounded-md transition-colors cursor-pointer border-l-4 ${
-                !n.isRead ? 'bg-sky-50 dark:bg-gray-800/80 font-medium' : 'bg-gray-50/50 dark:bg-gray-900/40 opacity-75'
-              }`}
+              className={`p-2.5 rounded-md transition-colors cursor-pointer border-l-4 ${!n.isRead ? 'bg-sky-50 dark:bg-gray-800/80 font-medium' : 'bg-gray-50/50 dark:bg-gray-900/40 opacity-75'
+                }`}
               style={{
                 borderColor: n.severity === 'error' ? '#ef4444' : n.severity === 'warning' ? '#f59e0b' : '#10b981',
               }}
@@ -208,8 +227,23 @@ export const MainLayout: React.FC = () => {
     <>
       <Layout className="min-h-screen">
         {!isMobile ? (
-          <Sider trigger={null} collapsible collapsed={collapsed} theme="dark">
-            <div className="p-4 text-white text-center font-bold text-lg overflow-hidden whitespace-nowrap">
+          <Sider
+            trigger={null}
+            collapsible
+            collapsed={collapsed}
+            width={260}
+            collapsedWidth={80}
+            theme="dark"
+            style={{
+              overflowY: 'auto',
+              height: '100vh',
+              position: 'sticky',
+              top: 0,
+              left: 0,
+              zIndex: 100,
+            }}
+          >
+            <div className="p-4 text-white text-center font-bold text-lg overflow-hidden whitespace-nowrap sticky top-0 bg-[#001529] z-10">
               {collapsed ? '🚢' : '🚢 KHO HẢI SẢN'}
             </div>
             <Menu
@@ -220,10 +254,10 @@ export const MainLayout: React.FC = () => {
                 location.pathname.startsWith('/master-data')
                   ? ['/master-data']
                   : location.pathname.startsWith('/reports')
-                  ? ['/reports']
-                  : location.pathname.startsWith('/system')
-                  ? ['/system']
-                  : []
+                    ? ['/reports']
+                    : location.pathname.startsWith('/system')
+                      ? ['/system']
+                      : []
               }
               items={menuItems}
             />
@@ -235,7 +269,7 @@ export const MainLayout: React.FC = () => {
             onClose={() => setDrawerVisible(false)}
             open={drawerVisible}
             bodyStyle={{ padding: 0 }}
-            width={250}
+            width={280}
           >
             <Menu
               theme={currentTheme === 'dark' ? 'dark' : 'light'}
@@ -245,82 +279,89 @@ export const MainLayout: React.FC = () => {
                 location.pathname.startsWith('/master-data')
                   ? ['/master-data']
                   : location.pathname.startsWith('/reports')
-                  ? ['/reports']
-                  : location.pathname.startsWith('/system')
-                  ? ['/system']
-                  : []
+                    ? ['/reports']
+                    : location.pathname.startsWith('/system')
+                      ? ['/system']
+                      : []
               }
               items={menuItems}
             />
           </Drawer>
         )}
-        <Layout>
-          <Header
-            className="p-0 flex items-center justify-between border-b border-gray-200 dark:border-gray-800"
-            style={{ background: colorBgContainer, lineHeight: 'normal' }}
+        <Layout className="min-w-0">
+          <div
+            className="sticky top-0 z-40 shadow-sm"
+            style={{
+              background: colorBgContainer,
+            }}
           >
-            <Button
-              type="text"
-              icon={isMobile ? <MenuOutlined /> : collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={() => (isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed))}
-              className="text-lg w-16 h-16"
-            />
-            <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6">
-              <Button
-                type="primary"
-                icon={<QrcodeOutlined />}
-                onClick={() => setPdaScannerOpen(true)}
-                className="bg-sky-600 font-semibold text-xs h-9 flex items-center shadow-sm"
-              >
-                <span className="hidden sm:inline">📱 Quét PDA</span>
-              </Button>
+            <Header
+              className="p-0 flex items-center justify-between border-b border-gray-200 dark:border-gray-800"
+              style={{ background: colorBgContainer, lineHeight: 'normal' }}
+            >
               <Button
                 type="text"
-                icon={currentTheme === 'dark' ? <SunOutlined className="text-yellow-400" /> : <MoonOutlined />}
-                onClick={toggleTheme}
-                className="text-lg flex items-center justify-center w-10 h-10"
-                aria-label="Đổi giao diện"
+                icon={isMobile ? <MenuOutlined /> : collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={() => (isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed))}
+                className="text-lg w-16 h-16"
               />
-              <Popover content={notifications} trigger="click" placement="bottomRight">
-                <Badge count={unreadCount} size="small">
-                  <Button
-                    type="text"
-                    icon={<BellOutlined />}
-                    className="text-lg flex items-center justify-center w-10 h-10"
-                    aria-label="Thông báo"
-                  />
-                </Badge>
-              </Popover>
-              {user && (
-                <Dropdown
-                  trigger={['click']}
-                  open={profileOpen}
-                  onOpenChange={setProfileOpen}
-                  popupRender={() => (
-                    <div
-                      className="rounded-lg shadow-lg"
-                      style={{
-                        background: currentTheme === 'dark' ? '#1f2937' : '#ffffff',
-                        border: `1px solid ${currentTheme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      }}
-                    >
-                      {profileContent}
-                    </div>
-                  )}
-                  placement="bottomRight"
+              <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6">
+                <Button
+                  type="primary"
+                  icon={<QrcodeOutlined />}
+                  onClick={() => setPdaScannerOpen(true)}
+                  className="bg-sky-600 font-semibold text-xs h-9 flex items-center shadow-sm"
                 >
-                  <button
-                    type="button"
-                    className="flex items-center rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
-                    aria-label="Mở menu tài khoản"
+                  <span className="hidden sm:inline">📱 Quét PDA</span>
+                </Button>
+                <Button
+                  type="text"
+                  icon={currentTheme === 'dark' ? <SunOutlined className="text-yellow-400" /> : <MoonOutlined />}
+                  onClick={toggleTheme}
+                  className="text-lg flex items-center justify-center w-10 h-10"
+                  aria-label="Đổi giao diện"
+                />
+                <Popover content={notifications} trigger="click" placement="bottomRight">
+                  <Badge count={unreadCount} size="small">
+                    <Button
+                      type="text"
+                      icon={<BellOutlined />}
+                      className="text-lg flex items-center justify-center w-10 h-10"
+                      aria-label="Thông báo"
+                    />
+                  </Badge>
+                </Popover>
+                {user && (
+                  <Dropdown
+                    trigger={['click']}
+                    open={profileOpen}
+                    onOpenChange={setProfileOpen}
+                    popupRender={() => (
+                      <div
+                        className="rounded-lg shadow-lg"
+                        style={{
+                          background: currentTheme === 'dark' ? '#1f2937' : '#ffffff',
+                          border: `1px solid ${currentTheme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                        }}
+                      >
+                        {profileContent}
+                      </div>
+                    )}
+                    placement="bottomRight"
                   >
-                    <Avatar className="bg-sky-500">{user.name.charAt(0).toLocaleUpperCase()}</Avatar>
-                  </button>
-                </Dropdown>
-              )}
-            </div>
-          </Header>
-          <MultiTabBar />
+                    <button
+                      type="button"
+                      className="flex items-center rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      aria-label="Mở menu tài khoản"
+                    >
+                      <Avatar className="bg-sky-500">{user.name.charAt(0).toLocaleUpperCase()}</Avatar>
+                    </button>
+                  </Dropdown>
+                )}
+              </div>
+            </Header>
+            <MultiTabBar />
+          </div>
           <Content
             className="m-3 md:m-6 p-4 md:p-6 min-h-[280px]"
             style={{

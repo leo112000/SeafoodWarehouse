@@ -136,10 +136,11 @@ const KpiCard: React.FC<KpiCardProps> = ({
 
 const TOP_ITEMS_COLUMNS: ColumnsType<TopItem> = [
   {
-    title: '#',
+    title: 'STT',
     dataIndex: 'rank',
     key: 'rank',
-    width: 48,
+    width: 60,
+    align: 'center' as const,
     render: (rank: number) => {
       const colors: Record<number, string> = { 1: '#f59e0b', 2: '#9ca3af', 3: '#b45309' };
       return (

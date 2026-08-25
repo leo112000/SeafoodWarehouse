@@ -83,6 +83,13 @@ export const RolesPage: React.FC = () => {
   };
 
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: unknown, __: unknown, index: number) => index + 1,
+    },
     { title: 'Vai trò', dataIndex: 'name', key: 'name', render: (name: string, role: Role) => <Space><strong>{name}</strong>{role.isSystemDefault && <Tag color="blue">Mặc định</Tag>}</Space> },
     { title: 'Mô tả', dataIndex: 'description', key: 'description' },
     {

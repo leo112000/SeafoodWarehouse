@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Tag, Space, App, Typography, Tabs, Radio, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, PhoneOutlined, MailOutlined, HomeOutlined, NumberOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 import { partnerService, type PartnerItem, type CreatePartnerDto } from '../../services/partnerService';
+import { generateCodeFromName } from '../../utils/codeGenerator';
 
 const { Title, Paragraph } = Typography;
 
@@ -13,6 +14,7 @@ export const PartnersPage: React.FC = () => {
   const [search, setSearch] = useState<string>('');
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editingPartner, setEditingPartner] = useState<PartnerItem | null>(null);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
 
   const fetchPartners = useCallback(async () => {
@@ -56,6 +58,7 @@ export const PartnersPage: React.FC = () => {
         message.success('Cập nhật thông tin đối tác thành công!');
       } else {
         await partnerService.create(values as CreatePartnerDto);
+        setPagination((prev) => ({ ...prev, current: 1 }));
         message.success('Thêm đối tác mới thành công!');
       }
       setModalOpen(false);
@@ -82,6 +85,13 @@ export const PartnersPage: React.FC = () => {
   };
 
   const columns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     {
       title: 'Mã & Tên đối tác',
       key: 'name',
@@ -205,7 +215,13 @@ export const PartnersPage: React.FC = () => {
           rowKey="id"
           loading={loading}
           scroll={{ x: 800 }}
-          pagination={{ pageSize: 10 }}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
         />
       </Card>
 
@@ -228,11 +244,21 @@ export const PartnersPage: React.FC = () => {
           </Form.Item>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Form.Item name="code" label="Mã đối tác" rules={[{ required: true, message: 'Nhập mã đối tác!' }]}>
-              <Input placeholder="VD: NCC-TAU-01..." className="uppercase" />
-            </Form.Item>
             <Form.Item name="name" label="Tên đối tác" rules={[{ required: true, message: 'Nhập tên đối tác!' }]}>
-              <Input placeholder="VD: Tàu cá ĐN-90123 / Nhà hàng Biển Đông" />
+              <Input
+                placeholder="VD: Tàu cá ĐN-90123 / Nhà hàng Biển Đông"
+                onChange={(e) => {
+                  if (!editingPartner) {
+                    const type = form.getFieldValue('type') || 'SUPPLIER';
+                    const prefix = type === 'CUSTOMER' ? 'KH' : 'NCC';
+                    const autoCode = generateCodeFromName(e.target.value, prefix);
+                    form.setFieldsValue({ code: autoCode });
+                  }
+                }}
+              />
+            </Form.Item>
+            <Form.Item name="code" label="Mã đối tác (Tự sinh theo tên)" rules={[{ required: true, message: 'Nhập mã đối tác!' }]}>
+              <Input placeholder="Tự động sinh (VD: NCC-TAU-CA-DN90123)" className="uppercase font-mono bg-slate-50 dark:bg-slate-800/60" disabled={!!editingPartner} />
             </Form.Item>
           </div>
 

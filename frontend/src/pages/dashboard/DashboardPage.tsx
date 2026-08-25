@@ -67,6 +67,13 @@ export const DashboardPage: React.FC = () => {
 
   const transactionColumns = [
     {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
+    {
       title: 'Mã Phiếu',
       dataIndex: 'id',
       key: 'id',

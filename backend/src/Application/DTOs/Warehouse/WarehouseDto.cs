@@ -13,5 +13,6 @@ public class WarehouseDto
     public double TargetTemperature { get; set; }
     public decimal MaxCapacityTon { get; set; }
     public bool IsActive { get; set; }
+    public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
 }

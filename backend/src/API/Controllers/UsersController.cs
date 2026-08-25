@@ -62,6 +62,8 @@ public class UsersController : BaseApiController
             .Where(u => !u.IsDeleted)
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
+            .OrderByDescending(u => u.CreatedAt)
+            .ThenByDescending(u => u.Id)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 

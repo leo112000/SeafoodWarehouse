@@ -44,6 +44,7 @@ public class RolesController : BaseApiController
         var dbRoles = await _context.Roles
             .Include(r => r.RolePermissions)
             .Where(r => !r.IsDeleted)
+            .OrderByDescending(r => r.Id)
             .ToListAsync(cancellationToken);
 
         var dtos = dbRoles.Select(r => new RoleDto

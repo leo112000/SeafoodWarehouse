@@ -1,29 +1,43 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card, Table, Tag, Button, Modal, Form, Input, Space, App,
-  Row, Col, Statistic, Tooltip,
+  Row, Col, Statistic, Tooltip, Empty,
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
   FolderOutlined, AppstoreOutlined, CalendarOutlined,
-  ReloadOutlined, SearchOutlined,
+  ReloadOutlined, SearchOutlined, EyeOutlined, ArrowRightOutlined,
 } from '@ant-design/icons';
-import type { Category } from '../../types/seafood';
+import type { Category, Product } from '../../types/seafood';
 import { useCategoryStore } from '../../stores/useCategoryStore';
+import { useProductStore } from '../../stores/useProductStore';
+import { formatCurrency } from '../../utils/format';
+import { generateCodeFromName } from '../../utils/codeGenerator';
 
 // ─── component ─────────────────────────────────────────────────────────────────
 
 export const CategoriesPage: React.FC = () => {
+  const navigate = useNavigate();
   const { message, modal } = App.useApp();
   const { categories, loading, fetchCategories, addCategory, updateCategory, deleteCategory } = useCategoryStore();
+  const { products, fetchProducts } = useProductStore();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
 
+  // Modal xem danh sách sản phẩm theo danh mục
+  const [isProductsModalOpen, setIsProductsModalOpen] = useState(false);
+  const [selectedCategoryForProducts, setSelectedCategoryForProducts] = useState<Category | null>(null);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [productModalPagination, setProductModalPagination] = useState({ current: 1, pageSize: 5 });
+
   const loadData = useCallback(async () => {
-    await fetchCategories();
-  }, [fetchCategories]);
+    await Promise.all([fetchCategories(), fetchProducts()]);
+  }, [fetchCategories, fetchProducts]);
 
   useEffect(() => {
     loadData();
@@ -52,6 +66,33 @@ export const CategoriesPage: React.FC = () => {
         (c.description && c.description.toLowerCase().includes(q))
     );
   }, [categories, searchQuery]);
+
+  // ── sản phẩm thuộc danh mục đang chọn ─────────────────────────────────────────
+  const categoryProducts = useMemo(() => {
+    if (!selectedCategoryForProducts) return [];
+    const cat = selectedCategoryForProducts;
+    return products.filter((p) => {
+      const matchCat =
+        String(p.categoryId) === String(cat.id) ||
+        p.categoryId?.toLowerCase() === cat.code.toLowerCase() ||
+        p.categoryName?.toLowerCase() === cat.name.toLowerCase();
+      if (!matchCat) return false;
+      if (!productSearchQuery) return true;
+      const q = productSearchQuery.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.code.toLowerCase().includes(q) ||
+        (p.note && p.note.toLowerCase().includes(q))
+      );
+    });
+  }, [products, selectedCategoryForProducts, productSearchQuery]);
+
+  const openProductsModal = (cat: Category) => {
+    setSelectedCategoryForProducts(cat);
+    setProductSearchQuery('');
+    setProductModalPagination({ current: 1, pageSize: 5 });
+    setIsProductsModalOpen(true);
+  };
 
   // ── CRUD handlers ─────────────────────────────────────────────────────────────
   const openAdd = () => {
@@ -109,6 +150,7 @@ export const CategoriesPage: React.FC = () => {
         message.success('Cập nhật danh mục thành công!');
       } else {
         await addCategory(payload);
+        setPagination((prev) => ({ ...prev, current: 1 }));
         message.success('Thêm danh mục mới thành công!');
       }
       setIsModalOpen(false);
@@ -122,10 +164,17 @@ export const CategoriesPage: React.FC = () => {
   // ── table columns ─────────────────────────────────────────────────────────────
   const columns = [
     {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
+    {
       title: 'Mã Danh Mục',
       dataIndex: 'code',
       key: 'code',
-      width: 150,
+      width: 140,
       render: (code: string) => (
         <Tag color="geekblue" className="font-mono font-semibold text-xs">{code}</Tag>
       ),
@@ -155,21 +204,36 @@ export const CategoriesPage: React.FC = () => {
       dataIndex: 'productCount',
       key: 'productCount',
       align: 'center' as const,
-      width: 140,
-      render: (count: number) => (
-        <Tag
-          color={count === 0 ? 'default' : count >= 10 ? 'green' : 'blue'}
-          className="font-bold"
-        >
-          {count} sản phẩm
-        </Tag>
-      ),
+      width: 150,
+      render: (_: number, record: Category) => {
+        const catProducts = products.filter(
+          (p) =>
+            String(p.categoryId) === String(record.id) ||
+            p.categoryId?.toLowerCase() === record.code.toLowerCase() ||
+            p.categoryName?.toLowerCase() === record.name.toLowerCase()
+        );
+        const count = catProducts.length > 0 ? catProducts.length : (record.productCount || 0);
+
+        return (
+          <Tooltip title="Click để xem danh sách sản phẩm thuộc nhóm này">
+            <Button
+              type="dashed"
+              size="small"
+              icon={<EyeOutlined />}
+              className="cursor-pointer font-semibold border-sky-400 text-sky-700 bg-sky-50 hover:bg-sky-100 hover:border-sky-500 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-700"
+              onClick={() => openProductsModal(record)}
+            >
+              {count} sản phẩm
+            </Button>
+          </Tooltip>
+        );
+      },
     },
     {
       title: 'Ngày Tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 140,
+      width: 130,
       render: (date: string) => {
         try {
           return new Date(date).toLocaleDateString('vi-VN');
@@ -191,6 +255,91 @@ export const CategoriesPage: React.FC = () => {
             <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)} />
           </Tooltip>
         </Space>
+      ),
+    },
+  ];
+
+  // ── columns cho modal sản phẩm ────────────────────────────────────────────────
+  const productModalColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 55,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) =>
+        (productModalPagination.current - 1) * productModalPagination.pageSize + index + 1,
+    },
+    {
+      title: 'Mã SP',
+      dataIndex: 'code',
+      key: 'code',
+      width: 110,
+      render: (code: string) => (
+        <Tag color="geekblue" className="font-mono font-semibold text-xs">{code}</Tag>
+      ),
+    },
+    {
+      title: 'Tên Sản Phẩm',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text: string) => <span className="font-semibold text-gray-800 dark:text-gray-100">{text}</span>,
+    },
+    {
+      title: 'ĐVT',
+      dataIndex: 'unit',
+      key: 'unit',
+      width: 70,
+      align: 'center' as const,
+      render: (unit: string) => <Tag color="default">{unit}</Tag>,
+    },
+    {
+      title: 'Bảo Quản',
+      dataIndex: 'storageType',
+      key: 'storageType',
+      width: 110,
+      render: (type: string) => {
+        const map: Record<string, { label: string; color: string }> = {
+          FROZEN: { label: 'Đông lạnh', color: 'blue' },
+          FRESH: { label: 'Tươi sống', color: 'green' },
+          ALIVE: { label: 'Sống thở', color: 'cyan' },
+          DRY: { label: 'Khô ráo', color: 'orange' },
+        };
+        const item = map[type] || { label: type, color: 'default' };
+        return <Tag color={item.color}>{item.label}</Tag>;
+      },
+    },
+    {
+      title: 'Nhiệt Độ',
+      dataIndex: 'targetTemperature',
+      key: 'targetTemperature',
+      width: 90,
+      align: 'center' as const,
+      render: (temp: number) => (
+        <span className="font-mono text-xs">{temp !== undefined ? `${temp}°C` : '-18°C'}</span>
+      ),
+    },
+    {
+      title: 'Đơn Giá Tham Chiếu',
+      dataIndex: 'referencePrice',
+      key: 'referencePrice',
+      align: 'right' as const,
+      width: 150,
+      render: (p: number) => (
+        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+          {formatCurrency(p || 0)}
+        </span>
+      ),
+    },
+    {
+      title: 'Trạng Thái',
+      dataIndex: 'status',
+      key: 'status',
+      width: 110,
+      align: 'center' as const,
+      render: (status: Product['status']) => (
+        status === 'ACTIVE'
+          ? <Tag color="green">Hoạt động</Tag>
+          : <Tag color="default">Ngừng KD</Tag>
       ),
     },
   ];
@@ -274,7 +423,11 @@ export const CategoriesPage: React.FC = () => {
           rowKey="id"
           loading={loading}
           pagination={{
-            pageSize: 10,
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
             showTotal: (t) => `Tổng ${t} danh mục`,
           }}
           className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden"
@@ -297,36 +450,39 @@ export const CategoriesPage: React.FC = () => {
           onFinish={handleSubmit}
           className="mt-4"
         >
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item
-                name="code"
-                label="Mã Danh Mục"
-                rules={[
-                  { required: true, message: 'Nhập mã danh mục!' },
-                  { max: 50, message: 'Tối đa 50 ký tự!' },
-                ]}
-              >
-                <Input
-                  placeholder="VD: CA, TOM"
-                  disabled={!!editingCategory}
-                  className="font-mono"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={16}>
-              <Form.Item
-                name="name"
-                label="Tên Danh Mục"
-                rules={[
-                  { required: true, message: 'Nhập tên danh mục!' },
-                  { max: 150, message: 'Tối đa 150 ký tự!' },
-                ]}
-              >
-                <Input placeholder="VD: Cá, Tôm, Cua" />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item
+            name="name"
+            label="Tên Danh Mục"
+            rules={[
+              { required: true, message: 'Nhập tên danh mục!' },
+              { max: 150, message: 'Tối đa 150 ký tự!' },
+            ]}
+          >
+            <Input
+              placeholder="VD: Cá Biển, Tôm Sú, Cua Ghẹ..."
+              onChange={(e) => {
+                if (!editingCategory) {
+                  const autoCode = generateCodeFromName(e.target.value);
+                  form.setFieldsValue({ code: autoCode });
+                }
+              }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="code"
+            label="Mã Danh Mục (Tự sinh theo tên)"
+            rules={[
+              { required: true, message: 'Nhập mã danh mục!' },
+              { max: 50, message: 'Tối đa 50 ký tự!' },
+            ]}
+          >
+            <Input
+              placeholder="Tự động sinh theo tên (VD: CA-BIEN, TOM-SU)"
+              disabled={!!editingCategory}
+              className="font-mono bg-slate-50 dark:bg-slate-800/60"
+            />
+          </Form.Item>
 
           <Form.Item
             name="description"
@@ -355,6 +511,100 @@ export const CategoriesPage: React.FC = () => {
             </div>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* ── Modal Xem Danh Sách Sản Phẩm Theo Danh Mục ── */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 pr-6">
+            <FolderOutlined className="text-sky-500 text-lg" />
+            <span>
+              Danh Sách Sản Phẩm — <strong className="text-sky-600">{selectedCategoryForProducts?.name}</strong>{' '}
+              <Tag color="geekblue" className="font-mono text-xs">{selectedCategoryForProducts?.code}</Tag>
+            </span>
+          </div>
+        }
+        open={isProductsModalOpen}
+        onCancel={() => {
+          setIsProductsModalOpen(false);
+          setSelectedCategoryForProducts(null);
+        }}
+        footer={
+          <div className="flex justify-between items-center w-full">
+            <span className="text-xs text-gray-500">
+              Tổng cộng: <strong>{categoryProducts.length}</strong> sản phẩm
+            </span>
+            <Space>
+              <Button onClick={() => setIsProductsModalOpen(false)}>
+                Đóng
+              </Button>
+              <Button
+                type="primary"
+                icon={<ArrowRightOutlined />}
+                onClick={() => {
+                  setIsProductsModalOpen(false);
+                  navigate('/master-data/products');
+                }}
+              >
+                Đến trang Quản lý Sản Phẩm
+              </Button>
+            </Space>
+          </div>
+        }
+        width={900}
+        destroyOnClose
+      >
+        <div className="mt-3 space-y-4">
+          {/* Header Info & Search */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+            <div className="text-xs text-slate-600 dark:text-slate-300">
+              {selectedCategoryForProducts?.description ? (
+                <span><strong>Mô tả nhóm:</strong> {selectedCategoryForProducts.description}</span>
+              ) : (
+                <span className="italic">Nhóm danh mục phân loại hải sản</span>
+              )}
+            </div>
+            <Input.Search
+              placeholder="Tìm theo tên hoặc mã SP trong nhóm..."
+              allowClear
+              size="small"
+              className="w-64"
+              value={productSearchQuery}
+              onChange={(e) => setProductSearchQuery(e.target.value)}
+              prefix={<SearchOutlined className="text-gray-400" />}
+            />
+          </div>
+
+          {/* Product Table */}
+          <Table
+            columns={productModalColumns}
+            dataSource={categoryProducts}
+            rowKey="id"
+            size="small"
+            pagination={{
+              current: productModalPagination.current,
+              pageSize: productModalPagination.pageSize,
+              showSizeChanger: true,
+              pageSizeOptions: ['5', '10', '20'],
+              onChange: (page, pageSize) => setProductModalPagination({ current: page, pageSize }),
+              showTotal: (t) => `Tổng ${t} SP`,
+            }}
+            locale={{
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={
+                    <span className="text-xs text-gray-500">
+                      Chưa có sản phẩm nào thuộc nhóm danh mục này.
+                    </span>
+                  }
+                />
+              ),
+            }}
+            scroll={{ x: 750 }}
+            className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden"
+          />
+        </div>
       </Modal>
     </div>
   );

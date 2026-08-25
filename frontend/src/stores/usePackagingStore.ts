@@ -34,7 +34,7 @@ export const usePackagingStore = create<PackagingState>()(
         try {
           const newPackaging = await packagingService.create(packagingData);
           if (newPackaging) {
-            set((state) => ({ packagings: [...state.packagings, newPackaging] }));
+            set((state) => ({ packagings: [newPackaging, ...state.packagings] }));
           }
           return newPackaging;
         } catch {
@@ -43,7 +43,7 @@ export const usePackagingStore = create<PackagingState>()(
             ...packagingData,
             id: `pkg-${Date.now()}`,
           };
-          set((state) => ({ packagings: [...state.packagings, fallback] }));
+          set((state) => ({ packagings: [fallback, ...state.packagings] }));
           return fallback;
         }
       },

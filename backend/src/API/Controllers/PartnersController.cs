@@ -79,6 +79,7 @@ public class PartnersController : BaseApiController
 
         var list = await query
             .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
             .Select(p => new PartnerDto
             {
                 Id = p.Id,
@@ -133,22 +134,42 @@ public class PartnersController : BaseApiController
     [HttpPost]
     public async Task<ActionResult<Result<PartnerDto>>> Create([FromBody] CreatePartnerDto dto, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name) || string.IsNullOrWhiteSpace(dto.Code))
+        if (string.IsNullOrWhiteSpace(dto.Name))
         {
-            return BadRequest(Result<PartnerDto>.Failure("Mã và Tên đối tác không được để trống."));
+            return BadRequest(Result<PartnerDto>.Failure("Tên đối tác không được để trống."));
         }
 
-        var codeExists = await _context.Partners.AnyAsync(p => p.Code == dto.Code.Trim().ToUpper() && !p.IsDeleted, cancellationToken);
-        if (codeExists)
+        var isCustomer = dto.Type.Equals("CUSTOMER", StringComparison.OrdinalIgnoreCase);
+        var prefix = isCustomer ? "KH" : "NCC";
+
+        var existingCodes = await _context.Partners.Where(p => !p.IsDeleted).Select(p => p.Code).ToListAsync(cancellationToken);
+
+        var code = dto.Code;
+        if (string.IsNullOrWhiteSpace(code))
         {
-            return BadRequest(Result<PartnerDto>.Failure($"Mã đối tác '{dto.Code}' đã tồn tại trong hệ thống."));
+            var baseCode = SeafoodWarehouseManagement.Application.Common.Helpers.CodeGeneratorHelper.GenerateCode(dto.Name, prefix);
+            code = baseCode;
+            var counter = 1;
+            while (existingCodes.Any(c => string.Equals(c, code, StringComparison.OrdinalIgnoreCase)))
+            {
+                code = $"{baseCode}-{counter:D2}";
+                counter++;
+            }
+        }
+        else
+        {
+            code = code.Trim().ToUpper();
+            if (existingCodes.Any(c => string.Equals(c, code, StringComparison.OrdinalIgnoreCase)))
+            {
+                return BadRequest(Result<PartnerDto>.Failure($"Mã đối tác '{code}' đã tồn tại trong hệ thống."));
+            }
         }
 
         var partner = new Partner
         {
-            Code = dto.Code.Trim().ToUpper(),
+            Code = code,
             Name = dto.Name.Trim(),
-            Type = dto.Type.Equals("CUSTOMER", StringComparison.OrdinalIgnoreCase) ? PartnerType.Customer : PartnerType.Supplier,
+            Type = isCustomer ? PartnerType.Customer : PartnerType.Supplier,
             Phone = dto.Phone ?? string.Empty,
             Email = dto.Email ?? string.Empty,
             Address = dto.Address ?? string.Empty,

@@ -64,6 +64,13 @@ export const InventoryStockPage: React.FC = () => {
 
   const columns = [
     {
+      title: 'STT',
+      key: 'stt',
+      width: 65,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => (pageNumber - 1) * pageSize + index + 1,
+    },
+    {
       title: 'Mã lô',
       dataIndex: 'batchCode',
       key: 'batchCode',
