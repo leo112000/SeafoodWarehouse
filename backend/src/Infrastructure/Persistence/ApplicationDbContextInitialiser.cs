@@ -725,25 +725,6 @@ public class ApplicationDbContextInitialiser
 
     private async Task TrySeedAsync()
     {
-        // -1. Seed Cửa hàng / Tenant mặc định (Chỉ tạo lần đầu khi DB hoàn toàn trống)
-        if (!await _context.Tenants.IgnoreQueryFilters().AnyAsync())
-        {
-            _context.Tenants.Add(new Tenant
-            {
-                Code = "BIENDONG",
-                Name = "KHO HẢI SẢN BIỂN ĐÔNG",
-                Address = "123 Đường Cảng Cá, Phường Thọ Quang, Đà Nẵng",
-                Phone = "0236 123 4567",
-                Email = "kho@biendongsea.vn",
-                TaxCode = "0401 345 678",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            });
-            await _context.SaveChangesAsync();
-        }
-        var defaultTenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Code == "BIENDONG");
-        int? defaultTenantId = defaultTenant?.Id;
-
         // 0. Seed Cấu hình Hệ thống (Settings)
         if (!await _context.Settings.AnyAsync())
         {
@@ -754,7 +735,7 @@ public class ApplicationDbContextInitialiser
                 DefaultSeafoodPrice = 250000,
                 AutoRefreshIntervalSeconds = 30,
                 LowStockWarningPercent = 100.0,
-                TenantId = defaultTenantId
+                TenantId = null
             });
             await _context.SaveChangesAsync();
         }
@@ -798,7 +779,7 @@ public class ApplicationDbContextInitialiser
                     Unit = "Kg",
                     ReferencePrice = 320000,
                     Status = "ACTIVE",
-                    TenantId = defaultTenantId
+                    TenantId = null
                 },
                 new()
                 {
@@ -814,7 +795,7 @@ public class ApplicationDbContextInitialiser
                     Unit = "Kg",
                     ReferencePrice = 450000,
                     Status = "ACTIVE",
-                    TenantId = defaultTenantId
+                    TenantId = null
                 },
                 new()
                 {
@@ -830,7 +811,7 @@ public class ApplicationDbContextInitialiser
                     Unit = "Kg",
                     ReferencePrice = 280000,
                     Status = "ACTIVE",
-                    TenantId = defaultTenantId
+                    TenantId = null
                 },
                 new()
                 {
@@ -846,7 +827,7 @@ public class ApplicationDbContextInitialiser
                     Unit = "Kg",
                     ReferencePrice = 1250000,
                     Status = "ACTIVE",
-                    TenantId = defaultTenantId
+                    TenantId = null
                 },
                 new()
                 {
@@ -862,7 +843,7 @@ public class ApplicationDbContextInitialiser
                     Unit = "Con",
                     ReferencePrice = 2200000,
                     Status = "ACTIVE",
-                    TenantId = defaultTenantId
+                    TenantId = null
                 },
                 new()
                 {
@@ -878,7 +859,7 @@ public class ApplicationDbContextInitialiser
                     Unit = "Kg",
                     ReferencePrice = 350000,
                     Status = "ACTIVE",
-                    TenantId = defaultTenantId
+                    TenantId = null
                 }
             };
 

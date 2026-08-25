@@ -58,38 +58,13 @@ public class TenantMiddleware
                 {
                     currentTenant.SetTenant(tenant.Id, tenant.Code, tenant.Name);
                 }
-                else
-                {
-                    // Fallback to default tenant if not found
-                    await SetDefaultTenantAsync(dbContext, currentTenant);
-                }
             }
             catch
             {
-                await SetDefaultTenantAsync(dbContext, currentTenant);
+                // Ignored - tenant remains null (Host context)
             }
-        }
-        else
-        {
-            await SetDefaultTenantAsync(dbContext, currentTenant);
         }
 
         await _next(context);
-    }
-
-    private static async Task SetDefaultTenantAsync(IApplicationDbContext dbContext, ICurrentTenant currentTenant)
-    {
-        try
-        {
-            var defaultTenant = await dbContext.Tenants.FirstOrDefaultAsync(t => !t.IsDeleted);
-            if (defaultTenant != null)
-            {
-                currentTenant.SetTenant(defaultTenant.Id, defaultTenant.Code, defaultTenant.Name);
-            }
-        }
-        catch
-        {
-            // Fail gracefully if database is still initializing
-        }
     }
 }

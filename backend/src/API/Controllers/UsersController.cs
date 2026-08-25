@@ -157,16 +157,27 @@ public class UsersController : BaseApiController
         _context.Users.Add(user);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Assign Roles
-        if (request.Roles != null && request.Roles.Count > 0)
+        // Xử lý Roles: Nếu không truyền role nào, mặc định cấp quyền Admin (đặc biệt khi TenantId == null)
+        var rolesToAssign = (request.Roles != null && request.Roles.Count > 0)
+            ? request.Roles
+            : new List<string> { "Admin" };
+
+        var dbRoles = await _context.Roles.IgnoreQueryFilters().Where(r => rolesToAssign.Contains(r.Name)).ToListAsync(cancellationToken);
+        
+        // Nếu DB chưa có role Admin, tạo role Admin mặc định
+        if (dbRoles.Count == 0 && rolesToAssign.Contains("Admin"))
         {
-            var dbRoles = await _context.Roles.IgnoreQueryFilters().Where(r => request.Roles.Contains(r.Name)).ToListAsync(cancellationToken);
-            foreach (var role in dbRoles)
-            {
-                _context.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
-            }
+            var defaultAdminRole = new Role { Name = "Admin", Description = "Quản trị viên toàn quyền", IsSystemDefault = true };
+            _context.Roles.Add(defaultAdminRole);
             await _context.SaveChangesAsync(cancellationToken);
+            dbRoles.Add(defaultAdminRole);
         }
+
+        foreach (var role in dbRoles)
+        {
+            _context.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
+        }
+        await _context.SaveChangesAsync(cancellationToken);
 
         var dto = new UserDto
         {
@@ -175,7 +186,7 @@ public class UsersController : BaseApiController
             Email = user.Email,
             Phone = user.Phone,
             Status = request.Status,
-            Roles = request.Roles ?? new List<string>(),
+            Roles = dbRoles.Select(r => r.Name).ToList(),
             TenantName = request.TenantName ?? "Default"
         };
 
