@@ -8,10 +8,34 @@
   <title>Hệ Thống Quản Lý Kho Hải Sản</title>
   <script>
     (function() {
-      var isAntdWarning = function(args) {
+      // 1. Chặn lỗi từ Extension trình duyệt / Công cụ đo Web Vitals bên ngoài (reportAllChanges, startTime)
+      window.addEventListener('error', function(e) {
+        var msg = (e && e.message) ? String(e.message) : '';
+        if (msg.indexOf('startTime') !== -1 || msg.indexOf('reportAllChanges') !== -1) {
+          if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+          if (e.preventDefault) e.preventDefault();
+          return true;
+        }
+      }, true);
+
+      var origOnError = window.onerror;
+      window.onerror = function(msg) {
+        if (typeof msg === 'string' && (msg.indexOf('startTime') !== -1 || msg.indexOf('reportAllChanges') !== -1)) {
+          return true;
+        }
+        if (origOnError) return origOnError.apply(this, arguments);
+      };
+
+      // 2. Lọc các thông báo Warning deprecation của Ant Design v6
+      var isIgnoredLog = function(args) {
         for (var i = 0; i < args.length; i++) {
           var a = args[i];
-          if (typeof a === 'string' && (a.indexOf('[antd:') !== -1 || a.indexOf('is deprecated. Please use') !== -1)) {
+          if (typeof a === 'string' && (
+            a.indexOf('[antd:') !== -1 || 
+            a.indexOf('is deprecated. Please use') !== -1 || 
+            a.indexOf('startTime') !== -1 || 
+            a.indexOf('reportAllChanges') !== -1
+          )) {
             return true;
           }
         }
@@ -19,12 +43,12 @@
       };
       var origWarn = console.warn;
       console.warn = function() {
-        if (isAntdWarning(arguments)) return;
+        if (isIgnoredLog(arguments)) return;
         origWarn.apply(console, arguments);
       };
       var origError = console.error;
       console.error = function() {
-        if (isAntdWarning(arguments)) return;
+        if (isIgnoredLog(arguments)) return;
         origError.apply(console, arguments);
       };
     })();
