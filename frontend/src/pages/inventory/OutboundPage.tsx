@@ -331,7 +331,7 @@ export const OutboundPage: React.FC = () => {
               </Col>
               <Col xs={12} sm={12} md={6}>
                 <Form.Item name="reason" label="Lý do xuất kho" rules={[{ required: true, message: 'Chọn lý do xuất!' }]}>
-                  <Select showSearch optionFilterProp="children">
+                  <Select showSearch optionFilterProp="children" popupMatchSelectWidth={false}>
                     <Select.Option value="Bán hàng">Bán hàng (Thương mại)</Select.Option>
                     <Select.Option value="Chuyển kho">Chuyển kho nội bộ</Select.Option>
                     <Select.Option value="Tiêu hủy">Tiêu hủy (Hỏng / Hết hạn)</Select.Option>
@@ -381,6 +381,7 @@ export const OutboundPage: React.FC = () => {
                                 disabled={productOptions.length === 0}
                                 onChange={(val) => handleSeafoodChange(val, name)}
                                 showSearch
+                                popupMatchSelectWidth={false}
                                 filterOption={(input, opt) =>
                                   (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
                                 }
@@ -403,19 +404,32 @@ export const OutboundPage: React.FC = () => {
                                 placeholder="Chọn mã lô hàng"
                                 disabled={!seafoodCode}
                                 showSearch
-                                optionFilterProp="children"
+                                popupMatchSelectWidth={false}
+                                optionLabelProp="label"
                                 filterOption={(input, option) => {
-                                  const text = String(option?.children ?? option?.value ?? '');
+                                  const text = String(option?.value ?? '') + ' ' + String(option?.label ?? '');
                                   return text.toLowerCase().includes(input.toLowerCase());
                                 }}
                                 onChange={(val) => handleBatchChange(val, name)}
                               >
                                 {available.map((b, idx) => (
-                                  <Select.Option key={b.batchCode} value={b.batchCode}>
-                                    <span style={{ color: idx === 0 ? '#d97706' : undefined }}>
-                                      {idx === 0 ? '⚠️ ' : ''}{b.batchCode}
-                                    </span>
-                                    &nbsp;— HSD: {b.expiryDate} — Tồn: {b.quantity.toFixed(1)}kg
+                                  <Select.Option
+                                    key={b.batchCode}
+                                    value={b.batchCode}
+                                    label={`${b.batchCode} (${b.quantity.toFixed(1)}kg)`}
+                                  >
+                                    <div className="py-1 min-w-[260px]">
+                                      <div className="flex items-center justify-between gap-2 font-semibold text-slate-800 dark:text-slate-200">
+                                        <span className={idx === 0 ? 'text-amber-600 font-bold' : ''}>
+                                          {idx === 0 ? '⚡ ' : ''}{b.batchCode}
+                                        </span>
+                                        <Tag color="cyan" className="m-0 text-[11px]">Tồn: {b.quantity.toFixed(1)}kg</Tag>
+                                      </div>
+                                      <div className="text-[11px] text-gray-500 mt-1 flex items-center justify-between gap-2">
+                                        <span>HSD: {b.expiryDate}</span>
+                                        {b.unitPrice ? <span>{formatCurrency(b.unitPrice)}/kg</span> : null}
+                                      </div>
+                                    </div>
                                   </Select.Option>
                                 ))}
                               </Select>
@@ -425,10 +439,24 @@ export const OutboundPage: React.FC = () => {
                           {/* Bao bì */}
                           <Col xs={24} md={4}>
                             <Form.Item {...restField} name={[name, 'packagingCode']} label="Loại Khay/Sọt/Bì">
-                              <Select placeholder="Chọn loại bao bì" allowClear showSearch optionFilterProp="children" onChange={() => handlePackagingChange(name)}>
+                              <Select
+                                placeholder="Chọn loại bao bì"
+                                allowClear
+                                showSearch
+                                popupMatchSelectWidth={false}
+                                optionLabelProp="label"
+                                filterOption={(input, option) => {
+                                  const text = String(option?.value ?? '') + ' ' + String(option?.label ?? '');
+                                  return text.toLowerCase().includes(input.toLowerCase());
+                                }}
+                                onChange={() => handlePackagingChange(name)}
+                              >
                                 {packagings.map((pkg) => (
-                                  <Select.Option key={pkg.code} value={pkg.code}>
-                                    {pkg.name} ({pkg.defaultTareWeight} kg/cái)
+                                  <Select.Option key={pkg.code} value={pkg.code} label={pkg.name}>
+                                    <div className="py-0.5 flex items-center justify-between gap-2 min-w-[220px]">
+                                      <span className="font-medium text-slate-800 dark:text-slate-200">{pkg.name}</span>
+                                      <Tag color="blue" className="m-0 text-[11px]">{pkg.defaultTareWeight} kg/cái</Tag>
+                                    </div>
                                   </Select.Option>
                                 ))}
                               </Select>
@@ -555,6 +583,7 @@ export const OutboundPage: React.FC = () => {
                               placeholder="Chọn vật phẩm hoặc tự gõ..."
                               showSearch
                               optionFilterProp="label"
+                              popupMatchSelectWidth={false}
                               allowClear
                               onChange={(val) => {
                                 const pkg = packagings.find((p) => p.name === val || p.code === val);

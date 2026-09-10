@@ -270,6 +270,7 @@ export const InventoryStockPage: React.FC = () => {
               placeholder="Chọn Kho"
               allowClear
               showSearch
+              popupMatchSelectWidth={false}
               optionFilterProp="children"
               value={selectedWarehouse}
               onChange={(val) => setSelectedWarehouse(val)}
@@ -288,6 +289,7 @@ export const InventoryStockPage: React.FC = () => {
               placeholder="Chọn Loại Hải Sản"
               allowClear
               showSearch
+              popupMatchSelectWidth={false}
               optionFilterProp="children"
               value={selectedProduct}
               onChange={(val) => setSelectedProduct(val)}

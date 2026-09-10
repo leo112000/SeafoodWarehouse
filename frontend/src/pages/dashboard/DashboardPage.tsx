@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Row, Col, Button, Table, Typography, Space, Tag, Tooltip, Drawer } from 'antd';
+import { Card, Row, Col, Button, Table, Typography, Space, Tag, Tooltip, Drawer, Segmented } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import {
   InboxOutlined,
@@ -38,6 +38,7 @@ export const DashboardPage: React.FC = () => {
   const [drawerTx, setDrawerTx] = React.useState<RecentTransaction | null>(null);
   const [drawerVisible, setDrawerVisible] = React.useState(false);
   const [zoomTarget, setZoomTarget] = React.useState<'flowChart' | 'categoryPie' | 'recentTransactions' | null>(null);
+  const [chartMetric, setChartMetric] = React.useState<'KG' | 'VND'>('KG');
 
   const fetchData = React.useCallback(async () => {
     setLoading(true);
@@ -293,39 +294,73 @@ export const DashboardPage: React.FC = () => {
             title={
               <Space>
                 <LineChartOutlined className="text-blue-500" />
-                <span className="text-sm sm:text-base font-bold">Sản Lượng Nhập – Xuất 7 Ngày Gần Nhất</span>
+                <span className="text-sm sm:text-base font-bold">Biểu Đồ 7 Ngày Gần Nhất</span>
               </Space>
             }
-            extra={<ZoomButton onClick={() => setZoomTarget('flowChart')} />}
+            extra={
+              <Space size="small">
+                <Segmented
+                  size="small"
+                  value={chartMetric}
+                  onChange={(v) => setChartMetric(v as 'KG' | 'VND')}
+                  options={[
+                    { label: '📦 Khối lượng (Kg)', value: 'KG' },
+                    { label: '💰 Doanh số (VNĐ)', value: 'VND' },
+                  ]}
+                />
+                <ZoomButton onClick={() => setZoomTarget('flowChart')} />
+              </Space>
+            }
             className="shadow-sm rounded-2xl"
             styles={{ body: { padding: '12px 16px' } }}
           >
             <ResponsiveContainer width="100%" height={240}>
               <ComposedChart data={dailyFlow} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="date" tickLine={false} tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="left" tickLine={false} tick={{ fontSize: 11 }} label={{ value: 'Kg', angle: -90, position: 'insideLeft', offset: 15 }} />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
+                <XAxis
+                  dataKey="date"
                   tickLine={false}
                   tick={{ fontSize: 11 }}
-                  tickFormatter={(val) => `${(val / 1_000_000).toFixed(1)} tr`}
-                  label={{ value: 'Triệu VNĐ', angle: 90, position: 'insideRight', offset: 15 }}
-                />
-                <RechartTooltip
-                  formatter={(value: any, name: any) => {
-                    if (String(name).includes('Tiền')) {
-                      return [formatCurrency(Number(value)), name];
+                  tickFormatter={(val: string) => {
+                    if (!val) return '';
+                    const parts = val.split(/[-/]/);
+                    if (parts.length === 3) {
+                      return parts[0].length === 4 ? `${parts[2]}/${parts[1]}` : `${parts[0]}/${parts[1]}`;
                     }
-                    return [`${Number(value).toLocaleString()} kg`, name];
+                    return val;
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
-                <Bar yAxisId="left" name="Nhập kho (kg)" dataKey="inboundKg" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="left" name="Xuất kho (kg)" dataKey="outboundKg" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" type="monotone" name="Tiền nhập (VNĐ)" dataKey="inboundAmount" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3 }} />
-                <Line yAxisId="right" type="monotone" name="Tiền xuất (VNĐ)" dataKey="outboundAmount" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3 }} />
+                {chartMetric === 'KG' ? (
+                  <>
+                    <YAxis
+                      tickLine={false}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}t` : `${val}`)}
+                      label={{ value: 'Kg', angle: -90, position: 'insideLeft', offset: 15 }}
+                    />
+                    <RechartTooltip
+                      formatter={(value: any, name: any) => [`${Number(value).toLocaleString()} kg`, name]}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                    <Bar name="Nhập kho (kg)" dataKey="inboundKg" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar name="Xuất kho (kg)" dataKey="outboundKg" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </>
+                ) : (
+                  <>
+                    <YAxis
+                      tickLine={false}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(val) => `${(val / 1_000_000).toFixed(1)} tr`}
+                      label={{ value: 'Tr. VNĐ', angle: -90, position: 'insideLeft', offset: 15 }}
+                    />
+                    <RechartTooltip
+                      formatter={(value: any, name: any) => [formatCurrency(Number(value)), name]}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                    <Bar name="Tiền nhập (VNĐ)" dataKey="inboundAmount" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar name="Tiền xuất (VNĐ)" dataKey="outboundAmount" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  </>
+                )}
               </ComposedChart>
             </ResponsiveContainer>
           </Card>
@@ -376,7 +411,7 @@ export const DashboardPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Khối 4: Lịch Sử Giao Dịch Toàn Màn Hình (Rộng rãi & Bao quát) */}
+      {/* Khối 4: Lịch Sử Giao Dịch Mới Nhất (Tối ưu App Mobile & Desktop) */}
       <Card
         title={
           <Space>
@@ -395,25 +430,71 @@ export const DashboardPage: React.FC = () => {
         className="shadow-sm rounded-2xl"
         styles={{ body: { padding: '12px' } }}
       >
-        <Table
-          dataSource={recentTransactions.slice(0, 5)}
-          columns={transactionColumns}
-          rowKey="id"
-          pagination={false}
-          size="middle"
-          scroll={{ x: 800 }}
-          rowClassName={(record) =>
-            record.id === drawerTx?.id && drawerVisible
-              ? '!bg-sky-100 dark:!bg-sky-950/60 !border-l-4 !border-l-sky-600 font-medium transition-colors'
-              : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors'
-          }
-          onRow={(record) => ({
-            onClick: () => {
-              setDrawerTx(record);
-              setDrawerVisible(true);
-            },
-          })}
-        />
+        {/* Mobile View: Dạng Card chạm lướt kiểu App */}
+        <div className="block sm:hidden space-y-2.5">
+          {recentTransactions.slice(0, 5).map((tx) => (
+            <div
+              key={tx.id}
+              onClick={() => {
+                setDrawerTx(tx);
+                setDrawerVisible(true);
+              }}
+              className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs active:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Tag color={tx.type === 'INBOUND' ? 'blue' : 'green'} className="font-bold text-[11px] m-0 px-1.5 py-0.5">
+                    {tx.type === 'INBOUND' ? '📥 NHẬP' : '📤 XUẤT'}
+                  </Tag>
+                  <span className="font-bold text-xs text-sky-600 tracking-tight">{tx.id}</span>
+                </div>
+                <span className="text-[11px] text-gray-400">{tx.time}</span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs">
+                <div className="min-w-0 pr-2">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+                    {tx.productName || 'Hải sản'}
+                    {tx.itemCount && tx.itemCount > 1 ? (
+                      <span className="text-violet-600 font-medium ml-1">+{tx.itemCount} món</span>
+                    ) : null}
+                  </div>
+                  <div className="text-[11px] text-gray-500 truncate mt-0.5">
+                    {tx.partnerName || (tx.batchCode ? `Lô: ${tx.batchCode}` : 'Nội bộ')}
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <div className="font-bold text-slate-800 dark:text-slate-200">{formatWeight(tx.weightKg)}</div>
+                  <div className="font-semibold text-emerald-600 text-[11px]">{formatCurrency(tx.amount)}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop / Tablet View: Bảng đầy đủ cột */}
+        <div className="hidden sm:block">
+          <Table
+            dataSource={recentTransactions.slice(0, 5)}
+            columns={transactionColumns}
+            rowKey="id"
+            pagination={false}
+            size="middle"
+            scroll={{ x: 800 }}
+            rowClassName={(record) =>
+              record.id === drawerTx?.id && drawerVisible
+                ? '!bg-sky-100 dark:!bg-sky-950/60 !border-l-4 !border-l-sky-600 font-medium transition-colors'
+                : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors'
+            }
+            onRow={(record) => ({
+              onClick: () => {
+                setDrawerTx(record);
+                setDrawerVisible(true);
+              },
+            })}
+          />
+        </div>
       </Card>
 
       {/* Drawer xem chi tiết Phiếu Nhập / Xuất Kho khi bấm vào dòng */}

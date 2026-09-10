@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, DatePicker, Select, InputNumber, Row, Col, App, Modal, Divider, Space, AutoComplete } from 'antd';
+import { Card, Form, Input, Button, DatePicker, Select, InputNumber, Row, Col, App, Modal, Divider, Space, AutoComplete, Tag } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined, AppstoreAddOutlined, QrcodeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useInboundStore } from '../../stores/useInboundStore';
@@ -321,7 +321,7 @@ export const InboundPage: React.FC = () => {
                 label="Kho / Tủ đông nhận"
                 rules={[{ required: true, message: 'Vui lòng chọn kho lưu trữ!' }]}
               >
-                <Select placeholder="Chọn khu vực lưu trữ" showSearch optionFilterProp="children">
+                <Select placeholder="Chọn khu vực lưu trữ" showSearch optionFilterProp="children" popupMatchSelectWidth={false}>
                   <Select.Option value="Kho đông lạnh A1">Kho đông lạnh A1 (Giáp xác)</Select.Option>
                   <Select.Option value="Kho đông lạnh A2">Kho đông lạnh A2 (Cua cá)</Select.Option>
                   <Select.Option value="Kho làm mát B1">Kho làm mát B1 (Tươi sống)</Select.Option>
@@ -393,6 +393,8 @@ export const InboundPage: React.FC = () => {
                           <Select
                             placeholder="Chọn loại hải sản"
                             showSearch
+                            popupMatchSelectWidth={false}
+                            optionLabelProp="label"
                             optionFilterProp="label"
                             popupRender={(menu) => (
                               <>
@@ -422,8 +424,8 @@ export const InboundPage: React.FC = () => {
                           >
                             {activeProducts.map((p) => (
                               <Select.Option key={p.code} value={p.code} label={p.name}>
-                                <div className="flex items-center gap-2">
-                                  <span>{p.name}</span>
+                                <div className="py-0.5 flex items-center justify-between gap-2 min-w-[220px]">
+                                  <span className="font-semibold text-slate-800 dark:text-slate-100">{p.name}</span>
                                   <span className="text-xs text-slate-400 font-mono">({p.code})</span>
                                 </div>
                               </Select.Option>
@@ -446,10 +448,20 @@ export const InboundPage: React.FC = () => {
                           name={[name, 'packagingCode']}
                           label="Loại Khay/Bì"
                         >
-                          <Select placeholder="Chọn loại khay/bì" allowClear showSearch optionFilterProp="children">
+                          <Select
+                            placeholder="Chọn loại khay/bì"
+                            allowClear
+                            showSearch
+                            popupMatchSelectWidth={false}
+                            optionLabelProp="label"
+                            optionFilterProp="label"
+                          >
                             {packagings.map((pkg) => (
-                              <Select.Option key={pkg.code} value={pkg.code}>
-                                {pkg.name} ({pkg.defaultTareWeight} kg)
+                              <Select.Option key={pkg.code} value={pkg.code} label={pkg.name}>
+                                <div className="py-0.5 flex items-center justify-between gap-2 min-w-[200px]">
+                                  <span className="font-medium text-slate-800 dark:text-slate-200">{pkg.name}</span>
+                                  <Tag color="blue" className="m-0 text-[11px]">{pkg.defaultTareWeight} kg</Tag>
+                                </div>
                               </Select.Option>
                             ))}
                           </Select>
