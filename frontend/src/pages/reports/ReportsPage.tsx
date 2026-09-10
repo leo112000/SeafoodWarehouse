@@ -396,7 +396,7 @@ export const ReportsPage: React.FC = () => {
                   value={customRange}
                   onChange={(dates) => setCustomRange(dates as [Dayjs | null, Dayjs | null] | null)}
                   format="DD/MM/YYYY"
-                  className="w-64 sm:w-72"
+                  className="w-full sm:w-72"
                   placeholder={['Từ ngày', 'Đến ngày']}
                 />
               )}

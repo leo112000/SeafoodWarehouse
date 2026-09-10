@@ -464,12 +464,12 @@ export const OutboundPage: React.FC = () => {
                           </Col>
                           <Col xs={12} md={2}>
                             <Form.Item {...restField} name={[name, 'packagingQty']} label="SL Bì">
-                              <InputNumber min={0} precision={0} className="w-full" onChange={() => handlePackagingChange(name)} />
+                              <InputNumber min={0} precision={0} className="w-full" inputMode="numeric" onChange={() => handlePackagingChange(name)} />
                             </Form.Item>
                           </Col>
                           <Col xs={12} md={2}>
                             <Form.Item {...restField} name={[name, 'tareWeight']} label="Bì (kg)">
-                              <InputNumber min={0} precision={1} className="w-full" />
+                              <InputNumber min={0} precision={1} className="w-full" inputMode="decimal" />
                             </Form.Item>
                           </Col>
 
@@ -488,7 +488,7 @@ export const OutboundPage: React.FC = () => {
                                   },
                                 }),
                               ]}>
-                              <InputNumber min={0.1} precision={1} className="w-full" onChange={(qty) => handleQtyChange(qty, name)} />
+                              <InputNumber min={0.1} precision={1} className="w-full" inputMode="decimal" onChange={(qty) => handleQtyChange(qty, name)} />
                             </Form.Item>
                           </Col>
 
@@ -498,6 +498,7 @@ export const OutboundPage: React.FC = () => {
                               <InputNumber
                                 min={0}
                                 className="w-full"
+                                inputMode="numeric"
                                 formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                 parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
                                 onChange={(price) => {
@@ -624,6 +625,7 @@ export const OutboundPage: React.FC = () => {
                               min={1}
                               precision={0}
                               className="w-full"
+                              inputMode="numeric"
                               onChange={(qty) => {
                                 const supplies = form.getFieldValue('supplies') || [];
                                 const item = supplies[name];
@@ -640,6 +642,7 @@ export const OutboundPage: React.FC = () => {
                             <InputNumber
                               min={0}
                               className="w-full"
+                              inputMode="numeric"
                               formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                               parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
                               onChange={(price) => {

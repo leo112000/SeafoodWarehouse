@@ -566,7 +566,7 @@ export const TransactionHistoryPage: React.FC = () => {
               allowClear
             />
           </Col>
-          <Col xs={14} sm={12} md={8}>
+          <Col xs={24} sm={14} md={8}>
             <RangePicker
               className="w-full"
               size="middle"
@@ -580,7 +580,7 @@ export const TransactionHistoryPage: React.FC = () => {
               format="DD/MM/YYYY"
             />
           </Col>
-          <Col xs={10} sm={12} md={6}>
+          <Col xs={24} sm={10} md={6}>
             <div className="flex items-center justify-end gap-1.5 w-full">
               {(searchQuery || dateRange || activeTab !== 'ALL') && (
                 <Tooltip title="Đặt lại bộ lọc">

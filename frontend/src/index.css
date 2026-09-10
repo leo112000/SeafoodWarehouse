@@ -165,3 +165,46 @@ html, body {
   opacity: 0.85;
 }
 
+/* ─── RangePicker & DatePicker Mobile Optimization ─── */
+@media (max-width: 640px) {
+  /* Khống chế dropdown lịch không bao giờ tràn lề màn hình */
+  .ant-picker-dropdown {
+    max-width: calc(100vw - 16px) !important;
+    left: 8px !important;
+  }
+  .ant-picker-dropdown .ant-picker-panel-container {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    border-radius: 16px !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22) !important;
+  }
+  /* Xếp 2 tháng thành dạng dọc trên điện thoại thay vì nằm ngang 560px */
+  .ant-picker-dropdown .ant-picker-panels {
+    flex-direction: column !important;
+    max-width: 100% !important;
+  }
+  .ant-picker-dropdown .ant-picker-panel {
+    max-width: 100% !important;
+  }
+  .ant-picker-dropdown .ant-picker-panel:nth-child(2) {
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-left: none !important;
+  }
+  .dark .ant-picker-dropdown .ant-picker-panel:nth-child(2) {
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  /* Ô nhập RangePicker trên mobile */
+  .ant-picker-range {
+    max-width: 100% !important;
+  }
+  .ant-picker-range .ant-picker-input > input {
+    font-size: 12px !important;
+  }
+  /* Khống chế Popover trên mobile không bị tràn lề */
+  .ant-popover {
+    max-width: calc(100vw - 16px) !important;
+  }
+  .ant-popover-inner {
+    max-width: calc(100vw - 16px) !important;
+  }
+}

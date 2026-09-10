@@ -325,28 +325,101 @@ export const InventoryStockPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Inventory Table */}
+      {/* Inventory Table & Mobile Touch Cards */}
       <Card
-        title="📦 Danh Sách Chi Tiết Tồn Kho Hải Sản"
-        extra={<ZoomButton onClick={() => setIsZoomed(true)} />}
+        title={
+          <div className="flex items-center gap-2">
+            <DatabaseOutlined className="text-sky-500" />
+            <span className="text-sm sm:text-base font-bold">Danh Sách Chi Tiết Tồn Kho Hải Sản</span>
+          </div>
+        }
+        extra={
+          <div className="flex items-center gap-2">
+            <Button
+              size="small"
+              onClick={handleExportExcel}
+              className="text-xs hidden sm:inline-flex"
+            >
+              📥 Xuất Excel
+            </Button>
+            <ZoomButton onClick={() => setIsZoomed(true)} />
+          </div>
+        }
         className="shadow-sm rounded-2xl overflow-hidden"
+        styles={{ body: { padding: '12px' } }}
       >
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={items}
-          loading={loading}
-          scroll={{ x: 950 }}
-          pagination={{
-            current: pageNumber,
-            pageSize: pageSize,
-            total: totalCount,
-            onChange: (page, pSize) => fetchInventory({ pageNumber: page, pageSize: pSize }),
-            showSizeChanger: true,
-            responsive: true,
-            showTotal: (total) => `Tổng ${total} vị trí hàng`,
-          }}
-        />
+        {/* Mobile View: Dạng Card Chạm Vuốt Hiện Đại */}
+        <div className="block sm:hidden space-y-2.5">
+          {items.length === 0 && !loading ? (
+            <div className="text-center py-8 text-gray-400 text-xs">Không có dữ liệu tồn kho</div>
+          ) : (
+            items.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => setDetailItem(item)}
+                className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs active:bg-slate-100 dark:active:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-xs text-sky-600 dark:text-sky-400 font-mono">
+                      {item.batchCode || `LOT-${item.lotBatchId}`}
+                    </span>
+                    {item.expirationDate && dayjs(item.expirationDate).diff(dayjs(), 'day') <= expiringAlertDays && (
+                      <Tag color="orange" className="m-0 text-[10px] px-1 py-0 border-0">
+                        Cận date
+                      </Tag>
+                    )}
+                  </div>
+                  <Tag color="blue" className="m-0 text-[11px]">
+                    {item.warehouseName || `Kho #${item.warehouseId}`}
+                  </Tag>
+                </div>
+
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 pr-1">
+                    <div className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100 truncate">
+                      {item.productName || `SP #${item.productId}`}
+                    </div>
+                    <div className="text-[11px] text-gray-400 mt-0.5">
+                      {item.storageBin ? `Vị trí: ${item.storageBin} • ` : ''}
+                      HSD: {item.expirationDate ? dayjs(item.expirationDate).format('DD/MM/YYYY') : 'N/A'}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-black text-sky-600 dark:text-sky-400">
+                      {item.quantity?.toLocaleString()} <span className="text-[10px] font-normal text-gray-500">kg</span>
+                    </div>
+                    {item.unitPrice ? (
+                      <div className="text-[10px] text-gray-400 font-medium">
+                        {(item.quantity * item.unitPrice).toLocaleString()} đ
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop / Tablet View: Bảng nhiều cột */}
+        <div className="hidden sm:block">
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={items}
+            loading={loading}
+            scroll={{ x: 950 }}
+            pagination={{
+              current: pageNumber,
+              pageSize: pageSize,
+              total: totalCount,
+              onChange: (page, pSize) => fetchInventory({ pageNumber: page, pageSize: pSize }),
+              showSizeChanger: true,
+              responsive: true,
+              showTotal: (total) => `Tổng ${total} vị trí hàng`,
+            }}
+          />
+        </div>
       </Card>
 
       {/* Lot Detail Modal */}

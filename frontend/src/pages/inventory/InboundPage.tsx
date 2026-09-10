@@ -473,7 +473,7 @@ export const InboundPage: React.FC = () => {
                           name={[name, 'packagingQty']}
                           label="SL Khay/Bì"
                         >
-                          <InputNumber min={0} precision={0} className="w-full" />
+                          <InputNumber min={0} precision={0} className="w-full" inputMode="numeric" />
                         </Form.Item>
                       </Col>
                       <Col xs={12} md={2}>
@@ -483,7 +483,7 @@ export const InboundPage: React.FC = () => {
                           label="Tổng cân (kg)"
                           rules={[{ required: true, message: 'Nhập!' }]}
                         >
-                          <InputNumber min={0} className="w-full" precision={1} />
+                          <InputNumber min={0} className="w-full" precision={1} inputMode="decimal" />
                         </Form.Item>
                       </Col>
                       <Col xs={12} md={2}>
@@ -493,7 +493,7 @@ export const InboundPage: React.FC = () => {
                           label="Bì/Khay (kg)"
                           rules={[{ required: true, message: 'Nhập!' }]}
                         >
-                          <InputNumber min={0} className="w-full" precision={1} />
+                          <InputNumber min={0} className="w-full" precision={1} inputMode="decimal" />
                         </Form.Item>
                       </Col>
                       <Col xs={12} md={2}>
@@ -552,6 +552,7 @@ export const InboundPage: React.FC = () => {
                           <InputNumber
                             min={0}
                             className="w-full"
+                            inputMode="numeric"
                             formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                           />
                         </Form.Item>

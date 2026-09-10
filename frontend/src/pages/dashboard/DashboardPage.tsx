@@ -497,56 +497,62 @@ export const DashboardPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Drawer xem chi tiết Phiếu Nhập / Xuất Kho khi bấm vào dòng */}
+      {/* Drawer xem chi tiết Phiếu Nhập / Xuất Kho (Dạng Bottom Sheet trên mobile, Trượt phải trên máy tính) */}
       <Drawer
         title={
           <div className="flex items-center gap-2.5">
             <Tag color={drawerTx?.type === 'INBOUND' ? 'blue' : 'green'} className="text-xs font-bold px-2.5 py-0.5 m-0">
               {drawerTx?.type === 'INBOUND' ? '📥 PHIẾU NHẬP KHO' : '📤 PHIẾU XUẤT KHO'}
             </Tag>
-            <span className="font-bold text-sky-600 text-sm tracking-wide">{drawerTx?.id}</span>
+            <span className="font-bold text-sky-600 dark:text-sky-400 text-sm tracking-wide">{drawerTx?.id}</span>
           </div>
         }
-        placement="right"
+        placement={typeof window !== 'undefined' && window.innerWidth < 640 ? 'bottom' : 'right'}
+        height={typeof window !== 'undefined' && window.innerWidth < 640 ? '85vh' : undefined}
         onClose={() => {
           setDrawerVisible(false);
           setDrawerTx(null);
         }}
         open={drawerVisible}
         styles={{
-          wrapper: { width: typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : 500 },
+          wrapper: {
+            width: typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : 500,
+            borderTopLeftRadius: typeof window !== 'undefined' && window.innerWidth < 640 ? 20 : 0,
+            borderTopRightRadius: typeof window !== 'undefined' && window.innerWidth < 640 ? 20 : 0,
+            overflow: 'hidden',
+          },
           body: { padding: '16px' }
         }}
       >
         {drawerTx && (
           <div className="space-y-4">
             {/* Header thông tin phiếu */}
-            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-2">
+            <div className="bg-slate-50 dark:bg-slate-800/70 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-500">Thời gian tạo:</span>
-                <span className="font-semibold text-gray-800">{drawerTx.time}</span>
+                <span className="text-gray-500 dark:text-gray-400">Thời gian tạo:</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200">{drawerTx.time}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">
+                <span className="text-gray-500 dark:text-gray-400">
                   {drawerTx.type === 'INBOUND' ? 'Nhà cung cấp:' : 'Khách hàng / Đại lý:'}
                 </span>
-                <span className="font-bold text-gray-900">{drawerTx.partnerName}</span>
+                <span className="font-bold text-gray-900 dark:text-white">{drawerTx.partnerName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Người lập phiếu:</span>
-                <span className="font-medium text-gray-800">{drawerTx.createdBy || 'Thủ kho'}</span>
+                <span className="text-gray-500 dark:text-gray-400">Người lập phiếu:</span>
+                <span className="font-medium text-gray-800 dark:text-gray-200">{drawerTx.createdBy || 'Thủ kho'}</span>
               </div>
             </div>
 
             {/* Bảng chi tiết hải sản */}
             <div>
-              <div className="text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+              <div className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
                 <span>1. Danh sách hải sản ({drawerTx.items?.length || 1} món)</span>
-                <span className="text-blue-600 font-semibold">{formatWeight(drawerTx.weightKg)}</span>
+                <span className="text-blue-600 dark:text-blue-400 font-semibold">{formatWeight(drawerTx.weightKg)}</span>
               </div>
-              <div className="border border-gray-200 rounded-lg overflow-x-auto text-xs">
+              <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-x-auto text-xs">
                 <table className="w-full text-left border-collapse min-w-[340px]">
-                  <thead className="bg-gray-100 text-gray-600 border-b border-gray-200">
+                  <thead className="bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-slate-700">
                     <tr>
                       <th className="p-2">Mã Lô / Tên</th>
                       <th className="p-2 text-right">Khối lượng</th>
@@ -557,26 +563,26 @@ export const DashboardPage: React.FC = () => {
                   <tbody>
                     {drawerTx.items && drawerTx.items.length > 0 ? (
                       drawerTx.items.map((item, idx) => (
-                        <tr key={idx} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                        <tr key={idx} className="border-b border-gray-100 dark:border-slate-800 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                           <td className="p-2">
-                            <div className="font-semibold text-gray-800">{item.productName}</div>
-                            <div className="font-mono text-[10px] text-sky-600">{item.batchCode}</div>
+                            <div className="font-semibold text-gray-800 dark:text-gray-200">{item.productName}</div>
+                            <div className="font-mono text-[10px] text-sky-600 dark:text-sky-400">{item.batchCode}</div>
                           </td>
                           <td className="p-2 text-right">
-                            <div className="font-bold">{formatWeight(item.netWeight)}</div>
+                            <div className="font-bold text-gray-800 dark:text-gray-200">{formatWeight(item.netWeight)}</div>
                             {item.tareWeight > 0 && (
                               <div className="text-[10px] text-gray-400">Bì: {item.tareWeight}kg</div>
                             )}
                           </td>
-                          <td className="p-2 text-right">{formatCurrency(item.unitPrice)}</td>
-                          <td className="p-2 text-right font-semibold text-emerald-600">{formatCurrency(item.totalAmount)}</td>
+                          <td className="p-2 text-right text-gray-800 dark:text-gray-200">{formatCurrency(item.unitPrice)}</td>
+                          <td className="p-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(item.totalAmount)}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
                         <td className="p-2" colSpan={4}>
-                          <div className="font-semibold">{drawerTx.productName}</div>
-                          <div className="font-mono text-xs text-sky-600">{drawerTx.batchCode}</div>
+                          <div className="font-semibold text-gray-800 dark:text-gray-200">{drawerTx.productName}</div>
+                          <div className="font-mono text-xs text-sky-600 dark:text-sky-400">{drawerTx.batchCode}</div>
                         </td>
                       </tr>
                     )}
@@ -588,13 +594,13 @@ export const DashboardPage: React.FC = () => {
             {/* Bảng thùng xốp & phụ phí (nếu có) */}
             {drawerTx.supplies && drawerTx.supplies.length > 0 && (
               <div>
-                <div className="text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                <div className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
                   <span>2. Vật phẩm bán kèm &amp; Thùng xốp</span>
-                  <span className="text-sky-600 font-semibold">{formatCurrency(drawerTx.suppliesTotal || 0)}</span>
+                  <span className="text-sky-600 dark:text-sky-400 font-semibold">{formatCurrency(drawerTx.suppliesTotal || 0)}</span>
                 </div>
-                <div className="border border-gray-200 rounded-lg overflow-x-auto text-xs">
+                <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-x-auto text-xs">
                   <table className="w-full text-left border-collapse min-w-[320px]">
-                    <thead className="bg-gray-100 text-gray-600 border-b border-gray-200">
+                    <thead className="bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-slate-700">
                       <tr>
                         <th className="p-2">Vật phẩm</th>
                         <th className="p-2 text-center">SL</th>
@@ -604,11 +610,11 @@ export const DashboardPage: React.FC = () => {
                     </thead>
                     <tbody>
                       {drawerTx.supplies.map((sup, sIdx) => (
-                        <tr key={sIdx} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                          <td className="p-2 font-medium text-gray-800">{sup.name}</td>
-                          <td className="p-2 text-center">{sup.quantity} {sup.unit}</td>
-                          <td className="p-2 text-right">{formatCurrency(sup.unitPrice)}</td>
-                          <td className="p-2 text-right font-semibold text-sky-600">{formatCurrency(sup.totalAmount)}</td>
+                        <tr key={sIdx} className="border-b border-gray-100 dark:border-slate-800 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                          <td className="p-2 font-medium text-gray-800 dark:text-gray-200">{sup.name}</td>
+                          <td className="p-2 text-center text-gray-800 dark:text-gray-200">{sup.quantity} {sup.unit}</td>
+                          <td className="p-2 text-right text-gray-800 dark:text-gray-200">{formatCurrency(sup.unitPrice)}</td>
+                          <td className="p-2 text-right font-semibold text-sky-600 dark:text-sky-400">{formatCurrency(sup.totalAmount)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -618,26 +624,26 @@ export const DashboardPage: React.FC = () => {
             )}
 
             {/* Tổng kết tài chính phiếu */}
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 text-xs">
-              <div className="flex justify-between text-gray-600">
+            <div className="bg-slate-50 dark:bg-slate-800/70 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
                 <span>Tiền hàng hải sản:</span>
-                <span className="font-semibold">{formatCurrency(drawerTx.subTotal || drawerTx.amount)}</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200">{formatCurrency(drawerTx.subTotal || drawerTx.amount)}</span>
               </div>
               {drawerTx.suppliesTotal && drawerTx.suppliesTotal > 0 ? (
-                <div className="flex justify-between text-sky-700">
+                <div className="flex justify-between text-sky-700 dark:text-sky-400">
                   <span>Tiền thùng xốp / phụ phí:</span>
                   <span className="font-semibold">+{formatCurrency(drawerTx.suppliesTotal)}</span>
                 </div>
               ) : null}
               {drawerTx.discountAmount && drawerTx.discountAmount > 0 ? (
-                <div className="flex justify-between text-red-600 font-medium">
+                <div className="flex justify-between text-red-600 dark:text-red-400 font-medium">
                   <span>Chiết khấu {drawerTx.discountReason ? `(${drawerTx.discountReason})` : ''}:</span>
                   <span>-{formatCurrency(drawerTx.discountAmount)}</span>
                 </div>
               ) : null}
-              <div className="pt-2 border-t border-slate-300 flex justify-between items-center text-sm font-bold">
-                <span className="text-gray-900">TỔNG THANH TOÁN:</span>
-                <span className="text-base text-emerald-600">{formatCurrency(drawerTx.amount)}</span>
+              <div className="pt-2 border-t border-slate-300 dark:border-slate-700 flex justify-between items-center text-sm font-bold">
+                <span className="text-gray-900 dark:text-white">TỔNG THANH TOÁN:</span>
+                <span className="text-base text-emerald-600 dark:text-emerald-400">{formatCurrency(drawerTx.amount)}</span>
               </div>
             </div>
 

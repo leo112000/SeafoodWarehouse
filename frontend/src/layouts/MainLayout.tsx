@@ -23,6 +23,7 @@ export const MainLayout: React.FC = () => {
   const { websiteName, logoUrl, loadBrand } = useBrandStore();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -165,7 +166,7 @@ export const MainLayout: React.FC = () => {
   ];
 
   const notifications = (
-    <div className="w-84 p-1">
+    <div className="w-80 max-w-[calc(100vw-32px)] p-1">
       <div className="flex items-center justify-between mb-3 border-b pb-2">
         <div className="flex items-center gap-2">
           <strong className="text-gray-800 dark:text-gray-100 text-sm">Thông báo hệ thống</strong>
@@ -231,17 +232,25 @@ export const MainLayout: React.FC = () => {
             collapsed={collapsed}
             width={260}
             collapsedWidth={80}
-            theme="dark"
+            theme={currentTheme === 'dark' ? 'dark' : 'light'}
             style={{
               height: '100vh',
               position: 'sticky',
               top: 0,
               left: 0,
               zIndex: 100,
+              backgroundColor: currentTheme === 'dark' ? '#0f172a' : '#ffffff',
+              borderRight: currentTheme === 'dark' ? '1px solid #1e293b' : '1px solid #e2e8f0',
             }}
           >
             <div className="flex flex-col h-full">
-              <div className="p-3 text-white text-center font-bold text-base overflow-hidden whitespace-nowrap bg-[#001529] z-10 flex-shrink-0 border-b border-slate-800 flex items-center justify-center min-h-[56px]">
+              <div
+                className={`p-3 text-center font-bold text-base overflow-hidden whitespace-nowrap z-10 flex-shrink-0 border-b flex items-center justify-center min-h-[56px] transition-colors ${
+                  currentTheme === 'dark'
+                    ? 'bg-[#0b1120] text-white border-slate-800'
+                    : 'bg-white text-slate-800 border-slate-200'
+                }`}
+              >
                 {collapsed ? (
                   logoUrl && (logoUrl.startsWith('http') || logoUrl.startsWith('data:') || logoUrl.startsWith('/')) ? (
                     <img src={logoUrl} alt="Logo" className="w-7 h-7 object-contain rounded" />
@@ -255,7 +264,11 @@ export const MainLayout: React.FC = () => {
                     ) : (
                       <span className="text-lg flex-shrink-0">{logoUrl || '🚢'}</span>
                     )}
-                    <span className="truncate tracking-wide font-extrabold text-white text-sm sm:text-base leading-tight">
+                    <span
+                      className={`truncate tracking-wide font-extrabold text-sm sm:text-base leading-tight ${
+                        currentTheme === 'dark' ? 'text-white' : 'text-sky-700'
+                      }`}
+                    >
                       {websiteName}
                     </span>
                   </div>
@@ -263,7 +276,7 @@ export const MainLayout: React.FC = () => {
               </div>
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
                 <Menu
-                  theme="dark"
+                  theme={currentTheme === 'dark' ? 'dark' : 'light'}
                   mode="inline"
                   selectedKeys={[location.pathname]}
                   defaultOpenKeys={
@@ -279,7 +292,13 @@ export const MainLayout: React.FC = () => {
                 />
               </div>
               {/* Sidebar Footer */}
-              <div className="flex-shrink-0 p-3 bg-[#000c17] border-t border-slate-800/80 text-gray-400 text-xs text-center">
+              <div
+                className={`flex-shrink-0 p-3 border-t text-xs text-center transition-colors ${
+                  currentTheme === 'dark'
+                    ? 'bg-[#0b1120] border-slate-800/80 text-gray-400'
+                    : 'bg-slate-50 border-slate-200 text-gray-600'
+                }`}
+              >
                 {collapsed ? (
                   <div className="flex flex-col items-center justify-center py-1">
                     <Tooltip
@@ -299,16 +318,21 @@ export const MainLayout: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-1.5 px-1 flex flex-col items-center justify-center text-center">
-                    <div className="flex items-center justify-center gap-2 text-sky-400 font-semibold">
+                    <div className="flex items-center justify-center gap-2 text-sky-600 dark:text-sky-400 font-semibold">
                       <PhoneOutlined className="animate-pulse" />
-                      <span>Hotline: <a href="tel:0965540075" className="text-sky-300 hover:underline font-bold">0965540075</a></span>
+                      <span>
+                        Hotline:{' '}
+                        <a href="tel:0965540075" className="text-sky-600 dark:text-sky-300 hover:underline font-bold">
+                          0965540075
+                        </a>
+                      </span>
                     </div>
-                    <div className="flex items-center justify-center gap-2 text-[11px] text-gray-400">
+                    <div className="flex items-center justify-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
                       <span>Hỗ trợ kỹ thuật 24/7</span>
-                      <span className="text-slate-500">• v1.0</span>
+                      <span className="text-slate-400 dark:text-slate-500">• v1.0</span>
                     </div>
-                    <div className="text-[11px] text-gray-400 pt-1 border-t border-slate-800/60 w-full text-center">
-                      👨‍💻 Người thực hiện: <span className="text-gray-300 font-medium">{'Leo11'}</span>
+                    <div className="text-[11px] text-gray-500 dark:text-gray-400 pt-1 border-t border-slate-200 dark:border-slate-800/60 w-full text-center">
+                      👨‍💻 Người thực hiện: <span className="text-gray-700 dark:text-gray-300 font-medium">{'Leo11'}</span>
                     </div>
                   </div>
                 )}
@@ -413,16 +437,90 @@ export const MainLayout: React.FC = () => {
                   className="text-lg flex items-center justify-center w-10 h-10"
                   aria-label="Đổi giao diện"
                 />
-                <Popover content={notifications} trigger="click" placement="bottomRight">
-                  <Badge count={unreadCount} size="small">
-                    <Button
-                      type="text"
-                      icon={<BellOutlined />}
-                      className="text-lg flex items-center justify-center w-10 h-10"
-                      aria-label="Thông báo"
-                    />
-                  </Badge>
-                </Popover>
+                {isMobile ? (
+                  <>
+                    <Badge count={unreadCount} size="small">
+                      <Button
+                        type="text"
+                        icon={<BellOutlined />}
+                        onClick={() => setNotificationDrawerOpen(true)}
+                        className="text-lg flex items-center justify-center w-10 h-10"
+                        aria-label="Thông báo"
+                      />
+                    </Badge>
+                    <Drawer
+                      open={notificationDrawerOpen}
+                      onClose={() => setNotificationDrawerOpen(false)}
+                      placement="bottom"
+                      height="75vh"
+                      title={
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm">🔔 Thông báo hệ thống</span>
+                            {unreadCount > 0 && <Tag color="error" className="m-0 text-xs">{unreadCount} mới</Tag>}
+                          </div>
+                          {unreadCount > 0 && (
+                            <Button type="link" size="small" className="p-0 text-xs text-sky-600" onClick={markAllAsRead}>
+                              Đọc tất cả
+                            </Button>
+                          )}
+                        </div>
+                      }
+                      styles={{
+                        wrapper: { borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+                        body: { padding: '12px 16px' }
+                      }}
+                    >
+                      <div className="space-y-2.5">
+                        {systemNotifications.length === 0 ? (
+                          <div className="text-center py-12 text-gray-400 text-xs">Không có thông báo nào</div>
+                        ) : (
+                          systemNotifications.map((n) => (
+                            <div
+                              key={n.id}
+                              className={`p-3 rounded-xl transition-colors cursor-pointer border-l-4 ${
+                                !n.isRead ? 'bg-sky-50 dark:bg-gray-800/80 font-medium' : 'bg-gray-50/70 dark:bg-gray-900/40 opacity-75'
+                              }`}
+                              style={{
+                                borderColor: n.severity === 'error' ? '#ef4444' : n.severity === 'warning' ? '#f59e0b' : '#10b981',
+                              }}
+                              onClick={() => {
+                                if (!n.isRead) markAsRead(n.id);
+                                setNotificationDrawerOpen(false);
+                                if (n.link) navigate(n.link);
+                              }}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-sky-500 shrink-0" />}
+                                  <strong className="block text-gray-800 dark:text-gray-200 text-xs truncate">{n.title}</strong>
+                                </div>
+                                <span className="text-[10px] text-gray-400 shrink-0">{n.timeText}</span>
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0 line-clamp-2 leading-relaxed">{n.message}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </Drawer>
+                  </>
+                ) : (
+                  <Popover
+                    content={notifications}
+                    trigger="click"
+                    placement="bottomRight"
+                    overlayStyle={{ maxWidth: 'calc(100vw - 24px)' }}
+                  >
+                    <Badge count={unreadCount} size="small">
+                      <Button
+                        type="text"
+                        icon={<BellOutlined />}
+                        className="text-lg flex items-center justify-center w-10 h-10"
+                        aria-label="Thông báo"
+                      />
+                    </Badge>
+                  </Popover>
+                )}
                 {user && (
                   <Dropdown
                     trigger={['click']}

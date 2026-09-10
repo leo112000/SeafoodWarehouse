@@ -262,10 +262,10 @@ const OutboundHistoryPage: React.FC = () => {
 
       <Card className="shadow-xs rounded-xl mb-4" styles={{ body: { padding: '12px' } }}>
         <Row gutter={[8, 8]}>
-          <Col xs={12} sm={12} md={6}>
+          <Col xs={24} sm={12} md={6}>
             <RangePicker style={{ width: '100%' }} size="middle" placeholder={['Từ ngày', 'Đến ngày']} />
           </Col>
-          <Col xs={12} sm={12} md={6}>
+          <Col xs={24} sm={12} md={6}>
             <Input
               placeholder="Lọc theo tên khách hàng..."
               style={{ width: '100%' }}
