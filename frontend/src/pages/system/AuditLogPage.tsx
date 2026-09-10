@@ -5,6 +5,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
 import type { AuditLog } from '../../types/seafood';
 import { auditLogService } from '../../services/auditLogService';
+import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
 
 const { RangePicker } = DatePicker;
 
@@ -32,6 +33,7 @@ export const AuditLogPage: React.FC = () => {
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [selected, setSelected] = useState<AuditLog | null>(null);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -97,26 +99,68 @@ export const AuditLogPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 m-0">Nhật ký hệ thống</h1>
-          <p className="text-gray-500 mt-1 mb-0">Theo dõi các thao tác quan trọng và sự kiện bảo mật trong hệ thống từ CSDL SQL Server.</p>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 m-0 truncate">Nhật ký hệ thống</h1>
         </div>
-        <Space>
+        <Space size="small">
           <Button icon={<ReloadOutlined />} onClick={fetchLogs} loading={loading}>Làm mới</Button>
           <Button type="primary" icon={<DownloadOutlined />} onClick={exportCsv} disabled={!filtered.length}>Xuất CSV</Button>
         </Space>
       </div>
 
-      <Card className="shadow-sm">
-        <div className="flex flex-wrap gap-3 mb-5">
-          <Input allowClear value={keyword} onChange={(event) => setKeyword(event.target.value)} prefix={<SearchOutlined />} placeholder="Tìm người dùng, mô tả, IP..." className="w-full sm:w-64" />
-          <RangePicker value={dateRange} onChange={setDateRange} format="DD/MM/YYYY" className="w-full sm:w-auto" />
-          <Select allowClear value={action} onChange={setAction} placeholder="Hành động" className="w-full sm:w-36" options={Object.entries(actionMeta).map(([value, meta]) => ({ value, label: meta.label }))} />
-          <Select allowClear value={module} onChange={setModule} placeholder="Module" className="w-full sm:w-40" options={modules.map((value) => ({ value, label: value }))} />
-          <Select allowClear value={status} onChange={setStatus} placeholder="Trạng thái" className="w-full sm:w-36" options={[{ value: 'SUCCESS', label: 'Thành công' }, { value: 'FAILED', label: 'Thất bại' }]} />
-          <Button icon={<ReloadOutlined />} onClick={reset}>Đặt lại</Button>
+      <Card
+        className="shadow-sm"
+        title="Nhật ký hoạt động & bảo mật"
+        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
+      >
+        <div className="grid grid-cols-2 lg:flex gap-2 mb-4 items-center">
+          <Input
+            allowClear
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            prefix={<SearchOutlined />}
+            placeholder="Tìm người dùng, mô tả, IP..."
+            className="col-span-2 lg:w-64"
+          />
+          <RangePicker
+            value={dateRange}
+            onChange={setDateRange}
+            format="DD/MM/YYYY"
+            className="col-span-2 lg:w-auto"
+          />
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            value={action}
+            onChange={setAction}
+            placeholder="Hành động"
+            className="col-span-1 lg:w-36"
+            options={Object.entries(actionMeta).map(([value, meta]) => ({ value, label: meta.label }))}
+          />
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            value={module}
+            onChange={setModule}
+            placeholder="Module"
+            className="col-span-1 lg:w-40"
+            options={modules.map((value) => ({ value, label: value }))}
+          />
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            value={status}
+            onChange={setStatus}
+            placeholder="Trạng thái"
+            className="col-span-1 lg:w-36"
+            options={[{ value: 'SUCCESS', label: 'Thành công' }, { value: 'FAILED', label: 'Thất bại' }]}
+          />
+          <Button icon={<ReloadOutlined />} onClick={reset} className="col-span-1 lg:w-auto">Đặt lại</Button>
         </div>
         <Table
           columns={columns}
@@ -135,9 +179,24 @@ export const AuditLogPage: React.FC = () => {
         />
       </Card>
 
-      <Drawer title="Chi tiết nhật ký" width={620} open={!!selected} onClose={() => setSelected(null)}>
+      <ZoomViewerModal
+        open={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        title="Nhật ký hoạt động & bảo mật"
+      >
+        <Table
+          columns={columns}
+          dataSource={filtered}
+          rowKey="id"
+          loading={loading}
+          pagination={false}
+          scroll={{ x: 'max-content' }}
+        />
+      </ZoomViewerModal>
+
+      <Drawer title="Chi tiết nhật ký" styles={{ wrapper: { width: 620 } }} open={!!selected} onClose={() => setSelected(null)}>
         {selected && (
-          <Space direction="vertical" size="large" className="w-full">
+          <Space orientation="vertical" size="large" className="w-full">
             <Descriptions column={1} bordered size="small" items={[
               { key: 'time', label: 'Thời gian', children: selected.timestamp },
               { key: 'user', label: 'Người thực hiện', children: `${selected.userName} (${selected.userRole})` },

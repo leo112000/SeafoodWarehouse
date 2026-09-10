@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Row, Col, Input, Select, Tag, Button, Modal, Descriptions } from 'antd';
+import { Table, Card, Row, Col, Input, Select, Tag, Button, Modal, Descriptions, Tooltip } from 'antd';
 import { SearchOutlined, ReloadOutlined, DatabaseOutlined, SafetyCertificateOutlined, AlertOutlined, EnvironmentOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useInventoryStore } from '../../stores/useInventoryStore';
 import { useWarehouseStore } from '../../stores/useWarehouseStore';
@@ -7,6 +7,7 @@ import { useProductStore } from '../../stores/useProductStore';
 import dayjs from 'dayjs';
 import type { InventoryItemDto } from '../../services/inventoryService';
 import { settingService } from '../../services/settingService';
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 const { Option } = Select;
 
@@ -20,6 +21,7 @@ export const InventoryStockPage: React.FC = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [detailItem, setDetailItem] = useState<InventoryItemDto | null>(null);
   const [expiringAlertDays, setExpiringAlertDays] = useState<number>(15);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   useEffect(() => {
     fetchInventory();
@@ -29,7 +31,7 @@ export const InventoryStockPage: React.FC = () => {
       if (s && s.expiringAlertDays) {
         setExpiringAlertDays(s.expiringAlertDays);
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const handleSearch = () => {
@@ -50,6 +52,26 @@ export const InventoryStockPage: React.FC = () => {
       warehouseId: undefined,
       productId: undefined,
       search: '',
+    });
+  };
+
+  const handleExportExcel = () => {
+    const exportData = items.map((item, idx) => ({
+      'STT': idx + 1,
+      'Mã Lô Hàng': item.batchCode,
+      'Tên Hải Sản': item.productName,
+      'Mã Sản Phẩm': item.productCode,
+      'Kho Lưu Trữ': item.warehouseName || `Kho #${item.warehouseId}`,
+      'Vị Trí Kệ': item.storageBin || 'Kệ chính',
+      'Số Lượng Tồn (kg)': item.quantity,
+      'Đơn Vị': item.unit || 'kg',
+      'Đơn Giá (VNĐ)': item.unitPrice || 0,
+      'Thành Tiền (VNĐ)': (item.quantity || 0) * (item.unitPrice || 0),
+      'Ngày Sản Xuất/Nhập': item.productionDate ? dayjs(item.productionDate).format('DD/MM/YYYY') : '',
+      'Hạn Sử Dụng': item.expirationDate ? dayjs(item.expirationDate).format('DD/MM/YYYY') : '',
+    }));
+    import('../../utils/excelExport').then(({ exportToExcel }) => {
+      exportToExcel(exportData, 'Bao_Cao_Ton_Kho_Hai_San', 'Ton_Kho');
     });
   };
 
@@ -152,150 +174,175 @@ export const InventoryStockPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Metrics Row */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
-          <Card className="shadow-sm border-l-4 border-l-sky-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-gray-500 font-medium uppercase tracking-wider">Tổng Tồn Kho Hiện Tại</div>
-                <div className="text-2xl font-extrabold text-sky-600 mt-1">
-                  {totalStockKg.toLocaleString()} <span className="text-sm font-normal text-gray-500">kg</span>
+      {/* ── Page Header: Tiêu đề trang & Nút xuất Excel ngang hàng ── */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
+            Tồn Kho Hiện Tại
+          </h1>
+        </div>
+        <Button
+          type="default"
+          size="middle"
+          className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 font-medium flex items-center justify-center gap-1.5 shrink-0"
+          onClick={handleExportExcel}
+        >
+          <span>📥</span>
+          <span className="hidden sm:inline">Xuất Excel</span>
+          <span className="sm:hidden">Xuất Excel</span>
+        </Button>
+      </div>
+
+      {/* Metrics Row: 3 thẻ chia 3 cột trên cùng 1 dòng, tối ưu chiều dọc tối đa */}
+      <Row gutter={[8, 8]}>
+        <Col xs={8} sm={8}>
+          <Card className="shadow-xs border-l-4 border-l-sky-500 rounded-xl h-full" styles={{ body: { padding: '10px 8px' } }}>
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">Tổng Tồn Kho</div>
+                <div className="text-sm sm:text-2xl font-black text-sky-600 mt-0.5 truncate">
+                  {totalStockKg.toLocaleString()} <span className="text-[10px] sm:text-xs font-normal text-gray-500">kg</span>
                 </div>
               </div>
-              <div className="p-3 bg-sky-50 rounded-full text-sky-500">
-                <DatabaseOutlined style={{ fontSize: 24 }} />
+              <div className="p-1 sm:p-2 bg-sky-50 dark:bg-sky-950/40 rounded-lg text-sky-500 shrink-0 hidden sm:flex">
+                <DatabaseOutlined className="text-base sm:text-xl" />
               </div>
             </div>
           </Card>
         </Col>
 
-        <Col xs={24} sm={8}>
-          <Card className="shadow-sm border-l-4 border-l-emerald-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-gray-500 font-medium uppercase tracking-wider">Ước Tính Giá Trị Hàng</div>
-                <div className="text-2xl font-extrabold text-emerald-600 mt-1">
-                  {totalEstValue.toLocaleString()} <span className="text-sm font-normal text-gray-500">VNĐ</span>
+        <Col xs={8} sm={8}>
+          <Card className="shadow-xs border-l-4 border-l-emerald-500 rounded-xl h-full" styles={{ body: { padding: '10px 8px' } }}>
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">Ước Tính Giá Trị</div>
+                <div className="text-sm sm:text-2xl font-black text-emerald-600 mt-0.5 truncate">
+                  {totalEstValue >= 1_000_000
+                    ? `${(totalEstValue / 1_000_000).toFixed(1)} tr`
+                    : `${totalEstValue.toLocaleString()}`}{' '}
+                  <span className="text-[10px] sm:text-xs font-normal text-gray-500">VNĐ</span>
                 </div>
               </div>
-              <div className="p-3 bg-emerald-50 rounded-full text-emerald-500">
-                <SafetyCertificateOutlined style={{ fontSize: 24 }} />
+              <div className="p-1 sm:p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-emerald-500 shrink-0 hidden sm:flex">
+                <SafetyCertificateOutlined className="text-base sm:text-xl" />
               </div>
             </div>
           </Card>
         </Col>
 
-        <Col xs={24} sm={8}>
-          <Card className="shadow-sm border-l-4 border-l-amber-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-gray-500 font-medium uppercase tracking-wider">Lô Hàng Cận Date ({expiringAlertDays} Ngày)</div>
-                <div className="text-2xl font-extrabold text-amber-600 mt-1">
-                  {nearExpiryCount} <span className="text-sm font-normal text-gray-500">lô hàng</span>
+        <Col xs={8} sm={8}>
+          <Card className="shadow-xs border-l-4 border-l-amber-500 rounded-xl h-full" styles={{ body: { padding: '10px 8px' } }}>
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">Cận Date ({expiringAlertDays}n)</div>
+                <div className="text-sm sm:text-2xl font-black text-amber-600 mt-0.5 truncate">
+                  {nearExpiryCount} <span className="text-[10px] sm:text-xs font-normal text-gray-500">lô</span>
                 </div>
               </div>
-              <div className="p-3 bg-amber-50 rounded-full text-amber-500">
-                <AlertOutlined style={{ fontSize: 24 }} />
+              <div className="p-1 sm:p-2 bg-amber-50 dark:bg-amber-950/40 rounded-lg text-amber-500 shrink-0 hidden sm:flex">
+                <AlertOutlined className="text-base sm:text-xl" />
               </div>
             </div>
           </Card>
         </Col>
       </Row>
 
-      {/* Filter & Action Bar */}
-      <Card className="shadow-sm">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="flex flex-wrap gap-3 w-full md:w-auto items-center">
+      {/* Filter & Action Bar: Chia 2 cột trên mobile, dàn ngang trên desktop */}
+      <Card className="shadow-xs rounded-xl" styles={{ body: { padding: '10px 12px' } }}>
+        <div className="grid grid-cols-2 lg:flex lg:flex-wrap items-center gap-2">
+          {/* Ô 1: Tìm theo mã lô */}
+          <div className="col-span-1 lg:w-48">
             <Input
               placeholder="Tìm theo Mã lô..."
-              prefix={<SearchOutlined />}
+              prefix={<SearchOutlined className="text-gray-400 text-xs" />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               onPressEnter={handleSearch}
-              className="w-full md:w-56"
-            />
-            <Select
-              placeholder="Chọn Kho lạnh"
               allowClear
+              size="middle"
+              className="w-full"
+            />
+          </div>
+
+          {/* Ô 2: Chọn Kho lạnh */}
+          <div className="col-span-1 lg:w-40">
+            <Select
+              placeholder="Chọn Kho"
+              allowClear
+              showSearch
+              optionFilterProp="children"
               value={selectedWarehouse}
               onChange={(val) => setSelectedWarehouse(val)}
-              className="w-full md:w-48"
+              className="w-full"
+              size="middle"
             >
               {warehouses.map((w) => (
                 <Option key={w.id} value={w.id}>{w.name}</Option>
               ))}
             </Select>
+          </div>
+
+          {/* Ô 3: Chọn Loại Hải Sản */}
+          <div className="col-span-1 lg:w-40">
             <Select
               placeholder="Chọn Loại Hải Sản"
               allowClear
+              showSearch
+              optionFilterProp="children"
               value={selectedProduct}
               onChange={(val) => setSelectedProduct(val)}
-              className="w-full md:w-48"
+              className="w-full"
+              size="middle"
             >
               {products.map((p) => (
                 <Option key={p.id} value={p.id}>{p.name}</Option>
               ))}
             </Select>
-            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-              Lọc Dữ Liệu
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={handleReset}>
-              Đặt lại
-            </Button>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Ô 4: Nút Lọc & Đặt lại */}
+          <div className="col-span-1 flex items-center gap-1.5">
             <Button
               type="primary"
-              className="bg-sky-600"
-              icon={<DatabaseOutlined />}
-              onClick={() => window.location.href = '/inventory/map'}
+              icon={<SearchOutlined />}
+              onClick={handleSearch}
+              size="middle"
+              className="flex-1 font-semibold"
             >
-              🗺️ Sơ Đồ Kho 2D
+              Lọc
             </Button>
-            <Button
-              type="default"
-              className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium"
-              onClick={() => {
-                const exportData = items.map((item, idx) => ({
-                  'STT': idx + 1,
-                  'Mã Lô Hàng': item.batchCode,
-                  'Tên Hải Sản': item.productName,
-                  'Mã Sản Phẩm': item.productCode,
-                  'Kho Lưu Trữ': item.warehouseName || `Kho #${item.warehouseId}`,
-                  'Vị Trí Kệ': item.storageBin || 'Kệ chính',
-                  'Số Lượng Tồn (kg)': item.quantity,
-                  'Đơn Vị': item.unit || 'kg',
-                  'Đơn Giá (VNĐ)': item.unitPrice || 0,
-                  'Thành Tiền (VNĐ)': (item.quantity || 0) * (item.unitPrice || 0),
-                  'Ngày Sản Xuất/Nhập': item.productionDate ? dayjs(item.productionDate).format('DD/MM/YYYY') : '',
-                  'Hạn Sử Dụng': item.expirationDate ? dayjs(item.expirationDate).format('DD/MM/YYYY') : '',
-                }));
-                import('../../utils/excelExport').then(({ exportToExcel }) => {
-                  exportToExcel(exportData, 'Bao_Cao_Ton_Kho_Hai_San', 'Ton_Kho');
-                });
-              }}
-            >
-              📥 Xuất File Excel (.xlsx)
-            </Button>
+            <Tooltip title="Đặt lại bộ lọc">
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={handleReset}
+                size="middle"
+                className="px-2.5"
+              />
+            </Tooltip>
           </div>
         </div>
       </Card>
 
       {/* Inventory Table */}
-      <Card title="📦 Danh Sách Chi Tiết Tồn Kho Hải Sản" className="shadow-sm">
+      <Card
+        title="📦 Danh Sách Chi Tiết Tồn Kho Hải Sản"
+        extra={<ZoomButton onClick={() => setIsZoomed(true)} />}
+        className="shadow-sm rounded-2xl overflow-hidden"
+      >
         <Table
           rowKey="id"
           columns={columns}
           dataSource={items}
           loading={loading}
+          scroll={{ x: 950 }}
           pagination={{
             current: pageNumber,
             pageSize: pageSize,
             total: totalCount,
             onChange: (page, pSize) => fetchInventory({ pageNumber: page, pageSize: pSize }),
             showSizeChanger: true,
-            showTotal: (total) => `Tổng cộng ${total} vị trí hàng tồn kho`,
+            responsive: true,
+            showTotal: (total) => `Tổng ${total} vị trí hàng`,
           }}
         />
       </Card>
@@ -306,12 +353,13 @@ export const InventoryStockPage: React.FC = () => {
         open={!!detailItem}
         onCancel={() => setDetailItem(null)}
         footer={[
-          <Button key="close" onClick={() => setDetailItem(null)}>Đóng</Button>
+          <Button key="close" type="primary" onClick={() => setDetailItem(null)}>Đóng</Button>
         ]}
         width={600}
+        centered
       >
         {detailItem && (
-          <Descriptions column={2} bordered size="small" className="mt-4">
+          <Descriptions column={{ xs: 1, sm: 2 }} bordered size="small" className="mt-4">
             <Descriptions.Item label="Mã lô">{detailItem.batchCode || 'N/A'}</Descriptions.Item>
             <Descriptions.Item label="Sản phẩm">{detailItem.productName || 'N/A'}</Descriptions.Item>
             <Descriptions.Item label="Kho lưu giữ">{detailItem.warehouseName || 'N/A'}</Descriptions.Item>
@@ -325,6 +373,35 @@ export const InventoryStockPage: React.FC = () => {
           </Descriptions>
         )}
       </Modal>
+
+      {/* Modal Phóng To Bảng Tồn Kho & Quay Ngang */}
+      <ZoomViewerModal
+        open={isZoomed}
+        onClose={() => setIsZoomed(false)}
+        title="📦 Danh Sách Chi Tiết Tồn Kho Hải Sản"
+        subtitle={`Hiển thị ${items.length} lô hàng trên tổng số ${totalCount} vị trí lưu trữ`}
+      >
+        {({ isRotated }) => (
+          <div className="w-full h-full flex flex-col">
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={items}
+              loading={loading}
+              scroll={{ x: 1000, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+              pagination={{
+                current: pageNumber,
+                pageSize: pageSize,
+                total: totalCount,
+                onChange: (page, pSize) => fetchInventory({ pageNumber: page, pageSize: pSize }),
+                showSizeChanger: true,
+                responsive: true,
+                showTotal: (total) => `Tổng ${total} vị trí hàng`,
+              }}
+            />
+          </div>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

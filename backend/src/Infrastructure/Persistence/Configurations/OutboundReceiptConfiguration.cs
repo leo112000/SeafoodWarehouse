@@ -10,7 +10,11 @@ public class OutboundReceiptConfiguration : IEntityTypeConfiguration<OutboundRec
     {
         builder.HasKey(r => r.Id);
         builder.Property(r => r.ReferenceNumber).IsRequired().HasMaxLength(100);
+        builder.HasIndex(r => r.ReferenceNumber).IsUnique().HasDatabaseName("IX_OutboundReceipts_ReferenceNumber");
+        builder.HasIndex(r => new { r.TenantId, r.CreatedAt }).HasDatabaseName("IX_OutboundReceipts_Tenant_CreatedAt");
+
         builder.Property(r => r.CustomerName).IsRequired().HasMaxLength(200);
+
         builder.Property(r => r.Reason).HasMaxLength(200);
         builder.Property(r => r.CreatedBy).HasMaxLength(100);
         builder.Property(r => r.DiscountReason).HasMaxLength(200);

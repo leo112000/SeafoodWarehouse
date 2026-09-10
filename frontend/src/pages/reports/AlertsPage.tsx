@@ -1,21 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Tag, Badge, Row, Col, Typography, Alert, Space, Button, App } from 'antd';
-import { AlertOutlined, ExclamationCircleOutlined, DashboardOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Card, Table, Tag, Row, Col, Alert, Space, Button, App, Statistic } from 'antd';
+import { AlertOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { batchService, type FefoBatch } from '../../services/batchService';
 import { productService } from '../../services/productService';
-import { warehouseService, type WarehouseItem } from '../../services/warehouseService';
 import { settingService, type SystemSetting } from '../../services/settingService';
 import type { Product } from '../../types/seafood';
 import { formatWeight } from '../../utils/format';
 import dayjs from 'dayjs';
-
-const { Title, Paragraph } = Typography;
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 export const AlertsPage: React.FC = () => {
   const { message } = App.useApp();
   const [fefoBatches, setFefoBatches] = useState<FefoBatch[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [warehouses, setWarehouses] = useState<WarehouseItem[]>([]);
+  const [zoomAlert, setZoomAlert] = useState<'expiry' | 'lowStock' | null>(null);
   const [settings, setSettings] = useState<SystemSetting>({
     expiringAlertDays: 15,
     tempDeviationThreshold: 3.0,
@@ -28,16 +26,14 @@ export const AlertsPage: React.FC = () => {
   const fetchAlertData = useCallback(async () => {
     setLoading(true);
     try {
-      const [batchesData, productsData, warehousesData, settingsData] = await Promise.all([
+      const [batchesData, productsData, settingsData] = await Promise.all([
         batchService.getFefo(),
         productService.getAll(),
-        warehouseService.getAll(),
         settingService.getSettings(),
       ]);
 
       setFefoBatches(batchesData || []);
       setProducts(productsData || []);
-      setWarehouses(warehousesData || []);
       if (settingsData) {
         setSettings(settingsData);
       }
@@ -86,55 +82,30 @@ export const AlertsPage: React.FC = () => {
     })
     .filter((item) => item.isLow);
 
-  // 3. Giám sát Nhiệt Độ Kho Lạnh thực tế từ CSDL Warehouses
-  const tempAlerts = warehouses.map((w) => {
-    // Nếu chưa có nhiệt độ đo thực tế, mô phỏng nhiệt độ lệch nhẹ theo kho thực
-    const deviation = w.storageType === 'FROZEN' ? 3.5 : 1.2;
-    const targetTemp = w.temperatureCelsius;
-    const actualTemp = targetTemp + deviation;
-    return {
-      id: w.id,
-      code: w.code,
-      name: w.name,
-      location: w.location,
-      targetTemp,
-      actualTemp,
-      deviation,
-      status: deviation > 3 ? 'Critical' : 'Warning',
-    };
-  });
-
-  // Table Columns Definition
+  // Table Columns Definition (Gộp Cột Gọn Gàng)
   const expiryColumns = [
     {
       title: 'STT',
       key: 'stt',
-      width: 60,
+      width: 50,
       align: 'center' as const,
       render: (_: any, __: any, index: number) => index + 1,
     },
     {
-      title: 'Mã Lô Hàng',
-      dataIndex: 'batchCode',
-      key: 'batchCode',
-      render: (text: string) => <strong className="text-sky-600">{text}</strong>,
+      title: 'Lô Hàng / Sản Phẩm',
+      key: 'batchProduct',
+      render: (_: any, record: FefoBatch) => (
+        <div>
+          <div className="font-bold text-gray-800 dark:text-gray-100 text-xs sm:text-sm">{record.productName}</div>
+          <div className="font-mono text-xs text-sky-600 font-bold">{record.batchCode}</div>
+        </div>
+      ),
     },
     {
-      title: 'Tên Hải Sản',
-      dataIndex: 'productName',
-      key: 'productName',
-      render: (name: string) => <span className="font-semibold">{name}</span>,
-    },
-    {
-      title: 'Ngày Hạn Sử Dụng',
-      dataIndex: 'expiryDate',
-      key: 'expiryDate',
-    },
-    {
-      title: 'Thời Gian Còn Lại',
-      dataIndex: 'daysLeft',
-      key: 'daysLeft',
-      render: (days: number) => {
+      title: 'Hạn Dùng / Còn Lại',
+      key: 'expiryInfo',
+      render: (_: any, record: any) => {
+        const days = record.daysLeft;
         let color = 'red';
         let label = 'Nguy cấp';
         if (days > 3 && days <= 7) {
@@ -145,9 +116,12 @@ export const AlertsPage: React.FC = () => {
           label = 'Lưu ý';
         }
         return (
-          <Tag color={color} className="font-bold">
-            {days <= 0 ? 'ĐÃ HẾT HẠN!' : `${days} ngày (${label})`}
-          </Tag>
+          <div>
+            <div className="text-xs text-gray-500">{record.expiryDate}</div>
+            <Tag color={color} className="font-bold text-[11px] mt-0.5 border-0">
+              {days <= 0 ? 'ĐÃ HẾT HẠN!' : `${days} ngày (${label})`}
+            </Tag>
+          </div>
         );
       },
     },
@@ -155,7 +129,12 @@ export const AlertsPage: React.FC = () => {
       title: 'Số Lượng Tồn Lô',
       dataIndex: 'quantity',
       key: 'quantity',
-      render: (val: number) => formatWeight(val),
+      align: 'right' as const,
+      render: (val: number) => (
+        <span className="font-bold text-xs sm:text-sm text-gray-800 dark:text-gray-200">
+          {formatWeight(val)}
+        </span>
+      ),
     },
   ];
 
@@ -163,7 +142,7 @@ export const AlertsPage: React.FC = () => {
     {
       title: 'STT',
       key: 'stt',
-      width: 60,
+      width: 50,
       align: 'center' as const,
       render: (_: any, __: any, index: number) => index + 1,
     },
@@ -173,127 +152,97 @@ export const AlertsPage: React.FC = () => {
       key: 'name',
       render: (name: string, record: any) => (
         <div>
-          <span className="font-semibold text-gray-800 dark:text-gray-100">{name}</span>
-          <div className="text-xs text-gray-400">{record.code}</div>
+          <span className="font-bold text-gray-800 dark:text-gray-100 text-xs sm:text-sm">{name}</span>
+          <div className="text-xs text-gray-400 font-mono">{record.code}</div>
         </div>
       ),
     },
     {
-      title: 'Tồn Kho Hiện Tại',
-      dataIndex: 'currentStock',
-      key: 'currentStock',
-      render: (val: number, record: any) => (
-        <span className="text-red-500 font-bold">{val} {record.unit}</span>
-      ),
-    },
-    {
-      title: 'Định Mức Tối Thiểu',
-      dataIndex: 'minStock',
-      key: 'minStock',
-      render: (val: number, record: any) => `${val} ${record.unit}`,
-    },
-    {
-      title: 'Mức Độ Thiếu Hụt',
-      key: 'deficit',
+      title: 'Tồn Kho / Định Mức',
+      key: 'stockDeficit',
+      align: 'right' as const,
       render: (_: any, record: any) => {
         const deficit = Math.max(0, record.minStock - record.currentStock);
-        return <Tag color="volcano">Thiếu {deficit} {record.unit}</Tag>;
+        return (
+          <div className="text-right">
+            <div className="flex items-center justify-end gap-1">
+              <span className="text-red-500 font-black text-xs sm:text-sm">{record.currentStock}</span>
+              <span className="text-gray-400 text-xs">/ {record.minStock} {record.unit}</span>
+            </div>
+            <Tag color="volcano" className="mt-0.5 text-[11px] border-0 mr-0">
+              Thiếu {deficit} {record.unit}
+            </Tag>
+          </div>
+        );
       },
     },
   ];
 
-  const tempColumns = [
-    {
-      title: 'STT',
-      key: 'stt',
-      width: 60,
-      align: 'center' as const,
-      render: (_: any, __: any, index: number) => index + 1,
-    },
-    {
-      title: 'Kho Hàng / Tủ Đông',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record: any) => (
-        <div>
-          <span className="font-semibold">{name}</span>
-          <div className="text-xs text-gray-400">{record.location} ({record.code})</div>
-        </div>
-      ),
-    },
-    {
-      title: 'Nhiệt Độ Chuẩn',
-      dataIndex: 'targetTemp',
-      key: 'targetTemp',
-      render: (t: number) => `${t}°C`,
-    },
-    {
-      title: 'Nhiệt Độ Đo Được',
-      dataIndex: 'actualTemp',
-      key: 'actualTemp',
-      render: (t: number, record: any) => {
-        const isCritical = record.status === 'Critical';
-        return <span className={isCritical ? 'text-red-500 font-bold' : 'text-orange-500 font-semibold'}>{t.toFixed(1)}°C</span>;
-      },
-    },
-    {
-      title: 'Độ Lệch',
-      dataIndex: 'deviation',
-      key: 'deviation',
-      render: (val: number) => <Tag color="red">+{val.toFixed(1)}°C</Tag>,
-    },
-    {
-      title: 'Trạng Thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => {
-        const isCritical = status === 'Critical';
-        return <Badge status={isCritical ? 'error' : 'warning'} text={isCritical ? 'Báo động nguy cấp' : 'Cần kiểm tra'} />;
-      },
-    },
-  ];
-
-  const hasAlerts = expiryAlerts.length > 0 || lowStockAlerts.length > 0 || tempAlerts.length > 0;
+  const hasAlerts = expiryAlerts.length > 0 || lowStockAlerts.length > 0;
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+      <div className="flex items-center justify-between mb-3 gap-2">
         <div>
-          <Title level={2} className="m-0">Hệ Thống Cảnh Báo Kho Hải Sản</Title>
-          <Paragraph type="secondary" className="mb-0">
-            Giám sát các chỉ số chất lượng, nhiệt độ lưu kho và thời hạn sử dụng các lô hải sản thực tế từ Database.
-          </Paragraph>
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">Hệ Thống Cảnh Báo</h1>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={fetchAlertData} loading={loading}>
-          Làm mới dữ liệu
+        <Button icon={<ReloadOutlined />} onClick={fetchAlertData} loading={loading} size="middle">
+          Làm mới
         </Button>
       </div>
 
+      {/* ── Statistics Cards (2 thẻ chia đều cân đối) ── */}
+      <Row gutter={[10, 10]} className="mb-3">
+        <Col xs={12} sm={12} lg={12}>
+          <Card variant="borderless" className="shadow-xs rounded-xl" styles={{ body: { padding: '14px 16px' } }}>
+            <Statistic
+              title={<span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Lô Cận Hạn Sử Dụng</span>}
+              value={expiryAlerts.length}
+              suffix={<span className="text-xs text-gray-400 font-normal">lô</span>}
+              prefix={<ExclamationCircleOutlined className="text-rose-500 mr-1" />}
+              styles={{ content: { color: '#f43f5e', fontSize: '1.35rem', fontWeight: 800 } }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={12} lg={12}>
+          <Card variant="borderless" className="shadow-xs rounded-xl" styles={{ body: { padding: '14px 16px' } }}>
+            <Statistic
+              title={<span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Mặt Hàng Trữ Lượng Thấp</span>}
+              value={lowStockAlerts.length}
+              suffix={<span className="text-xs text-gray-400 font-normal">món</span>}
+              prefix={<AlertOutlined className="text-amber-500 mr-1" />}
+              styles={{ content: { color: '#f59e0b', fontSize: '1.35rem', fontWeight: 800 } }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
       {hasAlerts && (
         <Alert
-          message="Hệ thống ghi nhận sự cố: Cần hành động ngay để kiểm soát chất lượng hải sản!"
+          title="Hệ thống ghi nhận cảnh báo cần xử lý:"
           type="error"
           showIcon
-          className="mb-6"
+          className="mb-4 rounded-xl"
           description={
-            <ul className="list-disc pl-4 mt-1 space-y-1 text-xs">
-              {expiryAlerts.length > 0 && <li>Có {expiryAlerts.length} lô hải sản cận hạn sử dụng (dưới {expiryAlertDays} ngày).</li>}
-              {lowStockAlerts.length > 0 && <li>Có {lowStockAlerts.length} mặt hàng có trữ lượng dưới định mức tối thiểu.</li>}
-              {tempAlerts.length > 0 && <li>Ghi nhận kho lạnh/tủ đông có độ lệch nhiệt độ bảo quản.</li>}
+            <ul className="list-disc pl-4 mt-1 space-y-0.5 text-xs">
+              {expiryAlerts.length > 0 && <li>Có {expiryAlerts.length} lô hải sản cận date (dưới {expiryAlertDays} ngày).</li>}
+              {lowStockAlerts.length > 0 && <li>Có {lowStockAlerts.length} mặt hàng có trữ lượng dưới mức tối thiểu.</li>}
             </ul>
           }
         />
       )}
 
-      <Space direction="vertical" size={24} className="w-full">
+      <Space orientation="vertical" size={14} className="w-full">
         <Card
           title={
             <Space>
-              <ExclamationCircleOutlined className="text-red-500 text-lg" />
-              <span>Cảnh Báo Hải Sản Cận Hạn Sử Dụng (Dữ Liệu Lô Hàng Thực Từ Database)</span>
+              <ExclamationCircleOutlined className="text-red-500 text-base" />
+              <span className="text-sm sm:text-base font-bold">Cảnh Báo Hải Sản Cận Hạn Sử Dụng</span>
             </Space>
           }
-          className="shadow-sm"
+          extra={<ZoomButton onClick={() => setZoomAlert('expiry')} />}
+          className="shadow-sm rounded-2xl"
+          styles={{ body: { padding: '10px 14px' } }}
         >
           <Table
             dataSource={expiryAlerts}
@@ -303,57 +252,72 @@ export const AlertsPage: React.FC = () => {
             pagination={false}
             size="small"
             locale={{ emptyText: 'Hiện tại tất cả các lô hàng trong kho đều an toàn (chưa có lô nào sắp hết hạn).' }}
-            scroll={{ x: 'max-content' }}
+            scroll={{ x: 500 }}
           />
         </Card>
 
-        <Row gutter={[24, 24]}>
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <Space>
-                  <AlertOutlined className="text-orange-500 text-lg" />
-                  <span>Cảnh Báo Trữ Lượng Tồn Kho Thấp</span>
-                </Space>
-              }
-              className="shadow-sm h-full"
-            >
+        <Card
+          title={
+            <Space>
+              <AlertOutlined className="text-orange-500 text-base" />
+              <span className="text-sm sm:text-base font-bold">Cảnh Báo Trữ Lượng Tồn Kho Thấp</span>
+            </Space>
+          }
+          extra={<ZoomButton onClick={() => setZoomAlert('lowStock')} />}
+          className="shadow-sm rounded-2xl"
+          styles={{ body: { padding: '10px 14px' } }}
+        >
+          <Table
+            dataSource={lowStockAlerts}
+            columns={lowStockColumns}
+            rowKey="id"
+            loading={loading}
+            pagination={false}
+            size="small"
+            locale={{ emptyText: 'Tất cả mặt hàng hải sản đều đạt hoặc vượt định mức tồn kho tối thiểu.' }}
+            scroll={{ x: 380 }}
+          />
+        </Card>
+      </Space>
+
+      {/* Modal Phóng To Bảng Cảnh Báo & Quay Ngang */}
+      <ZoomViewerModal
+        open={zoomAlert !== null}
+        onClose={() => setZoomAlert(null)}
+        title={
+          zoomAlert === 'expiry'
+            ? 'Cảnh Báo Hải Sản Cận Hạn Sử Dụng'
+            : 'Cảnh Báo Trữ Lượng Tồn Kho Thấp'
+        }
+        subtitle="Chế độ toàn màn hình hỗ trợ kiểm tra chi tiết"
+      >
+        {({ isRotated }) => (
+          <div className="w-full h-full flex flex-col p-2">
+            {zoomAlert === 'expiry' && (
+              <Table
+                dataSource={expiryAlerts}
+                columns={expiryColumns}
+                rowKey="batchCode"
+                loading={loading}
+                pagination={false}
+                size="middle"
+                scroll={{ x: 900, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+              />
+            )}
+            {zoomAlert === 'lowStock' && (
               <Table
                 dataSource={lowStockAlerts}
                 columns={lowStockColumns}
                 rowKey="id"
                 loading={loading}
                 pagination={false}
-                size="small"
-                locale={{ emptyText: 'Tất cả mặt hàng hải sản đều đạt hoặc vượt định mức tồn kho tối thiểu.' }}
-                scroll={{ x: 'max-content' }}
+                size="middle"
+                scroll={{ x: 800, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
               />
-            </Card>
-          </Col>
-
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <Space>
-                  <DashboardOutlined className="text-blue-500 text-lg" />
-                  <span>Cảnh Báo Giám Sát Nhiệt Độ Kho Bảo Quản</span>
-                </Space>
-              }
-              className="shadow-sm h-full"
-            >
-              <Table
-                dataSource={tempAlerts}
-                columns={tempColumns}
-                rowKey="id"
-                loading={loading}
-                pagination={false}
-                size="small"
-                scroll={{ x: 'max-content' }}
-              />
-            </Card>
-          </Col>
-        </Row>
-      </Space>
+            )}
+          </div>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

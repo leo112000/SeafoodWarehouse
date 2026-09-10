@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography, Tabs, Badge } from 'antd';
+import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography, Tabs, Badge, Tooltip } from 'antd';
 import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined, FileExcelOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useInboundStore } from '../../stores/useInboundStore';
@@ -10,8 +10,9 @@ import { InvoiceModal } from '../../components/invoice/InvoiceModal';
 import type { InvoicePrintData } from '../../types';
 import { useAuthStore } from '../../stores/useAuthStore';
 import dayjs from 'dayjs';
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
-const { Title, Paragraph } = Typography;
+const { Title } = Typography;
 const { RangePicker } = DatePicker;
 
 export interface UnifiedTransactionItem {
@@ -103,6 +104,7 @@ export const TransactionHistoryPage: React.FC = () => {
 
   const [selectedTx, setSelectedTx] = useState<UnifiedTransactionItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   // Invoice print modal state
   const [invoiceData, setInvoiceData] = useState<InvoicePrintData | null>(null);
@@ -470,31 +472,32 @@ export const TransactionHistoryPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <Title level={2} className="m-0">Lịch Sử Giao Dịch Nhập - Xuất Kho</Title>
-          <Paragraph type="secondary" className="mb-0">
-            Tra cứu và quản lý tất cả phiếu nhập kho hải sản & xuất bán kho bãi tập trung trên cùng một nhật ký.
-          </Paragraph>
-        </div>
-        <Space wrap>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
+          Lịch Sử Giao Dịch
+        </h1>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <Button
             type="primary"
             icon={<InboxOutlined />}
             onClick={() => navigate('/inventory/inbound')}
-            className="bg-blue-600 hover:bg-blue-700"
+            size="middle"
+            className="bg-blue-600 hover:bg-blue-700 font-medium"
           >
-            Nhập kho mới
+            <span className="hidden sm:inline">Nhập kho mới</span>
+            <span className="sm:hidden">Nhập</span>
           </Button>
           <Button
             type="primary"
             icon={<UploadOutlined />}
             onClick={() => navigate('/inventory/outbound')}
-            className="bg-green-600 hover:bg-green-700 border-none"
+            size="middle"
+            className="bg-emerald-600 hover:bg-emerald-700 border-none font-medium"
           >
-            Xuất kho mới
+            <span className="hidden sm:inline">Xuất kho mới</span>
+            <span className="sm:hidden">Xuất</span>
           </Button>
-        </Space>
+        </div>
       </div>
 
       {/* Tabs & Search Filters */}
@@ -507,7 +510,7 @@ export const TransactionHistoryPage: React.FC = () => {
               key: 'ALL',
               label: (
                 <span>
-                  Tất cả giao dịch <Badge count={unifiedTransactions.length} overflowCount={999} showZero className="ml-2" color="blue" />
+                  Tất cả<Badge count={unifiedTransactions.length} overflowCount={999} showZero className="ml-2" color="blue" />
                 </span>
               ),
             },
@@ -515,7 +518,7 @@ export const TransactionHistoryPage: React.FC = () => {
               key: 'INBOUND',
               label: (
                 <span>
-                  📥 Lịch sử Nhập kho <Badge count={inboundCount} overflowCount={999} showZero className="ml-2" color="cyan" />
+                  📥 Nhập kho<Badge count={inboundCount} overflowCount={999} showZero className="ml-2" color="cyan" />
                 </span>
               ),
             },
@@ -523,7 +526,7 @@ export const TransactionHistoryPage: React.FC = () => {
               key: 'OUTBOUND',
               label: (
                 <span>
-                  📤 Lịch sử Xuất kho <Badge count={outboundCount} overflowCount={999} showZero className="ml-2" color="green" />
+                  📤 Xuất kho<Badge count={outboundCount} overflowCount={999} showZero className="ml-2" color="green" />
                 </span>
               ),
             },
@@ -552,21 +555,21 @@ export const TransactionHistoryPage: React.FC = () => {
           ))}
         </div>
 
-        <Row gutter={[16, 16]} align="middle">
+        <Row gutter={[8, 8]} align="middle">
           <Col xs={24} md={10}>
             <Input
-              placeholder="Tìm theo Mã phiếu, Đối tác (NCC/Khách), Mã lô, Tên hải sản..."
+              placeholder="Tìm theo Mã phiếu, Đối tác, Mã lô, Tên hải sản..."
               prefix={<SearchOutlined className="text-gray-400" />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              size="large"
+              size="middle"
               allowClear
             />
           </Col>
-          <Col xs={24} md={8}>
+          <Col xs={14} sm={12} md={8}>
             <RangePicker
               className="w-full"
-              size="large"
+              size="middle"
               value={dateRange}
               presets={rangePresets}
               onChange={(dates) => {
@@ -577,28 +580,33 @@ export const TransactionHistoryPage: React.FC = () => {
               format="DD/MM/YYYY"
             />
           </Col>
-          <Col xs={24} md={6}>
-            <Space className="w-full justify-end" wrap>
+          <Col xs={10} sm={12} md={6}>
+            <div className="flex items-center justify-end gap-1.5 w-full">
               {(searchQuery || dateRange || activeTab !== 'ALL') && (
-                <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
-                  Xóa lọc
-                </Button>
+                <Tooltip title="Đặt lại bộ lọc">
+                  <Button icon={<ReloadOutlined />} onClick={handleResetFilters} size="middle" />
+                </Tooltip>
               )}
               <Button
                 type="primary"
                 icon={<FileExcelOutlined />}
-                className="bg-emerald-600 hover:bg-emerald-700 border-none"
+                className="bg-emerald-600 hover:bg-emerald-700 border-none flex-1 sm:flex-initial"
                 onClick={handleExportExcel}
+                size="middle"
               >
-                Xuất Excel (.xlsx)
+                Xuất Excel
               </Button>
-            </Space>
+            </div>
           </Col>
         </Row>
       </Card>
 
       {/* Main Table */}
-      <Card className="shadow-sm">
+      <Card
+        title="📋 Danh Sách Giao Dịch Chi Tiết"
+        extra={<ZoomButton onClick={() => setIsZoomed(true)} />}
+        className="shadow-sm rounded-2xl"
+      >
         <Table
           dataSource={filteredTransactions}
           columns={columns}
@@ -726,6 +734,33 @@ export const TransactionHistoryPage: React.FC = () => {
         data={invoiceData}
         onClose={() => setIsInvoiceModalOpen(false)}
       />
+
+      {/* Modal Phóng To Bảng Lịch Sử & Quay Ngang */}
+      <ZoomViewerModal
+        open={isZoomed}
+        onClose={() => setIsZoomed(false)}
+        title="📋 Lịch Sử Giao Dịch Nhập - Xuất Kho"
+        subtitle={`Hiển thị ${filteredTransactions.length} giao dịch chi tiết`}
+      >
+        {({ isRotated }) => (
+          <div className="w-full h-full flex flex-col">
+            <Table
+              dataSource={filteredTransactions}
+              columns={columns}
+              rowKey="id"
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                showSizeChanger: true,
+                pageSizeOptions: ['10', '20', '50'],
+                onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+              }}
+              scroll={{ x: 1000, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+              size="middle"
+            />
+          </div>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

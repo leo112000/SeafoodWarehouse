@@ -4,12 +4,14 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, EnvironmentOutlined, FireOu
 import { useWarehouseStore } from '../../stores/useWarehouseStore';
 import { warehouseService, type WarehouseItem } from '../../services/warehouseService';
 import { generateCodeFromName } from '../../utils/codeGenerator';
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 export const WarehousesPage: React.FC = () => {
   const { warehouses, loading, fetchWarehouses } = useWarehouseStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [isZoomed, setIsZoomed] = useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -139,15 +141,20 @@ export const WarehousesPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* ── Page Header ── */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
+          Danh Mục Kho Bãi
+        </h1>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingId(null); form.resetFields(); setModalOpen(true); }} size="middle">
+          Thêm Kho Mới
+        </Button>
+      </div>
+
       <Card
-        title="❄️ Danh Mục Kho Bãi & Kho Lạnh"
-        extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingId(null); form.resetFields(); setModalOpen(true); }}>
-            Thêm Kho Lạnh Mới
-          </Button>
-        }
-        className="shadow-sm"
+        extra={<ZoomButton onClick={() => setIsZoomed(true)} />}
+        className="shadow-sm rounded-2xl"
       >
         <Table
           rowKey="id"
@@ -202,6 +209,34 @@ export const WarehousesPage: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Modal Phóng To Bảng Kho Lạnh & Quay Ngang */}
+      <ZoomViewerModal
+        open={isZoomed}
+        onClose={() => setIsZoomed(false)}
+        title="❄️ Danh Mục Kho Bãi & Kho Lạnh"
+        subtitle={`Hiển thị ${warehouses.length} kho lạnh trong hệ thống`}
+      >
+        {({ isRotated }) => (
+          <div className="w-full h-full flex flex-col">
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={warehouses}
+              loading={loading}
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                showSizeChanger: true,
+                pageSizeOptions: ['5', '10', '20', '50'],
+                onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+              }}
+              scroll={{ x: 850, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+              size="middle"
+            />
+          </div>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

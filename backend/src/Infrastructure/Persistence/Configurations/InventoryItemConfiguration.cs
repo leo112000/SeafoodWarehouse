@@ -12,6 +12,18 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
         builder.Property(i => i.StorageBin).HasMaxLength(50);
         builder.Property(i => i.Quantity).HasPrecision(18, 3);
 
+        // 1. Tối ưu tìm kiếm vị trí ô kệ khi xuất kho / kiểm kê hàng
+        SqlServerIndexBuilderExtensions.IncludeProperties(
+            builder.HasIndex(i => new { i.WarehouseId, i.LotBatchId })
+                   .HasDatabaseName("IX_InventoryItems_Warehouse_LotBatch"),
+            i => new { i.StorageBin, i.Quantity });
+
+        // 2. Tối ưu lọc tồn kho theo chi nhánh (Multi-tenancy)
+        builder.HasIndex(i => new { i.TenantId, i.WarehouseId })
+               .HasDatabaseName("IX_InventoryItems_Tenant_Warehouse");
+
+
+
         builder.HasOne(i => i.Warehouse)
                .WithMany(w => w.InventoryItems)
                .HasForeignKey(i => i.WarehouseId)

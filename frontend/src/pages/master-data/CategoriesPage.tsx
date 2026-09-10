@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card, Table, Tag, Button, Modal, Form, Input, Space, App,
-  Row, Col, Statistic, Tooltip, Empty,
+  Row, Col, Tooltip, Empty,
 } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
@@ -14,6 +14,7 @@ import { useCategoryStore } from '../../stores/useCategoryStore';
 import { useProductStore } from '../../stores/useProductStore';
 import { formatCurrency } from '../../utils/format';
 import { generateCodeFromName } from '../../utils/codeGenerator';
+import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
 
 // ─── component ─────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ export const CategoriesPage: React.FC = () => {
   const { products, fetchProducts } = useProductStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
@@ -349,70 +351,109 @@ export const CategoriesPage: React.FC = () => {
     <div className="space-y-6">
 
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white m-0">
-            Nhóm Danh Mục Sản Phẩm
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Quản lý nhóm danh mục để phân loại hải sản và hàng hóa trong kho.
-          </p>
-        </div>
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>
-            Làm mới
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
+          Nhóm Danh Mục
+        </h1>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading} size="middle">
+            <span className="hidden sm:inline">Làm mới</span>
           </Button>
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            size="large"
             onClick={openAdd}
+            size="middle"
+            className="font-medium"
           >
-            Thêm Danh Mục
+            <span className="hidden sm:inline">Thêm Danh Mục</span>
+            <span className="sm:hidden">Thêm</span>
           </Button>
-        </Space>
+        </div>
       </div>
 
-      {/* ── Statistics Cards ── */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
-          <Card bordered={false} className="shadow-sm">
-            <Statistic
-              title="Tổng nhóm danh mục"
-              value={totalCategories}
-              prefix={<FolderOutlined className="text-sky-500 mr-2" />}
-            />
+      {/* ── Statistics Cards (Gọn gàng, mỏng nhẹ, không bị đẩy chữ trên mobile) ── */}
+      <Row gutter={[8, 8]}>
+        <Col xs={8} sm={8}>
+          <Card
+            bordered={false}
+            className="shadow-xs rounded-xl h-full border-l-4 border-l-sky-500"
+            styles={{ body: { padding: '8px 8px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">
+                  Tổng nhóm
+                </div>
+                <div className="text-sm sm:text-xl font-black text-sky-600 mt-0.5 truncate">
+                  {totalCategories}
+                </div>
+              </div>
+              <div className="p-1 sm:p-2 bg-sky-50 dark:bg-sky-950/40 rounded-lg text-sky-500 shrink-0 hidden sm:flex">
+                <FolderOutlined className="text-sm sm:text-base" />
+              </div>
+            </div>
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
-          <Card bordered={false} className="shadow-sm">
-            <Statistic
-              title="Tổng sản phẩm"
-              value={totalProducts}
-              prefix={<AppstoreOutlined className="text-green-500 mr-2" />}
-              valueStyle={{ color: '#22c55e' }}
-            />
+
+        <Col xs={8} sm={8}>
+          <Card
+            bordered={false}
+            className="shadow-xs rounded-xl h-full border-l-4 border-l-emerald-500"
+            styles={{ body: { padding: '8px 8px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">
+                  Sản phẩm
+                </div>
+                <div className="text-sm sm:text-xl font-black text-emerald-600 mt-0.5 truncate">
+                  {totalProducts}
+                </div>
+              </div>
+              <div className="p-1 sm:p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-emerald-500 shrink-0 hidden sm:flex">
+                <AppstoreOutlined className="text-sm sm:text-base" />
+              </div>
+            </div>
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
-          <Card bordered={false} className="shadow-sm">
-            <Statistic
-              title="Thêm mới (30 ngày)"
-              value={recentCount}
-              prefix={<CalendarOutlined className="text-purple-500 mr-2" />}
-            />
+
+        <Col xs={8} sm={8}>
+          <Card
+            bordered={false}
+            className="shadow-xs rounded-xl h-full border-l-4 border-l-purple-500"
+            styles={{ body: { padding: '8px 8px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">
+                  Mới 30 ngày
+                </div>
+                <div className="text-sm sm:text-xl font-black text-purple-600 mt-0.5 truncate">
+                  {recentCount}
+                </div>
+              </div>
+              <div className="p-1 sm:p-2 bg-purple-50 dark:bg-purple-950/40 rounded-lg text-purple-500 shrink-0 hidden sm:flex">
+                <CalendarOutlined className="text-sm sm:text-base" />
+              </div>
+            </div>
           </Card>
         </Col>
       </Row>
 
       {/* ── Filter + Table ── */}
-      <Card bordered={false} className="shadow-sm">
-        <div className="flex flex-wrap gap-3 mb-5 items-center">
+      <Card
+        bordered={false}
+        className="shadow-sm"
+        title="Danh sách nhóm danh mục"
+        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
+      >
+        <div className="flex flex-wrap gap-2 mb-4 items-center">
           <Input.Search
             placeholder="Tìm theo tên hoặc mã danh mục..."
             onChange={e => setSearchQuery(e.target.value)}
             allowClear
-            className="w-72"
+            className="w-full sm:w-72"
             prefix={<SearchOutlined className="text-gray-400" />}
           />
         </div>
@@ -434,6 +475,21 @@ export const CategoriesPage: React.FC = () => {
           scroll={{ x: 800 }}
         />
       </Card>
+
+      <ZoomViewerModal
+        open={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        title="Danh sách nhóm danh mục"
+      >
+        <Table
+          columns={columns}
+          dataSource={filtered}
+          rowKey="id"
+          loading={loading}
+          pagination={false}
+          scroll={{ x: 'max-content' }}
+        />
+      </ZoomViewerModal>
 
       {/* ── Add / Edit Modal ── */}
       <Modal

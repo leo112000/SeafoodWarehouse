@@ -98,10 +98,8 @@ public class DashboardController : BaseApiController
             return currentStock < (double)p.MinimumStock;
         });
 
-        // Cảnh báo kho lạnh có nguy cơ/cần chú ý
-        var deviatedFreezersCount = await _context.Warehouses
-            .Where(w => !w.IsDeleted && w.IsActive && w.Type == StorageType.FrozenStorage)
-            .CountAsync(cancellationToken);
+        // Chưa có hệ thống IoT nên không phát sinh cảnh báo lệch nhiệt độ tủ/kho
+        var deviatedFreezersCount = 0;
 
         // 4. Tỷ lệ hao hụt / hủy hàng trong 30 ngày qua
         var monthlyDisposalKg = await _context.InventoryTransactions
@@ -194,7 +192,7 @@ public class DashboardController : BaseApiController
         var recentTransactions = recentTxData
             .GroupBy(t => t.ReferenceNumber)
             .OrderByDescending(g => g.Max(x => x.TransactionDate))
-            .Take(10)
+            .Take(5)
             .Select(g =>
             {
                 var first = g.First();

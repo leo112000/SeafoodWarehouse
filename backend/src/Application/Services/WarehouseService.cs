@@ -1,3 +1,4 @@
+using SeafoodWarehouseManagement.Application.Common.Interfaces;
 using SeafoodWarehouseManagement.Application.Common.Models;
 using SeafoodWarehouseManagement.Application.DTOs.Warehouse;
 using SeafoodWarehouseManagement.Application.Services.Interfaces;
@@ -8,81 +9,97 @@ using SeafoodWarehouseManagement.Domain.Interfaces;
 namespace SeafoodWarehouseManagement.Application.Services;
 
 /// <summary>
-/// Service quản lý kho
+/// Service quản lý kho có tích hợp Hybrid Caching (Redis/Memory)
 /// </summary>
 public class WarehouseService : IWarehouseService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICacheService _cacheService;
+    private readonly ICurrentTenant _currentTenant;
 
-    public WarehouseService(IUnitOfWork unitOfWork)
+    public WarehouseService(IUnitOfWork unitOfWork, ICacheService cacheService, ICurrentTenant currentTenant)
     {
         _unitOfWork = unitOfWork;
+        _cacheService = cacheService;
+        _currentTenant = currentTenant;
     }
 
+    private string GetCachePrefix() => $"warehouses:{(_currentTenant.Id.HasValue ? $"t{_currentTenant.Id.Value}" : "host")}:";
+
     /// <summary>
-    /// Lấy danh sách kho có phân trang, có thể lọc theo loại kho
+    /// Lấy danh sách kho có phân trang, có thể lọc theo loại kho (Cached)
     /// </summary>
     public async Task<PagedResult<WarehouseDto>> GetAllAsync(PaginationParams pagination, StorageType? type = null, CancellationToken cancellationToken = default)
     {
-        var repository = _unitOfWork.Repository<Warehouse>();
-        var warehouses = await repository.GetAllAsync(cancellationToken);
+        var cacheKey = $"{GetCachePrefix()}all_p{pagination.PageNumber}_s{pagination.PageSize}_t{(int?)type}";
 
-        // Lọc theo loại kho nếu có
-        var filtered = warehouses.Where(w => !w.IsDeleted);
-        if (type.HasValue)
+        return await _cacheService.GetOrCreateAsync(cacheKey, async ct =>
         {
-            filtered = filtered.Where(w => w.Type == type.Value);
-        }
+            var repository = _unitOfWork.Repository<Warehouse>();
+            var warehouses = await repository.GetAllAsync(cancellationToken);
 
-        var warehouseList = filtered.ToList();
-        var totalCount = warehouseList.Count;
-        var items = warehouseList
-            .OrderByDescending(w => w.CreatedAt)
-            .ThenByDescending(w => w.Id)
-            .Skip((pagination.PageNumber - 1) * pagination.PageSize)
-            .Take(pagination.PageSize)
-            .Select(w => new WarehouseDto
+            // Lọc theo loại kho nếu có
+            var filtered = warehouses.Where(w => !w.IsDeleted);
+            if (type.HasValue)
             {
-                Id = w.Id,
-                Code = w.Code,
-                Name = w.Name,
-                Location = w.Location,
-                Type = w.Type,
-                TargetTemperature = w.TargetTemperature,
-                MaxCapacityTon = w.MaxCapacityTon,
-                IsActive = w.IsActive,
-                Description = w.Description,
-                CreatedAt = w.CreatedAt
-            })
-            .ToList();
+                filtered = filtered.Where(w => w.Type == type.Value);
+            }
 
-        return PagedResult<WarehouseDto>.Create(items, totalCount, pagination.PageNumber, pagination.PageSize);
+            var warehouseList = filtered.ToList();
+            var totalCount = warehouseList.Count;
+            var items = warehouseList
+                .OrderByDescending(w => w.CreatedAt)
+                .ThenByDescending(w => w.Id)
+                .Skip((pagination.PageNumber - 1) * pagination.PageSize)
+                .Take(pagination.PageSize)
+                .Select(w => new WarehouseDto
+                {
+                    Id = w.Id,
+                    Code = w.Code,
+                    Name = w.Name,
+                    Location = w.Location,
+                    Type = w.Type,
+                    TargetTemperature = w.TargetTemperature,
+                    MaxCapacityTon = w.MaxCapacityTon,
+                    IsActive = w.IsActive,
+                    Description = w.Description,
+                    CreatedAt = w.CreatedAt
+                })
+                .ToList();
+
+            return PagedResult<WarehouseDto>.Create(items, totalCount, pagination.PageNumber, pagination.PageSize);
+        }, TimeSpan.FromMinutes(15), cancellationToken);
     }
 
     /// <summary>
-    /// Lấy kho theo Id
+    /// Lấy kho theo Id (Cached)
     /// </summary>
     public async Task<WarehouseDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var repository = _unitOfWork.Repository<Warehouse>();
-        var warehouse = await repository.GetByIdAsync(id, cancellationToken);
+        var cacheKey = $"{GetCachePrefix()}id_{id}";
 
-        if (warehouse == null || warehouse.IsDeleted)
-            return null;
-
-        return new WarehouseDto
+        return await _cacheService.GetOrCreateAsync(cacheKey, async ct =>
         {
-            Id = warehouse.Id,
-            Code = warehouse.Code,
-            Name = warehouse.Name,
-            Location = warehouse.Location,
-            Type = warehouse.Type,
-            TargetTemperature = warehouse.TargetTemperature,
-            MaxCapacityTon = warehouse.MaxCapacityTon,
-            IsActive = warehouse.IsActive,
-            Description = warehouse.Description,
-            CreatedAt = warehouse.CreatedAt
-        };
+            var repository = _unitOfWork.Repository<Warehouse>();
+            var warehouse = await repository.GetByIdAsync(id, cancellationToken);
+
+            if (warehouse == null || warehouse.IsDeleted)
+                return null;
+
+            return new WarehouseDto
+            {
+                Id = warehouse.Id,
+                Code = warehouse.Code,
+                Name = warehouse.Name,
+                Location = warehouse.Location,
+                Type = warehouse.Type,
+                TargetTemperature = warehouse.TargetTemperature,
+                MaxCapacityTon = warehouse.MaxCapacityTon,
+                IsActive = warehouse.IsActive,
+                Description = warehouse.Description,
+                CreatedAt = warehouse.CreatedAt
+            };
+        }, TimeSpan.FromMinutes(15), cancellationToken);
     }
 
     /// <summary>
@@ -134,6 +151,7 @@ public class WarehouseService : IWarehouseService
 
         await repository.AddAsync(warehouse, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveByPrefixAsync(GetCachePrefix(), cancellationToken);
 
         return Result<WarehouseDto>.Success(new WarehouseDto
         {
@@ -188,6 +206,7 @@ public class WarehouseService : IWarehouseService
 
         repository.Update(warehouse);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveByPrefixAsync(GetCachePrefix(), cancellationToken);
 
         return Result<WarehouseDto>.Success(new WarehouseDto
         {
@@ -226,6 +245,7 @@ public class WarehouseService : IWarehouseService
 
         repository.Delete(warehouse);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveByPrefixAsync(GetCachePrefix(), cancellationToken);
 
         return Result.Success("Xóa kho thành công.");
     }

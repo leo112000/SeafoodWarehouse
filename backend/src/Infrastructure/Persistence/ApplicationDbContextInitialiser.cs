@@ -535,7 +535,15 @@ public class ApplicationDbContextInitialiser
                     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'AuditLogs' AND column_name = 'UserAgent') THEN 
                         ALTER TABLE ""AuditLogs"" ALTER COLUMN ""UserAgent"" DROP NOT NULL; 
                     END IF; 
-                  END $$;"
+                  END $$;",
+
+                @"CREATE INDEX IF NOT EXISTS ""ix_lotbatches_fefo"" ON ""LotBatches"" (""ProductId"", ""ExpirationDate"") WHERE ""CurrentQuantity"" > 0 AND ""IsDeleted"" = FALSE;",
+                @"CREATE INDEX IF NOT EXISTS ""ix_lotbatches_tenant_batchcode"" ON ""LotBatches"" (""TenantId"", ""BatchCode"");",
+                @"CREATE INDEX IF NOT EXISTS ""ix_invtrans_tenant_createdat"" ON ""InventoryTransactions"" (""TenantId"", ""CreatedAt"" DESC);",
+                @"CREATE INDEX IF NOT EXISTS ""ix_invitems_warehouse_lotbatch"" ON ""InventoryItems"" (""WarehouseId"", ""LotBatchId"");",
+                @"CREATE INDEX IF NOT EXISTS ""ix_outbound_tenant_createdat"" ON ""OutboundReceipts"" (""TenantId"", ""CreatedAt"" DESC);",
+                @"CREATE INDEX IF NOT EXISTS ""ix_auditlogs_tenant_createdat"" ON ""AuditLogs"" (""TenantId"", ""CreatedAt"" DESC);",
+                @"CREATE INDEX IF NOT EXISTS ""ix_usernotif_user_state"" ON ""UserNotifications"" (""UserId"", ""State"");"
             };
 
             foreach (var stmt in pgDdlStatements)
@@ -709,7 +717,42 @@ public class ApplicationDbContextInitialiser
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('InventoryTransactions') AND name = 'PackagingQty') ALTER TABLE [InventoryTransactions] ADD [PackagingQty] INT NOT NULL DEFAULT 0;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LotBatches') AND name = 'TareWeight') ALTER TABLE [LotBatches] ADD [TareWeight] DECIMAL(18,2) NOT NULL DEFAULT 0;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LotBatches') AND name = 'PackagingCode') ALTER TABLE [LotBatches] ADD [PackagingCode] NVARCHAR(50) NULL;",
-            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LotBatches') AND name = 'PackagingQty') ALTER TABLE [LotBatches] ADD [PackagingQty] INT NOT NULL DEFAULT 0;"
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LotBatches') AND name = 'PackagingQty') ALTER TABLE [LotBatches] ADD [PackagingQty] INT NOT NULL DEFAULT 0;",
+            @"IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PackagingLoans') AND name = 'PartnerName' AND max_length = -1) ALTER TABLE [PackagingLoans] ALTER COLUMN [PartnerName] NVARCHAR(200) NOT NULL;",
+            @"IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PackagingLoans') AND name = 'PartnerType' AND max_length = -1) ALTER TABLE [PackagingLoans] ALTER COLUMN [PartnerType] NVARCHAR(50) NOT NULL;",
+
+            // Performance Indexes for SQL Server
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_LotBatches_FEFO' AND object_id = OBJECT_ID('LotBatches'))
+              CREATE NONCLUSTERED INDEX [IX_LotBatches_FEFO] ON [LotBatches] ([ProductId], [ExpirationDate])
+              INCLUDE ([BatchCode], [CurrentQuantity])
+              WHERE [CurrentQuantity] > 0 AND [IsDeleted] = 0;",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_LotBatches_Tenant_BatchCode' AND object_id = OBJECT_ID('LotBatches'))
+              CREATE NONCLUSTERED INDEX [IX_LotBatches_Tenant_BatchCode] ON [LotBatches] ([TenantId], [BatchCode]);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_InventoryTransactions_Tenant_CreatedAt' AND object_id = OBJECT_ID('InventoryTransactions'))
+              CREATE NONCLUSTERED INDEX [IX_InventoryTransactions_Tenant_CreatedAt] ON [InventoryTransactions] ([TenantId], [CreatedAt] DESC);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_InventoryTransactions_LotBatch_Type' AND object_id = OBJECT_ID('InventoryTransactions'))
+              CREATE NONCLUSTERED INDEX [IX_InventoryTransactions_LotBatch_Type] ON [InventoryTransactions] ([LotBatchId], [Type]);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_InventoryItems_Warehouse_LotBatch' AND object_id = OBJECT_ID('InventoryItems'))
+              CREATE NONCLUSTERED INDEX [IX_InventoryItems_Warehouse_LotBatch] ON [InventoryItems] ([WarehouseId], [LotBatchId]);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_InventoryItems_Tenant_Warehouse' AND object_id = OBJECT_ID('InventoryItems'))
+              CREATE NONCLUSTERED INDEX [IX_InventoryItems_Tenant_Warehouse] ON [InventoryItems] ([TenantId], [WarehouseId]);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_OutboundReceipts_Tenant_CreatedAt' AND object_id = OBJECT_ID('OutboundReceipts'))
+              CREATE NONCLUSTERED INDEX [IX_OutboundReceipts_Tenant_CreatedAt] ON [OutboundReceipts] ([TenantId], [CreatedAt] DESC);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_PackagingLoans_Tenant_Partner_Packaging' AND object_id = OBJECT_ID('PackagingLoans'))
+              CREATE NONCLUSTERED INDEX [IX_PackagingLoans_Tenant_Partner_Packaging] ON [PackagingLoans] ([TenantId], [PartnerName], [PackagingId]);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_AuditLogs_Tenant_CreatedAt' AND object_id = OBJECT_ID('AuditLogs'))
+              CREATE NONCLUSTERED INDEX [IX_AuditLogs_Tenant_CreatedAt] ON [AuditLogs] ([TenantId], [CreatedAt] DESC);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_UserNotifications_User_State' AND object_id = OBJECT_ID('UserNotifications'))
+              CREATE NONCLUSTERED INDEX [IX_UserNotifications_User_State] ON [UserNotifications] ([UserId], [State]);"
         };
 
         foreach (var statement in ddlStatements)

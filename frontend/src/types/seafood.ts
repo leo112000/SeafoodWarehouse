@@ -26,6 +26,7 @@ export interface InvoicePrintData {
   invoiceNo: string;        // Mã phiếu (PNK-... hoặc PXK-...)
   date: string;             // Ngày lập phiếu
   partnerName: string;      // Tên Nhà cung cấp (nếu Nhập) hoặc Khách hàng (nếu Xuất)
+  partnerPhone?: string;    // Số điện thoại đối tác / khách hàng
   warehouseStaff: string;   // Người lập phiếu / Thủ kho
   note?: string;            // Ghi chú
   items: InvoiceItem[];     // Danh sách hàng hải sản

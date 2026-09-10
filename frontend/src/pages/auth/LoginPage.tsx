@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Button, Checkbox, Typography, App, Modal } from 'antd';
 import { UserOutlined, LockOutlined, GlobalOutlined, SwapOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { useTenantStore } from '../../stores/useTenantStore';
 import { useThemeStore } from '../../stores/useThemeStore';
 import { authService, TenantAvailabilityState } from '../../services/authService';
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Text } = Typography;
 
 export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -17,8 +17,22 @@ export const LoginPage: React.FC = () => {
   const [selectedTenantInfo, setSelectedTenantInfo] = useState<{ id?: number | null; code?: string | null; name?: string | null } | null>(() => {
     const code = localStorage.getItem('tenantName');
     const id = localStorage.getItem('tenantId');
-    return code ? { id: id ? parseInt(id, 10) : null, code, name: code } : null;
+    if (code && id) {
+      return { id: parseInt(id, 10), code, name: code };
+    }
+    // Nếu không đầy đủ thông tin tenant thì dọn dẹp để về mặc định Host
+    localStorage.removeItem('tenantName');
+    localStorage.removeItem('tenantId');
+    return null;
   });
+
+  // Đảm bảo khi đang ở chế độ Host (tenant = null), localStorage không lưu sót tenantId cũ
+  useEffect(() => {
+    if (!selectedTenantInfo) {
+      localStorage.removeItem('tenantName');
+      localStorage.removeItem('tenantId');
+    }
+  }, [selectedTenantInfo]);
 
   const login = useAuthStore((state) => state.login);
   const { setActiveTenantByCode } = useTenantStore();
@@ -34,15 +48,19 @@ export const LoginPage: React.FC = () => {
     setTenantModalOpen(true);
   };
 
+  const handleClearTenant = () => {
+    localStorage.removeItem('tenantName');
+    localStorage.removeItem('tenantId');
+    setSelectedTenantInfo(null);
+    message.info('Đã chuyển về tài khoản Toàn hệ thống (Host / Tenant = null).');
+  };
+
   const handleSaveTenant = async () => {
     const trimmed = tenantInput.trim();
     if (!trimmed) {
       // Chuyển về Host / Không chọn tenant
-      localStorage.removeItem('tenantName');
-      localStorage.removeItem('tenantId');
-      setSelectedTenantInfo(null);
+      handleClearTenant();
       setTenantModalOpen(false);
-      message.info('Đã chuyển sang chế độ Toàn hệ thống (Host / Không chỉ định Tenant).');
       return;
     }
 
@@ -86,23 +104,37 @@ export const LoginPage: React.FC = () => {
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
-      // Nếu có tenant đã chọn, gửi kèm tenantId và tenantName lên API
+      const targetTenantId = selectedTenantInfo?.id ?? undefined;
+      const targetTenantName = selectedTenantInfo?.code ? selectedTenantInfo.code.trim() : undefined;
+
+      // Nếu đăng nhập Host admin (tenant = null), dọn sạch localStorage trước khi gửi
+      if (!targetTenantId) {
+        localStorage.removeItem('tenantId');
+        localStorage.removeItem('tenantName');
+      }
+
       const response = await authService.login({
         email: values.email,
         password: values.password,
-        tenantName: selectedTenantInfo?.code || undefined,
-        tenantId: selectedTenantInfo?.id || undefined,
+        tenantName: targetTenantName,
+        tenantId: targetTenantId,
       });
+
+      const userTenantCode = response.user.tenantCode || targetTenantName || undefined;
+      const userTenantId = response.user.tenantId ?? targetTenantId ?? undefined;
 
       login(
         response.token,
         response.user,
-        response.user.tenantCode || selectedTenantInfo?.code || undefined,
-        response.user.tenantId || selectedTenantInfo?.id || undefined
+        userTenantCode,
+        userTenantId
       );
 
-      if (response.user.tenantCode) {
-        await setActiveTenantByCode(response.user.tenantCode);
+      if (userTenantCode) {
+        await setActiveTenantByCode(userTenantCode);
+      } else {
+        localStorage.removeItem('tenantName');
+        localStorage.removeItem('tenantId');
       }
 
       message.success('Đăng nhập thành công!');
@@ -114,27 +146,23 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+
   const isDark = currentTheme === 'dark';
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${
-        isDark ? 'bg-[#0f172a]' : 'bg-gradient-to-br from-[#e0f2fe] via-[#f0f9ff] to-[#e0f2fe]'
-      }`}
+      className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${isDark ? 'bg-[#0f172a]' : 'bg-gradient-to-br from-[#e0f2fe] via-[#f0f9ff] to-[#e0f2fe]'
+        }`}
     >
       <Card
-        className={`w-full max-w-md shadow-xl border ${
-          isDark ? 'bg-[#1e293b] border-gray-800' : 'bg-white border-sky-100'
-        }`}
+        className={`w-full max-w-md shadow-xl border ${isDark ? 'bg-[#1e293b] border-gray-800' : 'bg-white border-sky-100'
+          }`}
       >
         <div className="text-center mb-4">
           <div className="text-4xl mb-2">🚢</div>
           <Title level={3} className="m-0">
-            KHO HẢI SẢN
+            Hệ thống Quản lý Kho Hải Sản
           </Title>
-          <Paragraph type="secondary" className="mt-1">
-            Hệ thống Quản lý Kho Hàng Hải Sản Multi-Tenant
-          </Paragraph>
         </div>
 
         {/* Thanh chuyển đổi Tenant theo chuẩn ABP */}
@@ -152,16 +180,30 @@ export const LoginPage: React.FC = () => {
               )}
             </div>
           </div>
-          <Button
-            type="link"
-            size="small"
-            icon={<SwapOutlined />}
-            onClick={handleOpenTenantModal}
-            className="p-0 font-semibold text-sky-600"
-          >
-            Đổi
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            {selectedTenantInfo && (
+              <Button
+                type="link"
+                size="small"
+                danger
+                onClick={handleClearTenant}
+                className="p-0 font-medium text-xs"
+              >
+                Xóa (Về Host)
+              </Button>
+            )}
+            <Button
+              type="link"
+              size="small"
+              icon={<SwapOutlined />}
+              onClick={handleOpenTenantModal}
+              className="p-0 font-semibold text-sky-600"
+            >
+              Đổi
+            </Button>
+          </div>
         </div>
+
 
         <Form
           name="login_form"

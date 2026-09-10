@@ -4,7 +4,7 @@ import type { PackagingLoan, PackagingReturn } from '../stores/usePackagingRetur
 export const packagingReturnService = {
   async getLoans(): Promise<PackagingLoan[]> {
     try {
-      const response = await api.get('/packaging-loans');
+      const response = await api.get('/packaging/loans');
       if (response.data && response.data.data) {
         return response.data.data.map((item: any) => ({
           id: String(item.id),
@@ -26,7 +26,7 @@ export const packagingReturnService = {
 
   async getReturns(): Promise<PackagingReturn[]> {
     try {
-      const response = await api.get('/packaging-returns');
+      const response = await api.get('/packaging/returns');
       if (response.data && response.data.data) {
         return response.data.data.map((item: any) => ({
           id: String(item.id),
@@ -48,7 +48,7 @@ export const packagingReturnService = {
 
   async createLoan(data: Omit<PackagingLoan, 'id' | 'returnedQty'>): Promise<PackagingLoan | null> {
     try {
-      const response = await api.post('/packaging-loans', data);
+      const response = await api.post('/packaging/loans', data);
       return response.data?.data || null;
     } catch {
       return null;
@@ -63,7 +63,7 @@ export const packagingReturnService = {
     note?: string;
   }): Promise<PackagingReturn | null> {
     try {
-      const response = await api.post('/packaging-returns', data);
+      const response = await api.post('/packaging/returns', data);
       return response.data?.data || null;
     } catch {
       return null;

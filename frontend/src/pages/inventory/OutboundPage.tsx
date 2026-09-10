@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Card, Form, Input, Button, DatePicker, Select, InputNumber,
   Row, Col, Typography, App, Alert, Spin, Tag,
+  Tooltip,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +15,7 @@ import type { InvoicePrintData } from '../../types';
 import { useOutboundStore } from '../../stores/useOutboundStore';
 import { batchService, type FefoBatch } from '../../services/batchService';
 
-const { Title, Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 export const OutboundPage: React.FC = () => {
   const [form] = Form.useForm();
@@ -160,7 +161,7 @@ export const OutboundPage: React.FC = () => {
 
     const totalNetWeight = invoiceItems.reduce((s: number, i: any) => s + i.netWeight, 0);
     const subTotal = invoiceItems.reduce((s: number, i: any) => s + i.totalAmount, 0);
-    
+
     // Vật phẩm bán kèm (Thùng xốp, phụ kiện...)
     const formSupplies = values.supplies || [];
     const suppliesItems = formSupplies
@@ -180,11 +181,15 @@ export const OutboundPage: React.FC = () => {
     const discountReason = values.discountReason || '';
     const finalTotalAmount = Math.max(0, subTotal + suppliesTotal - discountAmount);
 
+    const rawCustomer = values.customer?.trim() || 'Khách lẻ';
+    const phone = values.customerPhone?.trim() || '';
+    const customerName = phone ? `${rawCustomer} - ${phone}` : rawCustomer;
+
     // Lưu vào SQL Server qua API
     await addTransaction({
       id: receiptId,
       date: outboundDate,
-      customerName: values.customer,
+      customerName: customerName,
       reason: values.reason,
       totalWeightKg: totalNetWeight,
       totalAmount: finalTotalAmount,
@@ -217,7 +222,8 @@ export const OutboundPage: React.FC = () => {
       type: 'OUTBOUND',
       invoiceNo: receiptId,
       date: outboundDate,
-      partnerName: values.customer,
+      partnerName: rawCustomer,
+      partnerPhone: phone || undefined,
       warehouseStaff: user?.name ?? 'Thủ kho',
       note: `Lý do xuất: ${values.reason}`,
       items: invoiceItems,
@@ -244,26 +250,27 @@ export const OutboundPage: React.FC = () => {
 
   return (
     <div className="print-constrained">
-      <div className="mb-6" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <div>
-          <Title level={2} className="m-0">Tạo Phiếu Xuất Kho Hải Sản (Quy tắc FEFO)</Title>
-          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            Cảnh báo và ưu tiên các lô hàng hải sản cận Hạn sử dụng (HSD) lên đầu để giảm thiểu hư hỏng.
-          </Paragraph>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button icon={<ReloadOutlined spin={loadingBatches} />} onClick={loadFefoBatches} loading={loadingBatches}>
-            Tải lại lô hàng
-          </Button>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
+          Tạo Phiếu Xuất Kho (FEFO)
+        </h1>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Tooltip title="Tải lại lô hàng">
+            <Button icon={<ReloadOutlined spin={loadingBatches} />} onClick={loadFefoBatches} loading={loadingBatches} size="middle">
+              <span className="hidden sm:inline">Tải lại</span>
+            </Button>
+          </Tooltip>
           <Button
             type="primary"
-            className="bg-sky-500 hover:bg-sky-600 border-none"
+            className="bg-sky-500 hover:bg-sky-600 border-none font-medium"
             onClick={() => {
               setScanItemIndex(null);
               setQrModalOpen(true);
             }}
+            size="middle"
           >
-            Quét mã QR/Barcode
+            <span className="hidden sm:inline">Quét QR</span>
+            <span className="sm:hidden">Quét</span>
           </Button>
         </div>
       </div>
@@ -272,13 +279,13 @@ export const OutboundPage: React.FC = () => {
         <Alert
           type="warning"
           showIcon
-          message="Không có lô hàng nào còn tồn kho trong kho."
+          title="Không có lô hàng nào còn tồn kho trong kho."
           description="Vui lòng nhập hàng trước khi tạo phiếu xuất kho."
           className="mb-4"
         />
       )}
 
-      <Spin spinning={loadingBatches} tip="Đang tải danh sách lô hàng...">
+      <Spin spinning={loadingBatches} description="Đang tải danh sách lô hàng...">
         <Form
           form={form}
           layout="vertical"
@@ -294,19 +301,37 @@ export const OutboundPage: React.FC = () => {
         >
           <Card title="Thông tin phiếu xuất" className="shadow-sm mb-6">
             <Row gutter={16}>
-              <Col xs={24} md={8}>
-                <Form.Item name="customer" label="Khách hàng nhận (Siêu thị / Nhà hàng)" rules={[{ required: true, message: 'Nhập thông tin khách hàng!' }]}>
-                  <Input placeholder="Nhà hàng Biển Đông, Siêu thị WinMart..." />
+              <Col xs={24} sm={12} md={6}>
+                <Form.Item
+                  name="customer"
+                  label="Khách hàng / Người nhận"
+                  rules={[{ required: true, message: 'Vui lòng nhập tên người nhận!' }]}
+                >
+                  <Input
+                    placeholder="VD: Anh Nam, Chị Mai, Nhà hàng Biển Đông..."
+                    allowClear
+                  />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={8}>
+              <Col xs={24} sm={12} md={5}>
+                <Form.Item
+                  name="customerPhone"
+                  label="Số điện thoại"
+                >
+                  <Input
+                    placeholder="VD: 0912 345 678"
+                    allowClear
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={12} sm={12} md={7}>
                 <Form.Item name="outboundDate" label="Ngày xuất kho" rules={[{ required: true, message: 'Chọn ngày xuất!' }]}>
                   <DatePicker showTime className="w-full" format="YYYY-MM-DD HH:mm" />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={8}>
+              <Col xs={12} sm={12} md={6}>
                 <Form.Item name="reason" label="Lý do xuất kho" rules={[{ required: true, message: 'Chọn lý do xuất!' }]}>
-                  <Select>
+                  <Select showSearch optionFilterProp="children">
                     <Select.Option value="Bán hàng">Bán hàng (Thương mại)</Select.Option>
                     <Select.Option value="Chuyển kho">Chuyển kho nội bộ</Select.Option>
                     <Select.Option value="Tiêu hủy">Tiêu hủy (Hỏng / Hết hạn)</Select.Option>
@@ -377,6 +402,12 @@ export const OutboundPage: React.FC = () => {
                               <Select
                                 placeholder="Chọn mã lô hàng"
                                 disabled={!seafoodCode}
+                                showSearch
+                                optionFilterProp="children"
+                                filterOption={(input, option) => {
+                                  const text = String(option?.children ?? option?.value ?? '');
+                                  return text.toLowerCase().includes(input.toLowerCase());
+                                }}
                                 onChange={(val) => handleBatchChange(val, name)}
                               >
                                 {available.map((b, idx) => (
@@ -394,7 +425,7 @@ export const OutboundPage: React.FC = () => {
                           {/* Bao bì */}
                           <Col xs={24} md={4}>
                             <Form.Item {...restField} name={[name, 'packagingCode']} label="Loại Khay/Sọt/Bì">
-                              <Select placeholder="Chọn loại bao bì" allowClear onChange={() => handlePackagingChange(name)}>
+                              <Select placeholder="Chọn loại bao bì" allowClear showSearch optionFilterProp="children" onChange={() => handlePackagingChange(name)}>
                                 {packagings.map((pkg) => (
                                   <Select.Option key={pkg.code} value={pkg.code}>
                                     {pkg.name} ({pkg.defaultTareWeight} kg/cái)
@@ -523,6 +554,7 @@ export const OutboundPage: React.FC = () => {
                             <Select
                               placeholder="Chọn vật phẩm hoặc tự gõ..."
                               showSearch
+                              optionFilterProp="label"
                               allowClear
                               onChange={(val) => {
                                 const pkg = packagings.find((p) => p.name === val || p.code === val);

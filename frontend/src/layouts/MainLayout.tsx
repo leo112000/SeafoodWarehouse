@@ -10,7 +10,9 @@ import { ChangePasswordModal } from '../components/user/ChangePasswordModal';
 import { HandheldScannerModal } from '../components/common/HandheldScannerModal';
 import { MultiTabBar } from '../components/layout/MultiTabBar';
 import { TabContentRenderer } from '../components/layout/TabContentRenderer';
+import { MobileBottomNav } from '../components/layout/MobileBottomNav';
 import { useTabStore } from '../stores/useTabStore';
+import { useBrandStore } from '../stores/useBrandStore';
 import { useSystemNotifications } from '../hooks/useSystemNotifications';
 
 const { Header, Sider, Content, Footer } = Layout;
@@ -18,6 +20,7 @@ const { Header, Sider, Content, Footer } = Layout;
 const roleMeta = (role: string) => role === 'Admin' ? { label: 'Admin', color: 'blue' } : role === 'Thukho' ? { label: 'Thủ kho', color: 'orange' } : { label: 'Nhân viên', color: 'green' };
 
 export const MainLayout: React.FC = () => {
+  const { websiteName, logoUrl, loadBrand } = useBrandStore();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -55,6 +58,10 @@ export const MainLayout: React.FC = () => {
   // Real-time system notifications from database
   const { notifications: systemNotifications, unreadCount, markAsRead, markAllAsRead } = useSystemNotifications();
 
+  useEffect(() => {
+    loadBrand();
+  }, [loadBrand]);
+
   const addTab = useTabStore((state) => state.addTab);
   const setActiveKey = useTabStore((state) => state.setActiveKey);
   // Map route to human-readable title
@@ -63,7 +70,6 @@ export const MainLayout: React.FC = () => {
       case '/':
       case '/dashboard': return 'Bảng điều khiển';
       case '/inventory': return 'Tồn kho hiện tại';
-      case '/inventory/map': return 'Sơ đồ kho 2D';
       case '/inventory/inbound': return 'Nhập kho hải sản';
       case '/inventory/outbound': return 'Xuất kho hải sản';
       case '/inventory/history': return 'Lịch sử giao dịch';
@@ -73,7 +79,7 @@ export const MainLayout: React.FC = () => {
       case '/master-data/products': return 'Danh mục hải sản';
       case '/master-data/warehouses': return 'Danh mục kho bãi';
       case '/master-data/packaging': return 'Danh mục bao bì';
-      case '/master-data/partners': return 'Đối tác & Tàu cá';
+      case '/master-data/partners': return 'Nhà Cung Cấp';
       case '/reports/summary': return 'Thống kê tổng hợp';
       case '/reports/alerts': return 'Cảnh báo & Hao hụt';
       case '/system/tenants': return 'Cửa hàng & Chi nhánh';
@@ -116,12 +122,11 @@ export const MainLayout: React.FC = () => {
       label: '2. Quản lý kho',
       children: [
         { key: '/inventory', label: <Link to="/inventory">2.1. Tồn kho hiện tại</Link> },
-        { key: '/inventory/map', label: <Link to="/inventory/map">2.2. Sơ đồ kho 2D</Link> },
-        { key: '/inventory/inbound', label: <Link to="/inventory/inbound">2.3. Nhập kho hải sản</Link> },
-        { key: '/inventory/outbound', label: <Link to="/inventory/outbound">2.4. Xuất kho hải sản</Link> },
-        { key: '/inventory/history', label: <Link to="/inventory/history">2.5. Lịch sử Nhập/Xuất</Link> },
-        { key: '/inventory/wastage', label: <Link to="/inventory/wastage">2.6. Hao hụt & Phân loại</Link> },
-        ...(canViewPackagingReturn ? [{ key: '/inventory/packaging-return', label: <Link to="/inventory/packaging-return">2.7. Thu hồi vỏ sọt</Link> }] : []),
+        { key: '/inventory/inbound', label: <Link to="/inventory/inbound">2.2. Nhập kho hải sản</Link> },
+        { key: '/inventory/outbound', label: <Link to="/inventory/outbound">2.3. Xuất kho hải sản</Link> },
+        { key: '/inventory/history', label: <Link to="/inventory/history">2.4. Lịch sử Nhập/Xuất</Link> },
+        { key: '/inventory/wastage', label: <Link to="/inventory/wastage">2.5. Hao hụt & Phân loại</Link> },
+        ...(canViewPackagingReturn ? [{ key: '/inventory/packaging-return', label: <Link to="/inventory/packaging-return">2.6. Thu hồi vỏ sọt</Link> }] : []),
       ]
     },
     {
@@ -142,7 +147,7 @@ export const MainLayout: React.FC = () => {
         ...(canViewProducts ? [{ key: '/master-data/products', icon: <AppstoreOutlined />, label: <Link to="/master-data/products">4.2. Danh mục hải sản</Link> }] : []),
         ...(canAccessWarehouse ? [{ key: '/master-data/warehouses', icon: <EnvironmentOutlined />, label: <Link to="/master-data/warehouses">4.3. Danh mục kho bãi</Link> }] : []),
         ...(canViewPackaging ? [{ key: '/master-data/packaging', icon: <InboxOutlined />, label: <Link to="/master-data/packaging">4.4. Danh mục bao bì</Link> }] : []),
-        { key: '/master-data/partners', icon: <TeamOutlined />, label: <Link to="/master-data/partners">4.5. Đối tác & Tàu cá</Link> },
+        { key: '/master-data/partners', icon: <TeamOutlined />, label: <Link to="/master-data/partners">4.5. Nhà Cung Cấp</Link> },
       ]
     }] : []),
     ...((canManageUsers || canManageRoles || canManageSettings || canViewAuditLogs || canManageTenants) ? [{
@@ -236,8 +241,25 @@ export const MainLayout: React.FC = () => {
             }}
           >
             <div className="flex flex-col h-full">
-              <div className="p-4 text-white text-center font-bold text-lg overflow-hidden whitespace-nowrap bg-[#001529] z-10 flex-shrink-0 border-b border-slate-800">
-                {collapsed ? '🚢' : '🚢 KHO HẢI SẢN'}
+              <div className="p-3 text-white text-center font-bold text-base overflow-hidden whitespace-nowrap bg-[#001529] z-10 flex-shrink-0 border-b border-slate-800 flex items-center justify-center min-h-[56px]">
+                {collapsed ? (
+                  logoUrl && (logoUrl.startsWith('http') || logoUrl.startsWith('data:') || logoUrl.startsWith('/')) ? (
+                    <img src={logoUrl} alt="Logo" className="w-7 h-7 object-contain rounded" />
+                  ) : (
+                    <span className="text-xl">{logoUrl || '🚢'}</span>
+                  )
+                ) : (
+                  <div className="flex items-center justify-center gap-2 min-w-0 max-w-full px-1">
+                    {logoUrl && (logoUrl.startsWith('http') || logoUrl.startsWith('data:') || logoUrl.startsWith('/')) ? (
+                      <img src={logoUrl} alt="Logo" className="w-6 h-6 object-contain rounded flex-shrink-0" />
+                    ) : (
+                      <span className="text-lg flex-shrink-0">{logoUrl || '🚢'}</span>
+                    )}
+                    <span className="truncate tracking-wide font-extrabold text-white text-sm sm:text-base leading-tight">
+                      {websiteName}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
                 <Menu
@@ -295,14 +317,38 @@ export const MainLayout: React.FC = () => {
           </Sider>
         ) : (
           <Drawer
-            title="🚢 KHO HẢI SẢN"
+            title={
+              <div className="flex items-center gap-2 overflow-hidden">
+                {logoUrl && (logoUrl.startsWith('http') || logoUrl.startsWith('data:') || logoUrl.startsWith('/')) ? (
+                  <img src={logoUrl} alt="Logo" className="w-6 h-6 object-contain rounded flex-shrink-0" />
+                ) : (
+                  <span className="text-xl flex-shrink-0">{logoUrl || '🚢'}</span>
+                )}
+                <span className="font-bold text-sky-700 dark:text-sky-400 truncate">{websiteName}</span>
+              </div>
+            }
             placement="left"
             onClose={() => setDrawerVisible(false)}
             open={drawerVisible}
-            styles={{ body: { padding: 0 } }}
-            width={280}
+            styles={{ body: { padding: 0 }, wrapper: { width: 290 } }}
           >
             <div className="flex flex-col h-full">
+              {/* User Profile Mini Card in Drawer */}
+              {user && (
+                <div className="p-3 border-b border-gray-100 dark:border-slate-800 bg-sky-50/50 dark:bg-slate-800/40 flex items-center gap-3">
+                  <Avatar size={40} className="bg-sky-500 font-bold shrink-0">
+                    {user.name.charAt(0).toLocaleUpperCase()}
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-xs text-gray-800 dark:text-gray-100 truncate">
+                      {user.name}
+                    </div>
+                    <div className="text-[11px] text-sky-600 dark:text-sky-400 truncate">
+                      {user.tenantName || tenantName || (user.tenantId ? `Tenant #${user.tenantId}` : 'Host Admin')}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex-1 overflow-y-auto">
                 <Menu
                   theme={currentTheme === 'dark' ? 'dark' : 'light'}
@@ -334,31 +380,31 @@ export const MainLayout: React.FC = () => {
             </div>
           </Drawer>
         )}
-        <Layout className="min-w-0">
+        <Layout className="min-w-0 overflow-x-clip">
           <div
-            className="sticky top-0 z-40 shadow-sm"
+            className="sticky top-0 z-40 shadow-sm border-b border-gray-200 dark:border-gray-800"
             style={{
               background: colorBgContainer,
             }}
           >
             <Header
-              className="p-0 flex items-center justify-between border-b border-gray-200 dark:border-gray-800"
+              className="p-0 flex items-center justify-between"
               style={{ background: colorBgContainer, lineHeight: 'normal' }}
             >
               <Button
                 type="text"
                 icon={isMobile ? <MenuOutlined /> : collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                 onClick={() => (isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed))}
-                className="text-lg w-16 h-16"
+                className="text-lg w-12 h-12 ml-2 sm:ml-4 sm:w-14 sm:h-14 flex items-center justify-center rounded-xl"
               />
               <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6">
                 <Button
                   type="primary"
                   icon={<QrcodeOutlined />}
                   onClick={() => setPdaScannerOpen(true)}
-                  className="bg-sky-600 font-semibold text-xs h-9 flex items-center shadow-sm"
+                  className="bg-sky-600 font-semibold text-xs h-9 items-center shadow-sm hidden md:flex"
                 >
-                  <span className="hidden sm:inline">📱 Quét PDA</span>
+                  <span>📱 Quét PDA</span>
                 </Button>
                 <Button
                   type="text"
@@ -397,19 +443,24 @@ export const MainLayout: React.FC = () => {
                   >
                     <button
                       type="button"
-                      className="flex items-center rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="border-0 bg-transparent p-0 outline-none cursor-pointer flex items-center justify-center rounded-full transition-transform active:scale-95 shadow-none"
                       aria-label="Mở menu tài khoản"
                     >
-                      <Avatar className="bg-sky-500">{user.name.charAt(0).toLocaleUpperCase()}</Avatar>
+                      <Avatar
+                        size={36}
+                        className="bg-gradient-to-tr from-sky-500 to-blue-600 text-white font-bold shadow-md shadow-sky-500/30 ring-2 ring-sky-400/50 hover:ring-sky-400 transition-all cursor-pointer"
+                      >
+                        {user.name.charAt(0).toLocaleUpperCase()}
+                      </Avatar>
                     </button>
                   </Dropdown>
                 )}
               </div>
             </Header>
-            <MultiTabBar />
+            {!isMobile && <MultiTabBar />}
           </div>
           <Content
-            className="m-3 md:m-6 p-4 md:p-6 min-h-[280px]"
+            className="m-2 sm:m-3 md:m-6 p-3 sm:p-4 md:p-6 min-h-[280px] mb-24 md:mb-6"
             style={{
               background: colorBgContainer,
               borderRadius: borderRadiusLG,
@@ -417,11 +468,20 @@ export const MainLayout: React.FC = () => {
           >
             <TabContentRenderer />
           </Content>
-          <Footer className="text-center text-xs text-gray-400 py-3 bg-transparent border-t border-gray-100 dark:border-gray-800/40">
-            Hệ Thống Quản Lý Kho Hải Sản & Kho Lạnh • Hotline: <span className="text-sky-600 font-medium">0965540075</span> • Phát triển: <span className="font-medium text-gray-600 dark:text-gray-300">{'Leo11'}</span>
+          <Footer className="text-center text-xs text-gray-400 py-3 bg-transparent border-t border-gray-100 dark:border-gray-800/40 hidden md:block">
+            Hệ Thống Quản Lý Kho Hải Sản • Hotline: <span className="text-sky-600 font-medium">0965540075</span> • Phát triển: <span className="font-medium text-gray-600 dark:text-gray-300">{'Leo11'}</span>
           </Footer>
         </Layout>
       </Layout>
+
+      {/* Mobile Bottom Navigation Bar */}
+      {isMobile && (
+        <MobileBottomNav
+          onOpenMenu={() => setDrawerVisible(true)}
+          isDrawerOpen={drawerVisible}
+          onCloseDrawer={() => setDrawerVisible(false)}
+        />
+      )}
       <UserProfileModal
         open={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}

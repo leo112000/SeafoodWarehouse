@@ -1,4 +1,5 @@
 import * as signalR from '@microsoft/signalr';
+import { isTokenExpired } from '../stores/useAuthStore';
 
 export interface RealtimeNotification {
   id: string;
@@ -50,7 +51,13 @@ class SignalRService {
 
     const conn = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
-        accessTokenFactory: () => localStorage.getItem('token') || '',
+        accessTokenFactory: () => {
+          const token = localStorage.getItem('token');
+          if (token && isTokenExpired(token)) {
+            return '';
+          }
+          return token || '';
+        },
         skipNegotiation: false,
         transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
       })

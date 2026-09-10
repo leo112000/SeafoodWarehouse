@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Row, Col, DatePicker, Select, Input, Button, Modal } from 'antd';
+import { Table, Row, Col, DatePicker, Input, Button, Modal, Card } from 'antd';
 import { PrinterOutlined, InfoCircleOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 import type { OutboundTransaction } from '../../stores/useOutboundStore';
 import InvoiceModal from '../../components/invoice/InvoiceModal';
 import { formatCurrency, formatWeight, formatDate } from '../../utils/format';
@@ -26,11 +27,16 @@ const toInvoiceData = (tx: OutboundTransaction): InvoicePrintData => {
 
   const totalNetWeight = items.reduce((sum, item) => sum + item.netWeight, 0);
 
+  const parts = (tx.customerName || '').split(' - ');
+  const pName = parts.length > 1 ? parts[0].trim() : tx.customerName;
+  const pPhone = parts.length > 1 ? parts.slice(1).join(' - ').trim() : undefined;
+
   return {
     type: 'OUTBOUND',
     invoiceNo: tx.id,
     date: tx.date,
-    partnerName: tx.customerName,
+    partnerName: pName,
+    partnerPhone: pPhone,
     warehouseStaff: tx.createdBy,
     note: tx.reason,
     items,
@@ -49,8 +55,10 @@ const OutboundHistoryPage: React.FC = () => {
   const [selectedTx, setSelectedTx] = useState<OutboundTransaction | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [printVisible, setPrintVisible] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
   const [filtered, setFiltered] = useState<OutboundTransaction[]>([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [customerFilter, setCustomerFilter] = useState<string>('');
 
   useEffect(() => {
     fetchTransactions();
@@ -131,7 +139,26 @@ const OutboundHistoryPage: React.FC = () => {
     },
     { title: 'Mã phiếu xuất', dataIndex: 'id', key: 'id', render: (id: string) => <span className="font-bold text-sky-600">{id}</span> },
     { title: 'Ngày xuất kho', dataIndex: 'date', key: 'date', render: (d: string) => formatDate(d), responsive: ['sm'] as any },
-    { title: 'Khách hàng', dataIndex: 'customerName', key: 'customerName' },
+    {
+      title: 'Khách hàng / Người nhận',
+      dataIndex: 'customerName',
+      key: 'customerName',
+      render: (name: string) => {
+        if (!name) return <span className="text-gray-400">Khách lẻ</span>;
+        const parts = name.split(' - ');
+        if (parts.length > 1) {
+          return (
+            <div>
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{parts[0]}</span>
+              <div className="text-xs text-sky-600 font-mono mt-0.5">
+                📞 {parts.slice(1).join(' - ')}
+              </div>
+            </div>
+          );
+        }
+        return <span className="font-medium text-gray-800 dark:text-gray-200">{name}</span>;
+      },
+    },
     { title: 'Tổng khối lượng (Kg)', dataIndex: 'totalWeightKg', key: 'totalWeightKg', render: (w: number) => formatWeight(w) },
     {
       title: 'Tiền hàng / Phụ phí',
@@ -229,49 +256,79 @@ const OutboundHistoryPage: React.FC = () => {
 
   return (
     <div>
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12} md={6}>
-          <RangePicker style={{ width: '100%' }} />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Select placeholder="Khách hàng / Đại lý" style={{ width: '100%' }} allowClear />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Input placeholder="Mã phiếu / Mã lô" style={{ width: '100%' }} />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Input.Search
-              placeholder="Tìm kiếm..."
-              allowClear
-              onSearch={handleSearch}
+      <div className="mb-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">Lịch Sử Xuất Kho</h1>
+      </div>
+
+      <Card className="shadow-xs rounded-xl mb-4" styles={{ body: { padding: '12px' } }}>
+        <Row gutter={[8, 8]}>
+          <Col xs={12} sm={12} md={6}>
+            <RangePicker style={{ width: '100%' }} size="middle" placeholder={['Từ ngày', 'Đến ngày']} />
+          </Col>
+          <Col xs={12} sm={12} md={6}>
+            <Input
+              placeholder="Lọc theo tên khách hàng..."
               style={{ width: '100%' }}
-              enterButton
+              size="middle"
+              allowClear
+              value={customerFilter}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCustomerFilter(val);
+                if (!val) {
+                  setFiltered(transactions);
+                } else {
+                  setFiltered(transactions.filter((t) => t.customerName?.toLowerCase().includes(val.toLowerCase())));
+                }
+                setPagination((prev) => ({ ...prev, current: 1 }));
+              }}
             />
-            <Button
-              type="primary"
-              icon={<FileExcelOutlined />}
-              className="bg-emerald-600 hover:bg-emerald-700 border-none"
-              onClick={handleExportExcel}
-            >
-              Xuất Excel
-            </Button>
-          </div>
-        </Col>
-      </Row>
-      <Table
-        rowKey="id"
-        dataSource={filtered}
-        columns={columns}
-        pagination={{
-          current: pagination.current,
-          pageSize: pagination.pageSize,
-          showSizeChanger: true,
-          pageSizeOptions: ['5', '10', '20', '50'],
-          onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-        }}
-        scroll={{ x: 'max-content' }}
-      />
+          </Col>
+          <Col xs={12} sm={12} md={6}>
+            <Input placeholder="Mã phiếu / Mã lô" style={{ width: '100%' }} size="middle" />
+          </Col>
+          <Col xs={12} sm={12} md={6}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Input.Search
+                placeholder="Tìm..."
+                allowClear
+                onSearch={handleSearch}
+                style={{ width: '100%' }}
+                size="middle"
+              />
+              <Button
+                type="primary"
+                icon={<FileExcelOutlined />}
+                className="bg-emerald-600 hover:bg-emerald-700 border-none shrink-0"
+                onClick={handleExportExcel}
+                size="middle"
+              >
+                Xuất
+              </Button>
+            </div>
+          </Col>
+        </Row>
+      </Card>
+
+      <Card
+        title="📤 Danh Sách Phiếu Xuất Kho Hải Sản"
+        extra={<ZoomButton onClick={() => setIsZoomed(true)} />}
+        className="shadow-sm rounded-2xl"
+      >
+        <Table
+          rowKey="id"
+          dataSource={filtered}
+          columns={columns}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['5', '10', '20', '50'],
+            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+          }}
+          scroll={{ x: 'max-content' }}
+        />
+      </Card>
 
       {/* Detail modal */}
       <Modal
@@ -340,6 +397,33 @@ const OutboundHistoryPage: React.FC = () => {
           data={toInvoiceData(selectedTx)}
         />
       )}
+
+      {/* Modal Phóng To Bảng Xuất Kho & Quay Ngang */}
+      <ZoomViewerModal
+        open={isZoomed}
+        onClose={() => setIsZoomed(false)}
+        title="📤 Lịch Sử Phiếu Xuất Kho Hải Sản"
+        subtitle={`Hiển thị ${filtered.length} phiếu xuất kho chi tiết`}
+      >
+        {({ isRotated }) => (
+          <div className="w-full h-full flex flex-col">
+            <Table
+              rowKey="id"
+              dataSource={filtered}
+              columns={columns}
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                showSizeChanger: true,
+                pageSizeOptions: ['5', '10', '20', '50'],
+                onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+              }}
+              scroll={{ x: 1000, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+              size="middle"
+            />
+          </div>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

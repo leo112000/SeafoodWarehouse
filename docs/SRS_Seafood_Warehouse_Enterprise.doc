@@ -1,0 +1,355 @@
+
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+        xmlns:w="urn:schemas-microsoft-com:office:word" 
+        xmlns="http://www.w3.org/TR/REC-html40">
+  <head>
+    <meta charset="utf-8">
+    <title>Software Requirements Specification (SRS) - Seafood WMS</title>
+    <!--[if gte mso 9]>
+    <xml>
+      <w:WordDocument>
+        <w:View>Print</w:View>
+        <w:Zoom>100</w:Zoom>
+        <w:DoNotOptimizeForBrowser/>
+      </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+      body {
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #1e293b;
+        margin: 2.5cm 2cm 2.5cm 2.5cm;
+      }
+      h1 { font-family: 'Arial', sans-serif; font-size: 20pt; color: #0369a1; text-transform: uppercase; }
+      h2 { font-family: 'Arial', sans-serif; font-size: 14pt; color: #0284c7; }
+      h3 { font-family: 'Arial', sans-serif; font-size: 12pt; color: #0f172a; }
+      p { margin-bottom: 8px; text-align: justify; }
+      table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+      th { background-color: #0284c7; color: white; border: 1px solid #94a3b8; padding: 7px; font-family: 'Arial', sans-serif; font-size: 10pt; }
+      td { border: 1px solid #cbd5e1; padding: 6px; font-size: 10pt; font-family: 'Arial', sans-serif; }
+      tr:nth-child(even) { background-color: #f8fafc; }
+      li { margin-bottom: 4px; }
+      .header-cover {
+        text-align: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #0284c7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header-cover">
+      <h1 style="margin:0;">HỆ THỐNG QUẢN LÝ KHO HẢI SẢN (SEAFOOD WMS)</h1>
+      <h3 style="color:#0284c7; margin-top:6px;">SOFTWARE REQUIREMENTS SPECIFICATION (SRS) - ENTERPRISE EDITION</h3>
+      <p style="text-align:center; font-style:italic; color:#64748b; margin-top:4px;">
+        Senior Business Analyst & Solution Architect &bull; Phiên bản 3.0.0 &bull; 23/08/2026
+      </p>
+    </div>
+    <h1 style="color:#0284c7; font-family:Arial, sans-serif; font-size:22pt; text-align:center; margin-bottom:6px;">SOFTWARE REQUIREMENTS SPECIFICATION (SRS)</h1>
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">HỆ THỐNG QUẢN LÝ KHO THỦY HẢI SẢN (SEAFOOD WAREHOUSE MANAGEMENT SYSTEM - SEAFOOD WMS)</h2>
+
+---
+
+<strong>Dự án</strong>: Seafood Warehouse Management System (Seafood WMS)
+<strong>Tác giả</strong>: Senior Business Analyst & Solution Architect
+<strong>Phiên bản</strong>: 3.0.0 (Enterprise Specification)
+<strong>Ngày phát hành</strong>: 23/08/2026
+<strong>Trạng thái</strong>: Đã phê duyệt kỹ thuật & Sẵn sàng triển khai
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">MỤC LỤC</h2>
+1. [GIỚI THIỆU TỔNG QUAN (SCOPE & OBJECTIVES)](#1-giới-thiệu-tổng-quan-scope--objectives)
+2. [MÔ TẢ TỔNG QUAN HỆ THỐNG (OVERALL DESCRIPTION)](#2-mô-tả-tổng-quan-hệ-thống-overall-description)
+3. [YÊU CẦU CHỨC NĂNG CHI TIẾT (FUNCTIONAL REQUIREMENTS)](#3-yêu-cầu-chức-năng-chi-tiết-functional-requirements)
+<li style="margin-bottom:5px;">3.1. [Module 1: Quản lý Danh mục & Sản phẩm Hải sản](#31-module-1-quản-lý-danh-mục--sản-phẩm-hải-sản)</li>
+<li style="margin-bottom:5px;">3.2. [Module 2: Quản lý Nhập kho (Inbound Management)](#32-module-2-quản-lý-nhập-kho-inbound-management)</li>
+<li style="margin-bottom:5px;">3.3. [Module 3: Quản lý Xuất kho theo Cơ chế FEFO & FIFO](#33-module-3-quản-lý-xuất-kho-theo-cơ-chế-fefo--fifo)</li>
+<li style="margin-bottom:5px;">3.4. [Module 4: Quản lý Tồn kho, Vị trí Kệ & Đảo kho (Inventory & Slotting)](#34-module-4-quản-lý-tồn-kho-vị-trí-kệ--đảo-kho-inventory--slotting)</li>
+<li style="margin-bottom:5px;">3.5. [Module 5: Báo cáo & Thống kê Phân tích (Analytics & Reports)](#35-module-5-báo-cáo--thống-kê-phân-tích-analytics--reports)</li>
+<li style="margin-bottom:5px;">3.6. [Module 6: Quản trị Hệ thống & Phân quyền (RBAC & Audit Logs)](#36-module-6-quản-trị-hệ-thống--phân-quyền-rbac--audit-logs)</li>
+4. [YÊU CẦU PHI CHỨC NĂNG (NON-FUNCTIONAL REQUIREMENTS)](#4-yêu-cầu-phi-chức-năng-non-functional-requirements)
+5. [THIẾT KẾ DỮ LIỆU & TÍCH HỢP HỆ THỐNG (DATA DESIGN & API SPECIFICATIONS)](#5-thiết-kế-dữ-liệu--tích-hợp-hệ-thống-data-design--api-specifications)
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">1. GIỚI THIỆU TỔNG QUAN (SCOPE & OBJECTIVES)</h2>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">1.1. Mục đích</h3>
+Tài liệu Đặc tả Yêu cầu Phần mềm (SRS) này xác định toàn bộ các yêu cầu chức năng, phi chức năng, luồng nghiệp vụ chuẩn, kiến trúc dữ liệu và giao thức giao tiếp cho <strong>Hệ thống Quản lý Kho Thủy Hải Sản (Seafood WMS)</strong>. Tài liệu là chuẩn mực giao tiếp duy nhất giữa Đội ngũ Nghiệp vụ (BA, Chủ kho), Kiến trúc sư Giải pháp (Solution Architect), Kỹ sư Phát triển (Full-stack Developers) và Đội ngũ Kiểm thử Chất lượng (QA/QC).
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">1.2. Phạm vi Dự án</h3>
+Hệ thống giải quyết toàn diện bài toán kho vận lạnh chuyên ngành thủy hải sản từ khâu:
+<li style="margin-bottom:5px;">Tiếp nhận hàng từ tàu cá/vùng nuôi trồng.</li>
+<li style="margin-bottom:5px;">Kiểm định nhiệt độ tiếp nhận và phân loại phẩm cấp (Grade A, B, C).</li>
+<li style="margin-bottom:5px;">In mã tem Barcode/QR định danh cho từng sọt/thùng hàng.</li>
+<li style="margin-bottom:5px;">Xếp hàng vào đúng buồng lạnh (Kho cấp đông sâu -25°C, kho mát -18°C ~ -10°C, bể sống oxy 15°C ~ 18°C).</li>
+<li style="margin-bottom:5px;">Xuất kho theo chiến lược FEFO (First-Expired, First-Out).</li>
+<li style="margin-bottom:5px;">Quản lý mượn/trả vỏ sọt nhựa đối tác và kiểm soát tỷ lệ hao hụt tự nhiên/rã đông.</li>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">1.3. Định nghĩa Thuật ngữ Đặc thù (Glossary)</h3>
+<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse; width:100%; border:1px solid #cbd5e1; margin:16px 0; font-size:10pt;"><tr style="background:#0284c7; color:#ffffff; font-weight:bold;"><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Thuật ngữ</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Tiếng Anh</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Định nghĩa & Ý nghĩa nghiệp vụ</th></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Lô hàng</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Batch / Lot</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Tập hợp hải sản cùng loại, cùng thời điểm thu mua, cùng nhà cung cấp/tàu cá và có cùng hạn bảo quản.</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Chiến lược FEFO</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">First-Expired, First-Out</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Nguyên tắc xuất kho ưu tiên lô hàng có hạn sử dụng gần nhất xuất trước nhằm hạn chế tối đa rủi ro suy giảm chất lượng hoặc quá hạn.</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Chiến lược FIFO</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">First-In, First-Out</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Nguyên tắc xuất hàng hóa nhập trước xuất trước (áp dụng cho nhóm hàng khô hoặc phụ gia đóng gói).</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Khối lượng biến đổi</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Catch-weight</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Đặc thù của hải sản nguyên con/nguyên sọt: cùng 1 thùng nhưng khối lượng thực tế từng thùng khác nhau (ví dụ: Thùng 1 = 20.4kg, Thùng 2 = 21.1kg).</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Hao hụt trọng lượng</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Shrinkage / Loss</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Khối lượng hao hụt tự nhiên do mất nước trong quá trình trữ đông sâu hoặc rã đông sơ bộ.</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Trọng lượng bì</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Tare Weight</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Khối lượng của vỏ sọt nhựa, khay đựng hoặc đá ướp bảo quản cần trừ đi khi cân để lấy khối lượng tịnh (Net Weight).</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Dãy kệ & Ô chứa</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Rack & Bin/Slot</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Tọa độ lưu kho cụ thể trong kho lạnh (ví dụ: Kệ A1, Ô A1-02).</td></tr></table>
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">2. MÔ TẢ TỔNG QUAN HỆ THỐNG (OVERALL DESCRIPTION)</h2>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">2.1. Kiến trúc Hệ thống (System Architecture)</h3>
+Hệ thống được thiết kế theo mô hình <strong>Clean Architecture / Domain-Driven Design (DDD)</strong> kết hợp cơ chế Single Page Application (SPA):
+<li style="margin-bottom:5px;"><strong>Frontend Layer</strong>: React 18, TypeScript, Vite, Tailwind CSS, Ant Design 5.x, Web Audio API, Html5-Qrcode.</li>
+<li style="margin-bottom:5px;"><strong>API Gateway / Web API Layer</strong>: ASP.NET Core 8 Web API, Controllers mỏng, RESTful JSON tiêu chuẩn, Swagger/OpenAPI.</li>
+<li style="margin-bottom:5px;"><strong>Application Layer</strong>: Use Cases, Command/Query Handlers, AutoMapper DTOs, FluentValidation, Authorization Handlers.</li>
+<li style="margin-bottom:5px;"><strong>Domain Layer</strong>: Core Entities, Enums, Aggregate Roots, Domain Services, Domain Events.</li>
+<li style="margin-bottom:5px;"><strong>Infrastructure Layer</strong>: Entity Framework Core 8, Repository Pattern, SQL Server, Redis Caching, Web Serial API (Giao tiếp cân điện tử & máy in tem nhiệt).</li>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">2.2. Các Nhóm Tác nhân (Actors)</h3>
+1. <strong>Thủ kho (Warehouse Keeper)</strong>: Tạo phiếu nhập, kiểm tra vị trí trống trên sơ đồ kho 2D, thực hiện xuất kho, quét mã Barcode/QR bằng máy PDA cầm tay.
+2. <strong>Nhân viên Kiểm hàng / Phân loại (QC / Grader)</strong>: Cân trọng lượng thực tế, đo nhiệt độ lúc nhập, phân loại phẩm cấp hải sản (Grade A/B/C), ghi nhận tỷ lệ hao hụt.
+3. <strong>Quản lý Kho (Warehouse Manager)</strong>: Phê duyệt phiếu xuất kho số lượng lớn, duyệt biên bản hủy/hạ cấp hải sản (Wastage), cấu hình dải nhiệt độ buồng lạnh và ngưỡng cảnh báo cận date.
+4. <strong>Kế toán Kho (Warehouse Accountant)</strong>: Đối soát khối lượng, đơn giá nhập/xuất, theo dõi công nợ vỏ sọt nhựa và xuất báo cáo Xuất - Nhập - Tồn theo kỳ kế toán.
+5. <strong>Quản trị viên Hệ thống (System Admin)</strong>: Quản lý tài khoản người dùng, phân quyền vai trò (RBAC), quản lý cấu hình chi nhánh (Multi-tenancy) và giám sát Audit Logs.
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">2.3. Ràng buộc Kỹ thuật & Tiêu chuẩn An toàn Kho Lạnh</h3>
+<li style="margin-bottom:5px;"><strong>Dải nhiệt độ nghiêm ngặt</strong>:</li>
+<li style="margin-bottom:5px;">Kho cấp đông sâu: Nhiệt độ duy trì từ -25°C đến -18°C (Cá, mực, bạch tuộc).</li>
+<li style="margin-bottom:5px;">Kho mát/đông vừa: Nhiệt độ duy trì từ -18°C đến -10°C (Tôm, cua trữ lạnh).</li>
+<li style="margin-bottom:5px;">Bể thở hải sản tươi sống: Nhiệt độ nước biển từ 15°C đến 18°C có sục khí oxy liên tục.</li>
+<li style="margin-bottom:5px;"><strong>Thao tác trong điều kiện găng tay bảo hộ</strong>: Giao diện Web/PDA phải hỗ trợ phím bấm lớn, độ tương phản cao (chống lóa trong kho tối/ánh đèn vàng), có âm thanh phản hồi khi quét mã thành công.</li>
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">3. YÊU CẦU CHỨC NĂNG CHI TIẾT (FUNCTIONAL REQUIREMENTS)</h2>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">3.1. Module 1: Quản lý Danh mục & Sản phẩm Hải sản</h3>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">[UC-01] Quản lý Danh mục Nhóm Hải sản (Product Categories)</h4>
+<li style="margin-bottom:5px;"><strong>Tác nhân</strong>: Quản lý kho, Thủ kho.</li>
+<li style="margin-bottom:5px;"><strong>Tiền điều kiện</strong>: Người dùng đã đăng nhập và có quyền <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Pages.Categories.View</code> / <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Pages.Categories.Manage</code>.</li>
+<li style="margin-bottom:5px;"><strong>Luồng xử lý chính</strong>:</li>
+1. Người dùng truy cập màn hình Danh mục nhóm.
+2. Hệ thống hiển thị danh sách nhóm: <em>Cá đông lạnh, Tôm/Tép, Cua/Ghẹ, Thân mềm (Mực/Bạch tuộc), Hải sản sống, Hàng khô</em>.
+3. Người dùng tạo mới/chỉnh sửa thông tin: Mã nhóm, Tên nhóm, Dải nhiệt độ bảo quản yêu cầu (°C), Ghi chú.
+4. Hệ thống kiểm tra tính duy nhất của Mã nhóm và lưu vào CSDL.
+<li style="margin-bottom:5px;"><strong>Hậu điều kiện</strong>: Nhóm danh mục mới có hiệu lực để gắn cho các sản phẩm hải sản.</li>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">[UC-02] Quản lý Sản phẩm Hải sản & Quy chuẩn Bảo quản (Products)</h4>
+<li style="margin-bottom:5px;"><strong>Tác nhân</strong>: Quản lý kho, Thủ kho.</li>
+<li style="margin-bottom:5px;"><strong>Tiền điều kiện</strong>: Có quyền <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Pages.Products.Manage</code>.</li>
+<li style="margin-bottom:5px;"><strong>Luồng xử lý chính</strong>:</li>
+1. Người dùng chọn "Thêm mới Sản phẩm hải sản".
+2. Nhập các trường thông tin:
+<li style="margin-bottom:5px;"><code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Code</code>: Mã sản phẩm (Unique, VD: <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">FISH-001</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">SHRIMP-002</code>).</li>
+<li style="margin-bottom:5px;"><code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Name</code>: Tên thương phẩm (VD: <em>Cá hồi Na Uy phi lê, Tôm sú sống Size 20 con/kg</em>).</li>
+<li style="margin-bottom:5px;"><code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">CategoryId</code>: Nhóm danh mục tương ứng.</li>
+<li style="margin-bottom:5px;"><code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">StorageType</code>: Loại bảo quản (<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">FROZEN</code> - Cấp đông, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">FRESH</code> - Tươi ướp đá, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">ALIVE</code> - Bể sống, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">DRY</code> - Đồ khô).</li>
+<li style="margin-bottom:5px;"><code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">TargetTemperature</code>: Nhiệt độ bảo quản chuẩn (°C).</li>
+<li style="margin-bottom:5px;"><code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">ShelfLifeDays</code>: Số ngày bảo quản tối đa (Shelf Life).</li>
+<li style="margin-bottom:5px;"><code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">MinStockKg</code>: Định mức tồn kho tối thiểu cảnh báo.</li>
+<li style="margin-bottom:5px;"><code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">DefaultUnit</code>: Đơn vị tính (<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">kg</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">thùng</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">con</code>).</li>
+3. Hệ thống validate và lưu dữ liệu.
+<li style="margin-bottom:5px;"><strong>Hậu điều kiện</strong>: Sản phẩm sẵn sàng cho các nghiệp vụ Nhập/Xuất kho.</li>
+
+---
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">3.2. Module 2: Quản lý Nhập kho (Inbound Management)</h3>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">[UC-03] Tiếp nhận Hàng & Lập Phiếu Nhập Kho (Inbound Receipt Creation)</h4>
+<li style="margin-bottom:5px;"><strong>Tác nhân</strong>: Thủ kho, Nhân viên kiểm hàng.</li>
+<li style="margin-bottom:5px;"><strong>Tiền điều kiện</strong>: Có quyền <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Pages.Inbound.Create</code>.</li>
+<li style="margin-bottom:5px;"><strong>Luồng xử lý chính</strong>:</li>
+1. Thủ kho chọn Tàu cá / Nhà cung cấp và Kho lạnh tiếp nhận.
+2. Thêm các dòng chi tiết mặt hàng nhập:
+<li style="margin-bottom:5px;">Chọn sản phẩm hải sản.</li>
+<li style="margin-bottom:5px;">Nhập khối lượng tổng (Gross Weight), trừ khối lượng bì/vỏ sọt (Tare Weight) để ra khối lượng tịnh (Net Weight Kg).</li>
+<li style="margin-bottom:5px;">Nhập đơn giá thu mua (VNĐ/kg).</li>
+<li style="margin-bottom:5px;">Chọn Ngày đánh bắt / Ngày cấp đông (<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">ProductionDate</code>) và Hạn sử dụng (<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">ExpirationDate</code>).</li>
+<li style="margin-bottom:5px;">Đo và ghi nhận nhiệt độ thực tế lúc tiếp nhận (°C) (VD: -20.5°C).</li>
+<li style="margin-bottom:5px;">Chọn phẩm cấp cảm quan: <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Grade A</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Grade B</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Grade C</code>.</li>
+<li style="margin-bottom:5px;">Ghi nhận số lượng vỏ sọt nhựa nhận kèm từ tàu cá.</li>
+3. Hệ thống tự động sinh Mã lô hàng duy nhất theo định dạng <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">LOT-YYYYMMDD-XXXX</code>.
+4. Thủ kho chọn vị trí ô lưu trữ trên Sơ đồ kho (VD: Ô <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">A1-01</code>).
+5. Bấm "Lưu & In Mã Tem": Hệ thống lưu phiếu, phát âm thanh Beep xác nhận và gửi lệnh in mã QR/Barcode tới máy in nhiệt.
+<li style="margin-bottom:5px;"><strong>Luồng phụ (Nhiệt độ không đạt chuẩn)</strong>:</li>
+<li style="margin-bottom:5px;">Nếu nhiệt độ lúc nhập vượt quá ngưỡng cho phép (VD: Cá đông nhưng nhiệt độ chỉ đạt -5°C), hệ thống bật cảnh báo màu cam và yêu cầu nhập lý do vào trường Ghi chú.</li>
+<li style="margin-bottom:5px;"><strong>Hậu điều kiện</strong>: Tồn kho tăng thời gian thực; Sơ đồ kho 2D cập nhật tỷ lệ lấp đầy của ô kệ tương ứng.</li>
+
+---
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">3.3. Module 3: Quản lý Xuất kho theo Cơ chế FEFO & FIFO</h3>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">[UC-04] Xuất Kho Hải sản Tối ưu theo Chiến lược FEFO (Outbound Picking)</h4>
+<li style="margin-bottom:5px;"><strong>Tác nhân</strong>: Thủ kho.</li>
+<li style="margin-bottom:5px;"><strong>Tiền điều kiện</strong>: Có quyền <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Pages.Outbound.Create</code>.</li>
+<li style="margin-bottom:5px;"><strong>Luồng xử lý chính</strong>:</li>
+1. Thủ kho tạo phiếu xuất mới, chọn Khách hàng / Đại lý thu mua và Kho xuất.
+2. Chọn mặt hàng cần xuất và số lượng yêu cầu (Kg).
+3. <strong>Thuật toán Gợi ý FEFO Tự động</strong>:
+<li style="margin-bottom:5px;">Hệ thống tự động quét toàn bộ các lô hàng của sản phẩm đó trong kho.</li>
+<li style="margin-bottom:5px;">Sắp xếp theo thứ tự ưu tiên: Lô có <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">ExpirationDate</code> gần nhất lên đầu.</li>
+<li style="margin-bottom:5px;">Hiển thị vị trí ô kệ chính xác đang chứa lô đó (VD: <em>Lô LOT-20260810-001 tại Kệ A1-02 còn hạn 12 ngày</em>).</li>
+4. Thủ kho dùng máy quét PDA quét mã Barcode/QR trên thùng hàng thực tế:
+<li style="margin-bottom:5px;"><strong>Quét đúng lô FEFO gợi ý</strong>: Hệ thống phát tiếng Beep trong trẻo và tick xanh xác nhận.</li>
+<li style="margin-bottom:5px;"><strong>Quét sai lô (hoặc quét lô có hạn dài hơn trong khi còn lô cận hạn)</strong>: Hệ thống phát tiếng Buzzer trầm và hiển thị thông báo: <em>"Cảnh báo: Có lô hàng khác cận hạn hơn chưa được xuất trước. Bạn có muốn tiếp tục?"</em>.</li>
+5. Nhập số lượng xuất thực tế và ghi nhận số lượng sọt nhựa cho khách mượn mang đi hoặc khách trả lại.
+6. Bấm "Hoàn tất Xuất Kho": Hệ thống trừ số lượng tồn kho theo đúng mã lô và in Phiếu Xuất Kho chuẩn khổ A4.
+<li style="margin-bottom:5px;"><strong>Hậu điều kiện</strong>: Tồn kho của lô hàng giảm tương ứng; công nợ vỏ sọt của khách hàng được cập nhật.</li>
+
+---
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">3.4. Module 4: Quản lý Tồn kho, Vị trí Kệ & Đảo kho (Inventory & Slotting)</h3>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">[UC-05] Sơ đồ Trực quan 2D & Điều chuyển Ô Kệ (Visual Map & Bin Relocation)</h4>
+<li style="margin-bottom:5px;"><strong>Tác nhân</strong>: Thủ kho, Quản lý kho.</li>
+<li style="margin-bottom:5px;"><strong>Tiền điều kiện</strong>: Có quyền <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Pages.Inbound.View</code>.</li>
+<li style="margin-bottom:5px;"><strong>Luồng xử lý chính</strong>:</li>
+1. Mở màn hình "Sơ đồ Kho Lạnh 2D" (<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">/inventory/map</code>).
+2. Xem toàn cảnh các phân khu (Zone A, Zone B, Zone C) và các dãy kệ (Racks).
+3. Từng ô chứa (Bin) được phân biệt bằng màu trực quan:
+<li style="margin-bottom:5px;">Xanh lá: Tỷ lệ lấp đầy dưới 50%.</li>
+<li style="margin-bottom:5px;">Vàng: Lấp đầy từ 50% đến 85%.</li>
+<li style="margin-bottom:5px;">Đỏ: Đầy tải trên 85%.</li>
+<li style="margin-bottom:5px;">Tím nhấp nháy: Chứa lô hàng Cận Date (<= 15 ngày).</li>
+4. Click vào một ô bất kỳ để mở Drawer danh sách các lô hàng đang lưu trữ tại ô đó.
+5. Chọn tác vụ "Đảo kho / Chuyển vị trí": Chọn lô hàng -> Chọn ô đích mới -> Xác nhận di chuyển.
+<li style="margin-bottom:5px;"><strong>Hậu điều kiện</strong>: Tọa độ lưu kho của lô hàng được cập nhật tức thì.</li>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">[UC-06] Xử lý Hao hụt Khối lượng & Hạ cấp Phẩm chất (Wastage & Downgrade)</h4>
+<li style="margin-bottom:5px;"><strong>Tác nhân</strong>: Nhân viên kiểm hàng, Quản lý kho.</li>
+<li style="margin-bottom:5px;"><strong>Tiền điều kiện</strong>: Có quyền <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Pages.Wastage.Create</code>.</li>
+<li style="margin-bottom:5px;"><strong>Luồng xử lý chính</strong>:</li>
+1. Người dùng chọn lô hàng phát sinh hao hụt.
+2. Chọn lý do: <em>Mất nước tự nhiên (Shrinkage), Hư hỏng rã đông (Spoilage), Chết ngạt trong bể oxy, Hạ cấp chất lượng (Grade A -> Grade B)</em>.
+3. Nhập khối lượng hao hụt (Kg) và biện pháp xử lý (<em>Tiêu hủy, Bán tháo thanh lý, Tái chế làm bột cá</em>).
+4. Nếu giá trị hao hụt vượt quá hạn mức quy định (> 5.000.000 VNĐ), phiếu chuyển sang trạng thái "Chờ Quản lý phê duyệt".
+5. Khi được duyệt, hệ thống tự động trừ tồn kho và ghi nhận chi phí hao hụt.
+<li style="margin-bottom:5px;"><strong>Hậu điều kiện</strong>: Số lượng tồn kho được điều chỉnh chính xác; báo cáo hao hụt ghi nhận số liệu.</li>
+
+---
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">3.5. Module 5: Báo cáo & Thống kê Phân tích (Analytics & Reports)</h3>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">[UC-07] Báo cáo Nhập - Xuất - Tồn & Hao hụt Định kỳ</h4>
+<li style="margin-bottom:5px;"><strong>Tác nhân</strong>: Kế toán kho, Quản lý kho, Admin.</li>
+<li style="margin-bottom:5px;"><strong>Tiền điều kiện</strong>: Có quyền <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Pages.Reports.View</code>.</li>
+<li style="margin-bottom:5px;"><strong>Luồng xử lý chính</strong>:</li>
+1. Chọn khoảng thời gian báo cáo (Hôm nay, Tuần này, Tháng này, Tùy chọn từ ngày... đến ngày...).
+2. Lọc theo Kho lạnh, Nhóm mặt hàng hoặc Nhà cung cấp.
+3. Hệ thống kết xuất:
+<li style="margin-bottom:5px;">Biểu đồ Sản lượng Nhập - Xuất theo thời gian thực (BarChart).</li>
+<li style="margin-bottom:5px;">Biểu đồ Cơ cấu Tồn kho theo từng loại hải sản (PieChart).</li>
+<li style="margin-bottom:5px;">Bảng tổng hợp chi tiết: Tồn đầu kỳ, Nhập trong kỳ, Xuất trong kỳ, Hao hụt trong kỳ, Tồn cuối kỳ, Ước tính thành tiền (VNĐ).</li>
+4. Người dùng bấm "Xuất Excel (.xlsx)": Hệ thống tải xuống tệp bảng tính có đầy đủ định dạng số và tiêu đề chuẩn kế toán.
+
+---
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">3.6. Module 6: Quản trị Hệ thống & Phân quyền (RBAC & Audit Logs)</h3>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">[UC-08] Phân quyền Theo Vai trò (Role-Based Access Control)</h4>
+<li style="margin-bottom:5px;"><strong>Tác nhân</strong>: System Admin.</li>
+<li style="margin-bottom:5px;"><strong>Tiền điều kiện</strong>: Có quyền <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Pages.Roles.Manage</code>.</li>
+<li style="margin-bottom:5px;"><strong>Nội dung</strong>:</li>
+<li style="margin-bottom:5px;">Quản lý danh sách vai trò: <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Admin</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">WarehouseManager</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">WarehouseKeeper</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Accountant</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Inspector</code>.</li>
+<li style="margin-bottom:5px;">Phân quyền theo ma trận chi tiết: Phân quyền xem, tạo mới, chỉnh sửa, xóa và phê duyệt trên từng chức năng.</li>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">[UC-09] Nhật ký Hoạt động Hệ thống (Audit Logging)</h4>
+<li style="margin-bottom:5px;"><strong>Tác nhân</strong>: System Admin, Quản lý kho.</li>
+<li style="margin-bottom:5px;"><strong>Nội dung</strong>:</li>
+<li style="margin-bottom:5px;">Ghi nhận tự động mọi tác vụ thay đổi dữ liệu trọng yếu (Sửa giá nhập, điều chỉnh khối lượng tồn, xóa phiếu xuất, đổi vị trí ô kệ).</li>
+<li style="margin-bottom:5px;">Lưu vết: <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">UserId</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">UserName</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">ClientIpAddress</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">ActionName</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">ExecutionTime</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">OldValues (JSON)</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">NewValues (JSON)</code>.</li>
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">4. YÊU CẦU PHI CHỨC NĂNG (NON-FUNCTIONAL REQUIREMENTS)</h2>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">4.1. Hiệu năng & Tốc độ Phản hồi (Performance & Latency)</h3>
+<li style="margin-bottom:5px;"><strong>Độ trễ API</strong>: Thời gian phản hồi cho 95% các API truy vấn danh sách, tồn kho phải dưới 200ms.</li>
+<li style="margin-bottom:5px;"><strong>Tốc độ Quét mã</strong>: Thời gian từ lúc camera nhận diện Barcode/QR đến khi phát âm thanh phản hồi và render kết quả phải dưới 100ms.</li>
+<li style="margin-bottom:5px;"><strong>Tải đồng thời</strong>: Hệ thống hỗ trợ tối thiểu 200 người dùng thao tác cùng lúc và 50 thiết bị PDA quét liên tục mà không gây nghẽn giao dịch CSDL.</li>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">4.2. Bảo mật & Xác thực (Security & Authentication)</h3>
+<li style="margin-bottom:5px;">Xác thực bằng chuẩn <strong>JSON Web Token (JWT)</strong> với Access Token (hạn 60 phút) và Refresh Token (lưu an toàn trong HttpOnly Cookie).</li>
+<li style="margin-bottom:5px;">Mật khẩu người dùng được băm bằng thuật toán <strong>PBKDF2 / Argon2</strong> có muối (Salt).</li>
+<li style="margin-bottom:5px;">Phân tách dữ liệu đa chi nhánh (Multi-tenancy isolation) triệt để ở cấp CSDL thông qua EF Core Global Query Filters.</li>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">4.3. Tính Toàn vẹn Dữ liệu & Xử lý Đồng thời (Data Integrity & Concurrency)</h3>
+<li style="margin-bottom:5px;"><strong>Pessimistic / Optimistic Locking</strong>: Khi 2 thủ kho cùng quét xuất 1 lô hàng cùng một thời điểm, hệ thống sử dụng trường <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">ConcurrencyStamp</code> / RowVersion để đảm bảo không bao giờ xảy ra tình trạng xuất âm kho hoặc trùng lặp số lượng.</li>
+<li style="margin-bottom:5px;"><strong>Database Transaction (ACID)</strong>: Các thao tác Nhập/Xuất kho liên quan đến nhiều bảng (Phiếu xuất, Chi tiết phiếu, Tồn kho, Lịch sử giao dịch, Công nợ bao bì) phải được bọc trong một Database Transaction duy nhất. Nếu bất kỳ bước nào lỗi, toàn bộ thao tác tự động Rollback.</li>
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">5. THIẾT KẾ DỮ LIỆU & TÍCH HỢP HỆ THỐNG (DATA DESIGN & API SPECIFICATIONS)</h2>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">5.1. Danh sách Thực thể Cốt lõi (Core Entities Schema)</h3>
+
+``<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">mermaid
+erDiagram
+CATEGORIES ||--o{ PRODUCTS : contains
+WAREHOUSES ||--o{ WAREHOUSE_LOCATIONS : divides
+PRODUCTS ||--o{ LOT_BATCHES : tracks
+WAREHOUSE_LOCATIONS ||--o{ LOT_BATCHES : stores
+PARTNERS ||--o{ INBOUND_RECEIPTS : supplies
+INBOUND_RECEIPTS ||--o{ INBOUND_ITEMS : includes
+LOT_BATCHES ||--o{ INBOUND_ITEMS : creates
+PARTNERS ||--o{ OUTBOUND_RECEIPTS : receives
+OUTBOUND_RECEIPTS ||--o{ OUTBOUND_ITEMS : includes
+LOT_BATCHES ||--o{ OUTBOUND_ITEMS : deducts
+PACKAGING_TYPES ||--o{ PACKAGING_TRANSACTIONS : logs
+PARTNERS ||--o{ PACKAGING_TRANSACTIONS : loans_returns
+
+CATEGORIES {
+int Id PK
+string Code
+string Name
+decimal MinTemp
+decimal MaxTemp
+}
+PRODUCTS {
+int Id PK
+string Code
+string Name
+int CategoryId FK
+string StorageType
+int ShelfLifeDays
+decimal MinStockKg
+}
+WAREHOUSES {
+int Id PK
+string Code
+string Name
+decimal TotalCapacityKg
+decimal CurrentTemp
+}
+WAREHOUSE_LOCATIONS {
+int Id PK
+int WarehouseId FK
+string ZoneCode
+string RackCode
+string BinCode
+decimal MaxWeightKg
+}
+LOT_BATCHES {
+int Id PK
+string BatchCode
+int ProductId FK
+int WarehouseLocationId FK
+decimal InitialQuantityKg
+decimal CurrentQuantityKg
+decimal UnitPrice
+datetime ProductionDate
+datetime ExpirationDate
+string Grade
+}
+</code>`<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">5.2. Danh sách RESTful API Endpoints Cốt lõi</h3>
+
+<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse; width:100%; border:1px solid #cbd5e1; margin:16px 0; font-size:10pt;"><tr style="background:#0284c7; color:#ffffff; font-weight:bold;"><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Phương thức</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Đường dẫn Endpoint</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Mô tả chức năng</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Quyền yêu cầu (Permission)</th></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>POST</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/auth/login<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Đăng nhập tài khoản & Nhận JWT Access Token</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Public</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>GET</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/inventory/stock<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Truy vấn danh sách hàng tồn kho theo lô & bộ lọc</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Inbound.View<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>GET</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/inventory/visual-map<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Lấy dữ liệu sơ đồ kho 2D, phân khu & tỷ lệ lấp đầy</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Inbound.View<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>POST</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/inbound/receipts<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Tạo phiếu nhập kho hải sản mới & Cấp mã LOT</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Inbound.Create<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>POST</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/outbound/receipts<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Tạo phiếu xuất kho & Gợi ý xuất theo FEFO</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Outbound.Create<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>GET</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/outbound/fefo-suggestions<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Lấy danh sách lô cận date tối ưu cho sản phẩm</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Outbound.Create<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>POST</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/inventory/wastage<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Ghi nhận biên bản hao hụt / hạ cấp phẩm chất</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Wastage.Create<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>POST</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/inventory/relocate<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Điều chuyển lô hàng sang ô kệ / buồng lạnh mới</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Inbound.Create<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>GET</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/reports/summary<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Lấy dữ liệu thống kê tổng hợp Dashboard</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Reports.View<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>GET</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/reports/export-excel<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Xuất báo cáo Xuất - Nhập - Tồn ra tệp Excel (.xlsx)</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Reports.View<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>GET</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>/api/packaging/loan-balance<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Tra cứu số dư công nợ vỏ sọt của đối tác</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"></code>Pages.Packaging.View`</td></tr></table>
+
+---
+<em>Tài liệu Đặc tả Yêu cầu Phần mềm này là tài sản kỹ thuật chuẩn của dự án Seafood Warehouse Management System. Mọi thay đổi về Use Case hoặc Kiến trúc CSDL cần được thông qua quy trình xét duyệt Change Request (CR) của Solution Architect.</em>
+
+  </body>
+  </html>
+  

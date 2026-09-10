@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, DatePicker, Select, InputNumber, Row, Col, Typography, App, Modal, Divider, Space } from 'antd';
+import { Card, Form, Input, Button, DatePicker, Select, InputNumber, Row, Col, App, Modal, Divider, Space, AutoComplete } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined, AppstoreAddOutlined, QrcodeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useInboundStore } from '../../stores/useInboundStore';
@@ -9,8 +9,6 @@ import { useCategoryStore } from '../../stores/useCategoryStore';
 import { QRScannerModal } from '../../components/common/QRScannerModal';
 import { partnerService, type PartnerItem } from '../../services/partnerService';
 import dayjs from 'dayjs';
-
-const { Title, Paragraph } = Typography;
 
 export const InboundPage: React.FC = () => {
   const [form] = Form.useForm();
@@ -260,9 +258,8 @@ export const InboundPage: React.FC = () => {
 
   return (
     <div className="print-constrained">
-      <div className="mb-6">
-        <Title level={2} className="m-0">Tạo Phiếu Nhập Kho Hải Sản</Title>
-        <Paragraph type="secondary">Nhập thông tin nhà cung cấp, lô hàng và các chỉ số đo lường bảo quản hải sản.</Paragraph>
+      <div className="mb-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">Tạo Phiếu Nhập Kho</h1>
       </div>
 
       <Form
@@ -291,24 +288,25 @@ export const InboundPage: React.FC = () => {
             <Col xs={24} md={8}>
               <Form.Item
                 name="supplier"
-                label="Nhà cung cấp (Vựa / Tàu cá)"
+                label="Nhà cung cấp (Tàu cá / Vựa)"
                 rules={[{ required: true, message: 'Vui lòng chọn hoặc nhập tên nhà cung cấp!' }]}
+                extra="Chọn từ danh sách nhà cung cấp hoặc gõ tên mới."
               >
-                <Select
-                  showSearch
+                <AutoComplete
                   allowClear
-                  placeholder="Chọn tàu cá / vựa hoặc gõ tên mới..."
-                  optionFilterProp="label"
-                  options={[
-                    ...suppliers.map((s) => ({
-                      value: s.name,
-                      label: `⚓ ${s.name} (${s.code})${s.phone ? ` - ${s.phone}` : ''}`,
-                    })),
-                  ]}
+                  placeholder="Chọn nhà cung cấp hoặc gõ tên mới..."
+                  options={suppliers.map((s) => ({
+                    value: s.name,
+                    label: `⚓ ${s.name} (${s.code})${s.phone ? ` - ${s.phone}` : ''}`,
+                  }))}
+                  filterOption={(inputValue, option) => {
+                    const text = String(option?.label || '') + ' ' + String(option?.value || '');
+                    return text.toLowerCase().includes(inputValue.toLowerCase());
+                  }}
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={12} md={8}>
               <Form.Item
                 name="inboundDate"
                 label="Ngày nhập kho"
@@ -317,13 +315,13 @@ export const InboundPage: React.FC = () => {
                 <DatePicker className="w-full" format="YYYY-MM-DD" />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={12} md={8}>
               <Form.Item
                 name="storageLocation"
                 label="Kho / Tủ đông nhận"
                 rules={[{ required: true, message: 'Vui lòng chọn kho lưu trữ!' }]}
               >
-                <Select placeholder="Chọn khu vực lưu trữ">
+                <Select placeholder="Chọn khu vực lưu trữ" showSearch optionFilterProp="children">
                   <Select.Option value="Kho đông lạnh A1">Kho đông lạnh A1 (Giáp xác)</Select.Option>
                   <Select.Option value="Kho đông lạnh A2">Kho đông lạnh A2 (Cua cá)</Select.Option>
                   <Select.Option value="Kho làm mát B1">Kho làm mát B1 (Tươi sống)</Select.Option>
@@ -396,7 +394,7 @@ export const InboundPage: React.FC = () => {
                             placeholder="Chọn loại hải sản"
                             showSearch
                             optionFilterProp="label"
-                            dropdownRender={(menu) => (
+                            popupRender={(menu) => (
                               <>
                                 {menu}
                                 <Divider className="my-1" />
@@ -448,7 +446,7 @@ export const InboundPage: React.FC = () => {
                           name={[name, 'packagingCode']}
                           label="Loại Khay/Bì"
                         >
-                          <Select placeholder="Chọn loại khay/bì" allowClear>
+                          <Select placeholder="Chọn loại khay/bì" allowClear showSearch optionFilterProp="children">
                             {packagings.map((pkg) => (
                               <Select.Option key={pkg.code} value={pkg.code}>
                                 {pkg.name} ({pkg.defaultTareWeight} kg)
@@ -502,7 +500,7 @@ export const InboundPage: React.FC = () => {
                           label="Bảo quản"
                           rules={[{ required: true, message: 'Chọn!' }]}
                         >
-                          <Select>
+                          <Select showSearch optionFilterProp="children">
                             <Select.Option value="Tươi sống">Tươi sống</Select.Option>
                             <Select.Option value="Ướp đá">Ướp đá</Select.Option>
                             <Select.Option value="Cấp đông">Cấp đông</Select.Option>
@@ -632,7 +630,12 @@ export const InboundPage: React.FC = () => {
           <Row gutter={12}>
             <Col xs={24} sm={10}>
               <Form.Item name="categoryId" label="Danh Mục" rules={[{ required: true, message: 'Chọn danh mục!' }]}>
-                <Select options={categories.map((c) => ({ value: c.id, label: c.name }))} placeholder="Danh mục" />
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                  placeholder="Danh mục"
+                />
               </Form.Item>
             </Col>
             <Col xs={12} sm={7}>
@@ -642,12 +645,16 @@ export const InboundPage: React.FC = () => {
             </Col>
             <Col xs={12} sm={7}>
               <Form.Item name="storageType" label="Bảo Quản" rules={[{ required: true }]}>
-                <Select options={[
-                  { value: 'ALIVE', label: 'Tươi sống' },
-                  { value: 'FRESH', label: 'Ướp đá' },
-                  { value: 'FROZEN', label: 'Cấp đông' },
-                  { value: 'DRY', label: 'Khô' },
-                ]} />
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  options={[
+                    { value: 'ALIVE', label: 'Tươi sống' },
+                    { value: 'FRESH', label: 'Ướp đá' },
+                    { value: 'FROZEN', label: 'Cấp đông' },
+                    { value: 'DRY', label: 'Khô' },
+                  ]}
+                />
               </Form.Item>
             </Col>
           </Row>

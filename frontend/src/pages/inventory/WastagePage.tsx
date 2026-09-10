@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Select, InputNumber, Row, Col, Space, Typography, Table, Tag, DatePicker, Radio, App } from 'antd';
+import { Card, Form, Button, Select, InputNumber, Row, Col, Space, Table, Tag, DatePicker, Radio, App } from 'antd';
 import { SaveOutlined, ReloadOutlined, SwapOutlined, WarningOutlined } from '@ant-design/icons';
 import { api } from '../../services/api';
 import { useBatchStore } from '../../stores/useBatchStore';
 import { formatCurrency, formatWeight } from '../../utils/format';
-
-const { Title, Paragraph } = Typography;
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 interface WastageLog {
   id: string;
@@ -21,6 +20,7 @@ interface WastageLog {
 export const WastagePage: React.FC = () => {
   const [form] = Form.useForm();
   const { message } = App.useApp();
+  const [zoomSection, setZoomSection] = useState<'stats' | 'logs' | null>(null);
 
   const batches = useBatchStore((state) => state.batches);
 
@@ -113,9 +113,8 @@ export const WastagePage: React.FC = () => {
 
   return (
     <div className="print-constrained">
-      <div className="mb-6">
-        <Title level={2} className="m-0">Hao Hụt & Chuyển Phân Loại Hải Sản</Title>
-        <Paragraph type="secondary">Ghi nhận lượng hải sản hao hụt tự nhiên (ngợp, chết) hoặc điều chuyển phân loại bảo quản để bảo toàn giá trị kinh tế.</Paragraph>
+      <div className="mb-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">Hao Hụt & Phân Loại</h1>
       </div>
 
       <Row gutter={[24, 24]}>
@@ -141,6 +140,12 @@ export const WastagePage: React.FC = () => {
               >
                 <Select
                   placeholder="Chọn mã lô hàng"
+                  showSearch
+                  optionFilterProp="children"
+                  filterOption={(input, option) => {
+                    const text = String(option?.children ?? option?.value ?? '');
+                    return text.toLowerCase().includes(input.toLowerCase());
+                  }}
                   onChange={(val) => setSelectedBatchCode(val)}
                 >
                   {batches
@@ -189,7 +194,7 @@ export const WastagePage: React.FC = () => {
                   label="Lý do hao hụt"
                   rules={[{ required: true, message: 'Chọn hoặc nhập lý do!' }]}
                 >
-                  <Select placeholder="Chọn lý do sự cố">
+                  <Select placeholder="Chọn lý do sự cố" showSearch optionFilterProp="children">
                     <Select.Option value="Chết ngạt (Tươi sống)">Chết ngạt (Tươi sống)</Select.Option>
                     <Select.Option value="Hỏng chất lượng (Hôi ươn)">Hỏng chất lượng (Hôi ươn)</Select.Option>
                     <Select.Option value="Biến đổi màu sắc">Biến đổi màu sắc</Select.Option>
@@ -251,6 +256,7 @@ export const WastagePage: React.FC = () => {
                 <span>Báo Cáo Tỷ Lệ Hao Hụt Theo Tháng</span>
               </Space>
             }
+            extra={<ZoomButton onClick={() => setZoomSection('stats')} />}
             className="shadow-sm h-full"
           >
             <Table
@@ -285,7 +291,11 @@ export const WastagePage: React.FC = () => {
         </Col>
       </Row>
 
-      <Card title="Lịch sử nhật ký hao hụt & chuyển đổi phân loại" className="shadow-sm mt-6">
+      <Card
+        title="Lịch sử nhật ký hao hụt & chuyển đổi phân loại"
+        extra={<ZoomButton onClick={() => setZoomSection('logs')} />}
+        className="shadow-sm mt-6"
+      >
         <Table
           dataSource={logs}
           columns={logColumns}
@@ -300,6 +310,54 @@ export const WastagePage: React.FC = () => {
           scroll={{ x: 'max-content' }}
         />
       </Card>
+
+      {/* Modal Phóng To & Quay Ngang Toàn Màn Hình */}
+      <ZoomViewerModal
+        open={zoomSection !== null}
+        onClose={() => setZoomSection(null)}
+        title={
+          zoomSection === 'stats'
+            ? 'Báo Cáo Tỷ Lệ Hao Hụt Theo Tháng'
+            : 'Lịch Sử Nhật Ký Hao Hụt & Chuyển Đổi Phân Loại'
+        }
+        subtitle="Chế độ toàn màn hình tối ưu quan sát chi tiết"
+      >
+        {({ isRotated }) => (
+          <div className="w-full h-full flex flex-col p-2">
+            {zoomSection === 'stats' ? (
+              <Table
+                dataSource={monthlyStats}
+                columns={[
+                  { title: 'STT', key: 'stt', width: 55, align: 'center' as const, render: (_: any, __: any, index: number) => index + 1 },
+                  { title: 'Tháng', dataIndex: 'month', key: 'month' },
+                  { title: 'Tổng khối lượng nhập (kg)', dataIndex: 'totalInbound', key: 'totalInbound', render: (val) => `${val.toLocaleString()} kg` },
+                  { title: 'Hao hụt (kg)', dataIndex: 'totalWastage', key: 'totalWastage', render: (val) => `${val} kg` },
+                  { title: 'Tỷ lệ hao hụt (%)', dataIndex: 'rate', key: 'rate', render: (val) => <Tag color={val > 1.2 ? 'red' : 'green'}>{val}%</Tag> },
+                ]}
+                rowKey="month"
+                pagination={false}
+                size="middle"
+                scroll={{ x: 800, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+              />
+            ) : (
+              <Table
+                dataSource={logs}
+                columns={logColumns}
+                rowKey="id"
+                pagination={{
+                  current: pagination.current,
+                  pageSize: pagination.pageSize,
+                  showSizeChanger: true,
+                  pageSizeOptions: ['5', '10', '20', '50'],
+                  onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+                }}
+                size="middle"
+                scroll={{ x: 900, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+              />
+            )}
+          </div>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

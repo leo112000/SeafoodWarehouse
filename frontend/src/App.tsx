@@ -3,12 +3,32 @@ import { RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import viVN from 'antd/locale/vi_VN';
-import { queryClient } from './services/api';
+import { queryClient, handleUnauthorized } from './services/api';
 import { router } from './routes';
 import { useThemeStore } from './stores/useThemeStore';
+import { isTokenExpired } from './stores/useAuthStore';
+import { ServerStatusBanner } from './components/common/ServerStatusBanner';
 
 const App: React.FC = () => {
   const currentTheme = useThemeStore((state) => state.theme);
+
+  useEffect(() => {
+    const checkTokenExpiry = () => {
+      const token = localStorage.getItem('token');
+      if (token && isTokenExpired(token)) {
+        handleUnauthorized();
+      }
+    };
+
+    // Kiểm tra ngay khi mở web
+    checkTokenExpiry();
+
+    // Tự động kiểm tra lại khi người dùng quay lại tab trình duyệt
+    window.addEventListener('focus', checkTokenExpiry);
+    return () => {
+      window.removeEventListener('focus', checkTokenExpiry);
+    };
+  }, []);
 
   useEffect(() => {
     if (currentTheme === 'dark') {
@@ -47,6 +67,7 @@ const App: React.FC = () => {
         }}
       >
         <AntdApp>
+          <ServerStatusBanner />
           <RouterProvider router={router} />
         </AntdApp>
       </ConfigProvider>

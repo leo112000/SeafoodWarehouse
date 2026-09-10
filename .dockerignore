@@ -1,0 +1,10 @@
+**/.git
+**/.gitignore
+**/.vs
+**/bin
+**/obj
+**/node_modules
+**/dist
+playwright-report
+test-results
+e2e

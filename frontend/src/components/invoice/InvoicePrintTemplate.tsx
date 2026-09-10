@@ -54,6 +54,22 @@ export const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { data: Inv
     const totalNetWeight = data.totalNetWeight;
     const isInbound = data.type === 'INBOUND';
 
+    const { displayPartnerName, displayPartnerPhone } = React.useMemo(() => {
+      if (data.partnerPhone) {
+        return { displayPartnerName: data.partnerName, displayPartnerPhone: data.partnerPhone };
+      }
+      // If partnerName has format "Tên - 09xxx" or "Tên (09xxx)"
+      const match = data.partnerName?.match(/^(.*?)\s*[-–]\s*([0-9\+\.\s]{9,15})$/);
+      if (match) {
+        return { displayPartnerName: match[1].trim(), displayPartnerPhone: match[2].trim() };
+      }
+      const matchParen = data.partnerName?.match(/^(.*?)\s*\(([0-9\+\.\s]{9,15})\)$/);
+      if (matchParen) {
+        return { displayPartnerName: matchParen[1].trim(), displayPartnerPhone: matchParen[2].trim() };
+      }
+      return { displayPartnerName: data.partnerName, displayPartnerPhone: undefined };
+    }, [data.partnerName, data.partnerPhone]);
+
     return (
       <div ref={ref} className="invoice-print-wrapper">
         {/* ── Print-only global styles ─────────────────────────── */}
@@ -279,8 +295,14 @@ export const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { data: Inv
           </div>
           <div className="inv-info-row">
             <span className="inv-info-label">{isInbound ? 'Nhà cung cấp:' : 'Khách hàng:'}</span>
-            <span className="inv-info-value">{data.partnerName}</span>
+            <span className="inv-info-value">{displayPartnerName}</span>
           </div>
+          {displayPartnerPhone && (
+            <div className="inv-info-row">
+              <span className="inv-info-label">Số điện thoại:</span>
+              <span className="inv-info-value">{displayPartnerPhone}</span>
+            </div>
+          )}
           {data.storageLocation && (
             <div className="inv-info-row">
               <span className="inv-info-label">{isInbound ? 'Kho nhận:' : 'Kho xuất:'}</span>

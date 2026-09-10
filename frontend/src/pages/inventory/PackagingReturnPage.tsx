@@ -11,6 +11,7 @@ import dayjs from 'dayjs';
 import { usePackagingReturnStore, type PackagingLoan } from '../../stores/usePackagingReturnStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { usePackagingStore } from '../../stores/usePackagingStore';
+import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,8 @@ const PackagingReturnPage: React.FC = () => {
   const [loanModalOpen, setLoanModalOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<PackagingLoan | null>(null);
   const [partnerFilter, setPartnerFilter] = useState<string>('ALL');
+  const [activeTab, setActiveTab] = useState('ledger');
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   const [returnForm] = Form.useForm();
   const [loanForm] = Form.useForm();
@@ -249,21 +252,19 @@ const PackagingReturnPage: React.FC = () => {
     <div className="space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white m-0">
-            Quản Lý Cho Mượn & Trả Vỏ Khay/Sọt
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Theo dõi công nợ vỏ sọt theo từng đối tác và ghi nhận trả lại kho.
-          </p>
-        </div>
-        <div className="flex gap-3 flex-wrap">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
+          Quản Lý Vỏ Sọt
+        </h1>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <Button
             icon={<PlusOutlined />}
             onClick={() => setLoanModalOpen(true)}
+            size="middle"
+            className="font-medium"
           >
-            Tạo phiếu cho mượn
+            <span className="hidden sm:inline">Tạo phiếu mượn</span>
+            <span className="sm:hidden">Mượn vỏ</span>
           </Button>
           <Button
             type="primary"
@@ -276,64 +277,71 @@ const PackagingReturnPage: React.FC = () => {
                 message.info('Không có công nợ vỏ sọt nào đang mở.');
               }
             }}
-            className="bg-orange-500 hover:bg-orange-400 border-none"
+            className="bg-orange-500 hover:bg-orange-400 border-none font-medium"
+            size="middle"
           >
-            Ghi nhận Trả Vỏ Khay/Sọt
+            <span className="hidden sm:inline">Ghi nhận Trả Vỏ</span>
+            <span className="sm:hidden">Trả vỏ</span>
           </Button>
         </div>
       </div>
 
       {/* ── Summary Cards ── */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+      <Row gutter={[8, 8]}>
+        <Col xs={12} sm={12} lg={6}>
+          <Card variant="borderless" className="shadow-sm p-1 sm:p-4">
             <Statistic
-              title="Tổng số vỏ đã giao mượn"
+              title="Đã giao mượn"
               value={totalLoaned}
               suffix="cái"
-              prefix={<InboxOutlined className="text-sky-500 mr-2" />}
+              prefix={<InboxOutlined className="text-sky-500 mr-1" />}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+        <Col xs={12} sm={12} lg={6}>
+          <Card variant="borderless" className="shadow-sm p-1 sm:p-4">
             <Statistic
-              title="Đã thu hồi về kho"
+              title="Đã thu hồi"
               value={totalReturned}
               suffix="cái"
-              prefix={<CheckCircleOutlined className="text-green-500 mr-2" />}
-              valueStyle={{ color: '#22c55e' }}
+              prefix={<CheckCircleOutlined className="text-green-500 mr-1" />}
+              styles={{ content: { color: '#22c55e' } }}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+        <Col xs={12} sm={12} lg={6}>
+          <Card variant="borderless" className="shadow-sm p-1 sm:p-4">
             <Statistic
               title="Còn nợ ngoài kho"
               value={totalDebt}
               suffix="cái"
-              prefix={<WarningOutlined className="text-orange-500 mr-2" />}
-              valueStyle={{ color: totalDebt > 0 ? '#f97316' : '#22c55e' }}
+              prefix={<WarningOutlined className="text-orange-500 mr-1" />}
+              styles={{ content: { color: totalDebt > 0 ? '#f97316' : '#22c55e' } }}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+        <Col xs={12} sm={12} lg={6}>
+          <Card variant="borderless" className="shadow-sm p-1 sm:p-4">
             <Statistic
-              title="Đối tác còn công nợ"
+              title="Đối tác nợ"
               value={pendingLoans}
               suffix="phiếu"
-              prefix={<HistoryOutlined className="text-red-500 mr-2" />}
-              valueStyle={{ color: pendingLoans > 0 ? '#ef4444' : '#22c55e' }}
+              prefix={<HistoryOutlined className="text-red-500 mr-1" />}
+              styles={{ content: { color: pendingLoans > 0 ? '#ef4444' : '#22c55e' } }}
             />
           </Card>
         </Col>
       </Row>
 
       {/* ── Main Tabs ── */}
-      <Card bordered={false} className="shadow-sm">
+      <Card
+        variant="borderless"
+        className="shadow-sm"
+        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
+      >
         <Tabs
-          defaultActiveKey="ledger"
+          activeKey={activeTab}
+          onChange={setActiveTab}
           items={[
             {
               key: 'ledger',
@@ -350,6 +358,8 @@ const PackagingReturnPage: React.FC = () => {
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-sm text-slate-500">Lọc theo đối tác:</span>
                     <Select
+                      showSearch
+                      optionFilterProp="label"
                       value={partnerFilter}
                       onChange={setPartnerFilter}
                       className="w-56"
@@ -411,6 +421,30 @@ const PackagingReturnPage: React.FC = () => {
         />
       </Card>
 
+      <ZoomViewerModal
+        open={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        title={activeTab === 'ledger' ? 'Bảng Công Nợ Vỏ Sọt' : 'Lịch Sử Trả Vỏ'}
+      >
+        {activeTab === 'ledger' ? (
+          <Table
+            columns={loanColumns}
+            dataSource={filteredLoans}
+            rowKey="id"
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+          />
+        ) : (
+          <Table
+            columns={returnColumns}
+            dataSource={returns}
+            rowKey="id"
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+          />
+        )}
+      </ZoomViewerModal>
+
       {/* ── Return Modal ── */}
       <Modal
         title={
@@ -421,7 +455,7 @@ const PackagingReturnPage: React.FC = () => {
         open={returnModalOpen}
         onCancel={() => { setReturnModalOpen(false); returnForm.resetFields(); setSelectedLoan(null); }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         {selectedLoan && (
           <div className="mb-4 p-3 rounded-lg bg-orange-50 border border-orange-200 text-sm">
@@ -493,7 +527,7 @@ const PackagingReturnPage: React.FC = () => {
         onCancel={() => { setLoanModalOpen(false); loanForm.resetFields(); }}
         footer={null}
         width={850}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={loanForm}
@@ -514,10 +548,14 @@ const PackagingReturnPage: React.FC = () => {
             </Col>
             <Col span={8}>
               <Form.Item name="partnerType" label="Loại đối tác" rules={[{ required: true }]}>
-                <Select options={[
-                  { value: 'CUSTOMER', label: 'Khách hàng' },
-                  { value: 'SUPPLIER', label: 'Nhà cung cấp' },
-                ]} />
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  options={[
+                    { value: 'CUSTOMER', label: 'Khách hàng' },
+                    { value: 'SUPPLIER', label: 'Nhà cung cấp' },
+                  ]}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -529,9 +567,14 @@ const PackagingReturnPage: React.FC = () => {
                 label="Loại Khay / Sọt"
                 rules={[{ required: true, message: 'Chọn loại khay!' }]}
               >
-                <Select placeholder="Chọn loại bao bì" options={
-                  packagings.map((p) => ({ value: p.code, label: `${p.name} (${p.defaultTareWeight} kg)` }))
-                } />
+                <Select
+                  placeholder="Chọn loại bao bì"
+                  showSearch
+                  optionFilterProp="label"
+                  options={
+                    packagings.map((p) => ({ value: p.code, label: `${p.name} (${p.defaultTareWeight} kg)` }))
+                  }
+                />
               </Form.Item>
             </Col>
             <Col span={8}>

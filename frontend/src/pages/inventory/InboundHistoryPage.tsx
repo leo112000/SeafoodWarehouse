@@ -9,8 +9,9 @@ import { InvoiceModal } from '../../components/invoice/InvoiceModal';
 import type { InvoicePrintData } from '../../types';
 import { useAuthStore } from '../../stores/useAuthStore';
 import dayjs from 'dayjs';
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
-const { Title, Paragraph } = Typography;
+const { Title } = Typography;
 
 /** Map an InboundReceipt → InvoicePrintData for the shared InvoiceModal */
 const toInvoiceData = (receipt: InboundReceipt, staffName: string): InvoicePrintData => {
@@ -56,6 +57,7 @@ export const InboundHistoryPage: React.FC = () => {
   // Invoice print modal state
   const [invoiceData, setInvoiceData] = useState<InvoicePrintData | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   // Filters state
   const [supplierQuery, setSupplierQuery] = useState('');
@@ -246,32 +248,30 @@ export const InboundHistoryPage: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-6">
-        <Title level={2} className="m-0">Lịch Sử Nhập Kho Hải Sản</Title>
-        <Paragraph type="secondary">
-          Danh sách tất cả các phiếu nhập kho đã được thực hiện, lọc theo ngày và nhà cung cấp.
-        </Paragraph>
+      <div className="mb-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">Lịch Sử Nhập Kho</h1>
       </div>
 
       <Card className="shadow-sm mb-6">
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} md={8}>
+        <Row gutter={[8, 8]} align="middle">
+          <Col xs={24} md={10}>
             <Input
-              placeholder="Tìm theo nhà cung cấp..."
+              placeholder="Tìm theo NCC, mã phiếu, mã lô, tên hải sản..."
               prefix={<SearchOutlined className="text-gray-400" />}
               value={supplierQuery}
               onChange={(e) => {
                 setSupplierQuery(e.target.value);
                 setPagination((prev) => ({ ...prev, current: 1 }));
               }}
-              size="large"
+              size="middle"
+              allowClear
             />
           </Col>
-          <Col xs={24} md={8}>
+          <Col xs={12} sm={12} md={7}>
             <DatePicker
               placeholder="Chọn ngày nhập..."
               className="w-full"
-              size="large"
+              size="middle"
               value={filterDate ? dayjs(filterDate) : null}
               onChange={(date) => {
                 setFilterDate(date ? date.format('YYYY-MM-DD') : null);
@@ -279,27 +279,30 @@ export const InboundHistoryPage: React.FC = () => {
               }}
             />
           </Col>
-          <Col xs={24} md={8}>
-            <Space className="w-full justify-end">
+          <Col xs={12} sm={12} md={7}>
+            <div className="flex items-center justify-end gap-1.5 w-full">
               {(supplierQuery || filterDate) && (
-                <Button icon={<ReloadOutlined />} onClick={handleResetFilters}>
-                  Xóa lọc
-                </Button>
+                <Button icon={<ReloadOutlined />} onClick={handleResetFilters} size="middle" />
               )}
               <Button
                 type="primary"
                 icon={<FileExcelOutlined />}
-                className="bg-emerald-600 hover:bg-emerald-700 border-none"
+                className="bg-emerald-600 hover:bg-emerald-700 border-none flex-1 sm:flex-initial"
                 onClick={handleExportExcel}
+                size="middle"
               >
-                Xuất Excel (.xlsx)
+                Xuất Excel
               </Button>
-            </Space>
+            </div>
           </Col>
         </Row>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card
+        title="📥 Danh Sách Phiếu Nhập Kho"
+        extra={<ZoomButton onClick={() => setIsZoomed(true)} />}
+        className="shadow-sm rounded-2xl"
+      >
         <Table
           dataSource={filteredReceipts}
           columns={columns}
@@ -387,6 +390,33 @@ export const InboundHistoryPage: React.FC = () => {
         data={invoiceData}
         onClose={() => setIsInvoiceModalOpen(false)}
       />
+
+      {/* Modal Phóng To Bảng Nhập Kho & Quay Ngang */}
+      <ZoomViewerModal
+        open={isZoomed}
+        onClose={() => setIsZoomed(false)}
+        title="📥 Lịch Sử Phiếu Nhập Kho Hải Sản"
+        subtitle={`Hiển thị ${filteredReceipts.length} phiếu nhập kho chi tiết`}
+      >
+        {({ isRotated }) => (
+          <div className="w-full h-full flex flex-col">
+            <Table
+              dataSource={filteredReceipts}
+              columns={columns}
+              rowKey="id"
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                showSizeChanger: true,
+                pageSizeOptions: ['5', '10', '20', '50'],
+                onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+              }}
+              scroll={{ x: 1000, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+              size="middle"
+            />
+          </div>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

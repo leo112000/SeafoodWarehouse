@@ -41,6 +41,23 @@ public static class DependencyInjection
         services.AddScoped(typeof(IRepository<>), typeof(GenericRepository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+        // Caching Architecture: Hybrid Redis với DistributedMemoryCache fallback
+        var redisConn = configuration.GetConnectionString("Redis") ?? configuration["Redis:Configuration"];
+        if (!string.IsNullOrWhiteSpace(redisConn))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConn;
+                options.InstanceName = "SeafoodWarehouse_";
+            });
+        }
+        else
+        {
+            services.AddDistributedMemoryCache();
+        }
+
+        services.AddSingleton<ICacheService, SeafoodWarehouseManagement.Infrastructure.Services.DistributedCacheService>();
+
         return services;
     }
 }

@@ -26,10 +26,11 @@ import {
 import { reportService } from '../../services/reportService';
 import { formatCurrency, formatWeight } from '../../utils/format';
 import { exportReportToExcel } from '../../utils/excelExporter';
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 dayjs.extend(isoWeek);
 
-const { Title, Paragraph, Text } = Typography;
+const { Text } = Typography;
 const { RangePicker } = DatePicker;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -47,14 +48,6 @@ const QUARTER_OPTIONS = [
   { value: 4, label: 'Quý 4 (Oct–Dec)' },
 ];
 const YEAR_OPTIONS = [2022, 2023, 2024, 2025, 2026].map((y) => ({ value: y, label: `Năm ${y}` }));
-
-const MODE_LABELS: Record<ReportMode, string> = {
-  week: 'theo Tuần',
-  month: 'theo Tháng',
-  quarter: 'theo Quý',
-  year: 'theo Năm',
-  custom: 'Tùy chỉnh',
-};
 
 // ─── Custom Tooltip for Bar/Line Chart ───────────────────────────────────────
 
@@ -106,124 +99,101 @@ const KpiCard: React.FC<KpiCardProps> = ({
   icon, color, trend, trendText,
 }) => (
   <Card
-    className="shadow-md h-full"
-    style={{ borderTop: `4px solid ${color}` }}
-    bodyStyle={{ padding: '20px' }}
+    className="shadow-xs rounded-xl h-full"
+    style={{ borderTop: `3px solid ${color}` }}
+    styles={{ body: { padding: '12px 14px' } }}
   >
-    <div className="flex items-start justify-between mb-3">
-      <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</div>
-      <div style={{ color, fontSize: 24, opacity: 0.85 }}>{icon}</div>
+    <div className="flex items-start justify-between mb-1.5">
+      <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider truncate">{title}</div>
+      <div style={{ color, fontSize: 18, opacity: 0.9 }}>{icon}</div>
     </div>
-    <div className="mb-1">
-      <span className="text-2xl font-bold text-gray-800 dark:text-gray-100">{primaryValue}</span>
-      <span className="text-xs text-gray-400 ml-1">{primaryLabel}</span>
+    <div className="mb-0.5">
+      <span className="text-base sm:text-xl font-black text-gray-800 dark:text-gray-100">{primaryValue}</span>
+      {primaryLabel && <span className="text-[10px] text-gray-400 ml-1">{primaryLabel}</span>}
     </div>
-    <div className="text-base font-semibold text-gray-600 dark:text-gray-300 mb-3">
+    <div className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5 truncate">
       {secondaryValue}
-      <span className="text-xs text-gray-400 ml-1">{secondaryLabel}</span>
+      {secondaryLabel && <span className="text-[10px] text-gray-400 ml-1">({secondaryLabel})</span>}
     </div>
     {trendText && (
-      <div className={`text-xs font-medium flex items-center gap-1 ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : 'text-gray-400'
-        }`}>
+      <div className={`text-[10px] font-semibold flex items-center gap-1 truncate ${
+        trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-rose-500' : 'text-gray-400'
+      }`}>
         {trend === 'up' ? <ArrowUpOutlined /> : trend === 'down' ? <ArrowDownOutlined /> : null}
-        {trendText}
+        <span className="truncate">{trendText}</span>
       </div>
     )}
   </Card>
 );
 
-// ─── Top Items Table Columns ──────────────────────────────────────────────────
+// ─── Top Items Table Columns (Gộp Cột Gọn Gàng) ───────────────────────────────
 
 const TOP_ITEMS_COLUMNS: ColumnsType<TopItem> = [
   {
     title: 'STT',
     dataIndex: 'rank',
     key: 'rank',
-    width: 60,
+    width: 50,
     align: 'center' as const,
     render: (rank: number) => {
       const colors: Record<number, string> = { 1: '#f59e0b', 2: '#9ca3af', 3: '#b45309' };
       return (
-        <span
-          style={{ color: colors[rank] ?? '#6b7280', fontWeight: rank <= 3 ? 700 : 500 }}
-        >
+        <span style={{ color: colors[rank] ?? '#6b7280', fontWeight: rank <= 3 ? 800 : 500 }}>
           {rank <= 3 ? '★' : ''} {rank}
         </span>
       );
     },
   },
   {
-    title: 'Tên Mặt Hàng',
+    title: 'Hải Sản / Nhóm',
     dataIndex: 'name',
     key: 'name',
     render: (name: string, record: TopItem) => (
       <div>
-        <div className="font-semibold text-gray-800 dark:text-gray-200">{name}</div>
-        <Tag color="blue" className="text-xs mt-0.5">{record.categoryName}</Tag>
+        <div className="font-bold text-gray-800 dark:text-gray-100 text-xs sm:text-sm">{name}</div>
+        <Tag color="blue" className="text-[10px] leading-tight px-1 py-0 mt-0.5 border-0">
+          {record.categoryName}
+        </Tag>
       </div>
     ),
   },
   {
-    title: 'Nhập (kg)',
-    dataIndex: 'inboundKg',
-    key: 'inboundKg',
+    title: 'Nhập Kho',
+    key: 'inbound',
     align: 'right',
-    render: (val: number) => (
-      <span className="text-blue-600 font-semibold">{val.toLocaleString('vi-VN')}</span>
+    render: (_, r) => (
+      <div>
+        <div className="text-blue-600 font-bold text-xs sm:text-sm">{r.inboundKg.toLocaleString('vi-VN')} kg</div>
+        <div className="text-[11px] text-gray-500 font-medium">{formatCurrency(r.inboundAmount || 0)}</div>
+      </div>
     ),
     sorter: (a, b) => a.inboundKg - b.inboundKg,
   },
   {
-    title: 'Tiền Nhập (VNĐ)',
-    dataIndex: 'inboundAmount',
-    key: 'inboundAmount',
+    title: 'Xuất Kho',
+    key: 'outbound',
     align: 'right',
-    render: (val?: number) => (
-      <span className="text-blue-700 font-medium">{formatCurrency(val || 0)}</span>
-    ),
-    sorter: (a, b) => (a.inboundAmount || 0) - (b.inboundAmount || 0),
-  },
-  {
-    title: 'Xuất (kg)',
-    dataIndex: 'outboundKg',
-    key: 'outboundKg',
-    align: 'right',
-    render: (val: number) => (
-      <span className="text-orange-600 font-semibold">{val.toLocaleString('vi-VN')}</span>
+    render: (_, r) => (
+      <div>
+        <div className="text-orange-600 font-bold text-xs sm:text-sm">{r.outboundKg.toLocaleString('vi-VN')} kg</div>
+        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{formatCurrency(r.outboundAmount || 0)}</div>
+      </div>
     ),
     sorter: (a, b) => a.outboundKg - b.outboundKg,
   },
   {
-    title: 'Doanh Thu Xuất (VNĐ)',
-    dataIndex: 'outboundAmount',
-    key: 'outboundAmount',
+    title: 'Tồn Kho Hiện Tại',
+    key: 'stock',
     align: 'right',
-    render: (val?: number) => (
-      <span className="text-orange-700 font-medium">{formatCurrency(val || 0)}</span>
-    ),
-    sorter: (a, b) => (a.outboundAmount || 0) - (b.outboundAmount || 0),
-  },
-  {
-    title: 'Tồn (kg)',
-    dataIndex: 'stockKg',
-    key: 'stockKg',
-    align: 'right',
-    render: (val: number) => (
-      <span className={val < 50 ? 'text-red-500 font-bold' : 'text-green-600 font-semibold'}>
-        {val.toLocaleString('vi-VN')}
-      </span>
+    render: (_, r) => (
+      <div>
+        <div className={`font-bold text-xs sm:text-sm ${r.stockKg < 50 ? 'text-red-500' : 'text-emerald-600'}`}>
+          {r.stockKg.toLocaleString('vi-VN')} kg
+        </div>
+        <div className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">{formatCurrency(r.stockValue)}</div>
+      </div>
     ),
     sorter: (a, b) => a.stockKg - b.stockKg,
-  },
-  {
-    title: 'Giá Trị Tồn (VNĐ)',
-    dataIndex: 'stockValue',
-    key: 'stockValue',
-    align: 'right',
-    render: (val: number) => (
-      <span className="font-semibold text-purple-600 dark:text-purple-400">{formatCurrency(val)}</span>
-    ),
-    sorter: (a, b) => a.stockValue - b.stockValue,
   },
 ];
 
@@ -238,6 +208,7 @@ export const ReportsPage: React.FC = () => {
   const [selectedQuarter, setSelectedQuarter] = useState<number>(Math.ceil(CURRENT_MONTH / 3));
   const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
   const [customRange, setCustomRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [zoomSection, setZoomSection] = useState<'chart' | 'table' | null>(null);
 
   const [data, setData] = useState<ReportData>(EMPTY_REPORT_DATA);
 
@@ -306,187 +277,204 @@ export const ReportsPage: React.FC = () => {
   return (
     <div id="reports-page">
       {/* ── Page Header ───────────────────────────────────────────────────── */}
-      <div className="mb-6">
-        <Title level={2} className="m-0">Báo Cáo Thống Kê Tổng Hợp</Title>
-        <Paragraph type="secondary">
-          Phân tích sản lượng nhập – xuất, tồn kho và hao hụt hải sản {MODE_LABELS[mode]}.
-        </Paragraph>
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
+          Báo Cáo Thống Kê
+        </h1>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Tooltip title="Xuất báo cáo ra file Excel">
+            <Button
+              type="primary"
+              icon={<DownloadOutlined />}
+              onClick={handleExport}
+              size="middle"
+              className="bg-emerald-600 hover:bg-emerald-700 border-none font-semibold"
+            >
+              <span className="hidden sm:inline">Xuất Excel</span>
+            </Button>
+          </Tooltip>
+          <Tooltip title="In báo cáo">
+            <Button icon={<PrinterOutlined />} onClick={handlePrint} size="middle" />
+          </Tooltip>
+        </div>
       </div>
 
       {/* ── Filter Bar ────────────────────────────────────────────────────── */}
-      <Card className="shadow-sm mb-6" bodyStyle={{ padding: '16px 20px' }}>
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Mode selector */}
-          <Radio.Group
-            value={mode}
-            onChange={handleModeChange}
-            optionType="button"
-            buttonStyle="solid"
-            size="middle"
-          >
-            <Radio.Button value="week">Tuần</Radio.Button>
-            <Radio.Button value="month">Tháng</Radio.Button>
-            <Radio.Button value="quarter">Quý</Radio.Button>
-            <Radio.Button value="year">Năm</Radio.Button>
-            <Radio.Button value="custom">Tùy Chỉnh</Radio.Button>
-          </Radio.Group>
+      <Card className="shadow-sm mb-4 rounded-2xl" styles={{ body: { padding: '10px 14px' } }}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Mode selector */}
+            <Radio.Group
+              value={mode}
+              onChange={handleModeChange}
+              optionType="button"
+              buttonStyle="solid"
+              size="middle"
+              className="flex-shrink-0"
+            >
+              <Radio.Button value="week">Tuần</Radio.Button>
+              <Radio.Button value="month">Tháng</Radio.Button>
+              <Radio.Button value="quarter">Quý</Radio.Button>
+              <Radio.Button value="year">Năm</Radio.Button>
+              <Radio.Button value="custom">Tùy Chọn</Radio.Button>
+            </Radio.Group>
 
-          {/* Period sub-selector */}
-          <div className="flex items-center gap-2">
-            {mode === 'week' && (
-              <>
+            {/* Period sub-selector */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {mode === 'week' && (
+                <>
+                  <Select
+                    value={selectedWeek}
+                    onChange={setSelectedWeek}
+                    options={WEEK_OPTIONS}
+                    className="w-28 sm:w-32"
+                    showSearch
+                    optionFilterProp="label"
+                  />
+                  <Select
+                    value={selectedYear}
+                    onChange={setSelectedYear}
+                    options={YEAR_OPTIONS}
+                    className="w-24 sm:w-28"
+                    showSearch
+                    optionFilterProp="label"
+                  />
+                </>
+              )}
+              {mode === 'month' && (
+                <>
+                  <Select
+                    value={selectedMonth}
+                    onChange={setSelectedMonth}
+                    options={MONTH_OPTIONS}
+                    className="w-28 sm:w-32"
+                    showSearch
+                    optionFilterProp="label"
+                  />
+                  <Select
+                    value={selectedYear}
+                    onChange={setSelectedYear}
+                    options={YEAR_OPTIONS}
+                    className="w-24 sm:w-28"
+                    showSearch
+                    optionFilterProp="label"
+                  />
+                </>
+              )}
+              {mode === 'quarter' && (
+                <>
+                  <Select
+                    value={selectedQuarter}
+                    onChange={setSelectedQuarter}
+                    options={QUARTER_OPTIONS}
+                    className="w-36 sm:w-44"
+                    showSearch
+                    optionFilterProp="label"
+                  />
+                  <Select
+                    value={selectedYear}
+                    onChange={setSelectedYear}
+                    options={YEAR_OPTIONS}
+                    className="w-24 sm:w-28"
+                    showSearch
+                    optionFilterProp="label"
+                  />
+                </>
+              )}
+              {mode === 'year' && (
                 <Select
-                  value={selectedWeek}
-                  onChange={setSelectedWeek}
-                  options={WEEK_OPTIONS}
-                  className="w-32"
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                  options={YEAR_OPTIONS}
+                  className="w-28 sm:w-36"
                   showSearch
+                  optionFilterProp="label"
                 />
-                <Select
-                  value={selectedYear}
-                  onChange={setSelectedYear}
-                  options={YEAR_OPTIONS}
-                  className="w-28"
+              )}
+              {mode === 'custom' && (
+                <RangePicker
+                  value={customRange}
+                  onChange={(dates) => setCustomRange(dates as [Dayjs | null, Dayjs | null] | null)}
+                  format="DD/MM/YYYY"
+                  className="w-64 sm:w-72"
+                  placeholder={['Từ ngày', 'Đến ngày']}
                 />
-              </>
-            )}
-            {mode === 'month' && (
-              <>
-                <Select
-                  value={selectedMonth}
-                  onChange={setSelectedMonth}
-                  options={MONTH_OPTIONS}
-                  className="w-32"
-                />
-                <Select
-                  value={selectedYear}
-                  onChange={setSelectedYear}
-                  options={YEAR_OPTIONS}
-                  className="w-28"
-                />
-              </>
-            )}
-            {mode === 'quarter' && (
-              <>
-                <Select
-                  value={selectedQuarter}
-                  onChange={setSelectedQuarter}
-                  options={QUARTER_OPTIONS}
-                  className="w-44"
-                />
-                <Select
-                  value={selectedYear}
-                  onChange={setSelectedYear}
-                  options={YEAR_OPTIONS}
-                  className="w-28"
-                />
-              </>
-            )}
-            {mode === 'year' && (
-              <Select
-                value={selectedYear}
-                onChange={setSelectedYear}
-                options={YEAR_OPTIONS}
-                className="w-36"
-              />
-            )}
-            {mode === 'custom' && (
-              <RangePicker
-                value={customRange}
-                onChange={(dates) => setCustomRange(dates as [Dayjs | null, Dayjs | null] | null)}
-                format="DD/MM/YYYY"
-                className="w-72"
-                placeholder={['Từ ngày', 'Đến ngày']}
-              />
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="ml-auto flex gap-2">
-            <Tooltip title="Xuất báo cáo ra file Excel">
-              <Button icon={<DownloadOutlined />} onClick={handleExport}>
-                Xuất Excel
-              </Button>
-            </Tooltip>
-            <Tooltip title="In báo cáo">
-              <Button icon={<PrinterOutlined />} onClick={handlePrint}>
-                In Báo Cáo
-              </Button>
-            </Tooltip>
+          <div className="text-xs text-gray-400 flex items-center gap-1">
+            <BarChartOutlined className="text-sky-500" />
+            <span>Kỳ xem:</span> <strong className="text-sky-600">{periodLabel}</strong>
           </div>
-        </div>
-
-        <div className="mt-3 text-xs text-gray-400">
-          <BarChartOutlined className="mr-1" />
-          Đang xem: <span className="font-semibold text-sky-600">{periodLabel}</span>
         </div>
       </Card>
 
-      {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
-      <Row gutter={[16, 16]} className="mb-6">
-        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
+      {/* ── KPI Cards (Gộp 2 Cột Trên Mobile) ───────────────────────────── */}
+      <Row gutter={[10, 10]} className="mb-4">
+        <Col xs={12} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 140 }}>
           <KpiCard
             title="Tổng Nhập Kho"
             primaryValue={summary.totalInboundKg.toLocaleString('vi-VN')}
             primaryLabel="kg"
             secondaryValue={formatCurrency(summary.totalInboundAmount)}
-            secondaryLabel="tổng tiền nhập"
+            secondaryLabel="tiền nhập"
             icon={<ArrowDownOutlined />}
             color="#3b82f6"
             trend="up"
-            trendText="Tăng so với kỳ trước"
+            trendText="Tăng so với trước"
           />
         </Col>
-        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
+        <Col xs={12} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 140 }}>
           <KpiCard
             title="Tổng Xuất Kho"
             primaryValue={summary.totalOutboundKg.toLocaleString('vi-VN')}
             primaryLabel="kg"
             secondaryValue={formatCurrency(summary.totalOutboundAmount)}
-            secondaryLabel="doanh thu bán"
+            secondaryLabel="doanh thu"
             icon={<ArrowUpOutlined />}
             color="#0284c7"
             trend="up"
-            trendText="Tăng so với kỳ trước"
+            trendText="Tăng so với trước"
           />
         </Col>
-        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
+        <Col xs={12} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 140 }}>
           <KpiCard
-            title="Lợi Nhuận Gộp Kho"
+            title="Lợi Nhuận Gộp"
             primaryValue={formatCurrency(summary.grossProfit || 0)}
             primaryLabel=""
             secondaryValue={`${summary.profitMarginPercent || 0}%`}
-            secondaryLabel="tỷ suất lợi nhuận"
+            secondaryLabel="tỷ suất lãi"
             icon={<RiseOutlined />}
             color={(summary.grossProfit || 0) >= 0 ? "#10b981" : "#ef4444"}
             trend={(summary.grossProfit || 0) >= 0 ? "up" : "down"}
-            trendText={(summary.grossProfit || 0) >= 0 ? "Kinh doanh có lãi" : "Cần điều chỉnh giá"}
+            trendText={(summary.grossProfit || 0) >= 0 ? "Kinh doanh lãi" : "Cần chỉnh giá"}
           />
         </Col>
-        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
+        <Col xs={12} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 140 }}>
           <KpiCard
             title="Tồn Kho Hiện Tại"
             primaryValue={summary.stockKg.toLocaleString('vi-VN')}
             primaryLabel="kg tồn"
             secondaryValue={formatCurrency(summary.stockValue)}
-            secondaryLabel="giá trị tồn kho"
+            secondaryLabel="giá trị tồn"
             icon={<RiseOutlined />}
             color="#8b5cf6"
             trend="neutral"
             trendText="Ổn định"
           />
         </Col>
-        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 210 }}>
+        <Col xs={24} sm={12} md={8} lg={4.8} style={{ flex: '1 1 18%', minWidth: 140 }}>
           <KpiCard
             title="Hao Hụt / Tổn Thất"
             primaryValue={summary.wastageKg.toLocaleString('vi-VN')}
             primaryLabel="kg hỏng"
             secondaryValue={`${summary.lossRate}%`}
-            secondaryLabel="tỷ lệ tổn thất"
+            secondaryLabel="tỷ lệ hụt"
             icon={<FallOutlined />}
             color="#ef4444"
             trend={summary.lossRate > 2 ? 'down' : 'up'}
-            trendText={summary.lossRate > 2 ? 'Cần kiểm soát' : 'Trong ngưỡng an toàn'}
+            trendText={summary.lossRate > 2 ? 'Cần kiểm soát' : 'Trong ngưỡng'}
           />
         </Col>
       </Row>
@@ -502,6 +490,7 @@ export const ReportsPage: React.FC = () => {
                 <span>Biến Động Sản Lượng Nhập – Xuất ({periodLabel})</span>
               </Space>
             }
+            extra={<ZoomButton onClick={() => setZoomSection('chart')} />}
             className="shadow-sm h-full"
           >
             <ResponsiveContainer width="100%" height={320}>
@@ -609,9 +598,12 @@ export const ReportsPage: React.FC = () => {
         }
         className="shadow-sm"
         extra={
-          <Text type="secondary" className="text-xs">
-            {periodLabel}
-          </Text>
+          <Space>
+            <Text type="secondary" className="text-xs hidden sm:inline">
+              {periodLabel}
+            </Text>
+            <ZoomButton onClick={() => setZoomSection('table')} />
+          </Space>
         }
       >
         <Table<TopItem>
@@ -635,22 +627,16 @@ export const ReportsPage: React.FC = () => {
                   <strong>Tổng cộng (Top 10)</strong>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <span className="text-blue-600">{totalInKg.toLocaleString('vi-VN')}</span>
+                  <div className="text-blue-600 font-bold">{totalInKg.toLocaleString('vi-VN')} kg</div>
+                  <div className="text-[11px] text-gray-500 font-medium">{formatCurrency(totalInAmount)}</div>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={3} align="right">
-                  <span className="text-blue-700">{formatCurrency(totalInAmount)}</span>
+                  <div className="text-orange-600 font-bold">{totalOutKg.toLocaleString('vi-VN')} kg</div>
+                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{formatCurrency(totalOutAmount)}</div>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={4} align="right">
-                  <span className="text-orange-600">{totalOutKg.toLocaleString('vi-VN')}</span>
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={5} align="right">
-                  <span className="text-orange-700">{formatCurrency(totalOutAmount)}</span>
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={6} align="right">
-                  <span className="text-green-600">{totalStockKg.toLocaleString('vi-VN')}</span>
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={7} align="right">
-                  <span className="text-purple-600">{formatCurrency(totalStockValue)}</span>
+                  <div className="text-emerald-600 font-bold">{totalStockKg.toLocaleString('vi-VN')} kg</div>
+                  <div className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">{formatCurrency(totalStockValue)}</div>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             );
@@ -678,6 +664,66 @@ export const ReportsPage: React.FC = () => {
           ))}
         </Row>
       </Card>
+
+      {/* Modal Phóng To Báo Cáo & Quay Ngang */}
+      <ZoomViewerModal
+        open={zoomSection !== null}
+        onClose={() => setZoomSection(null)}
+        title={
+          zoomSection === 'chart'
+            ? `Biến Động Sản Lượng Nhập – Xuất (${periodLabel})`
+            : `Top 10 Mặt Hàng Xuất/Nhập Nhiều Nhất (${periodLabel})`
+        }
+        subtitle={`Dữ liệu thống kê tổng hợp chi tiết theo ${periodLabel}`}
+      >
+        {({ isRotated }) => (
+          <div className="w-full h-full flex flex-col p-2">
+            {zoomSection === 'chart' ? (
+              <div className="w-full h-full min-h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  {barData.length > 8 ? (
+                    <LineChart data={barData} margin={{ top: 15, right: 30, left: 10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 13, fontWeight: 600 }} />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                      />
+                      <RechartTooltip content={<CustomBarTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: 13, paddingTop: 10 }} />
+                      <Line type="monotone" dataKey="Nhập (kg)" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="Xuất (kg)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={barData} margin={{ top: 15, right: 30, left: 10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 13, fontWeight: 600 }} />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                      />
+                      <RechartTooltip content={<CustomBarTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: 13, paddingTop: 10 }} />
+                      <Bar dataKey="Nhập (kg)" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="Xuất (kg)" fill="#10b981" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <Table<TopItem>
+                dataSource={data.topItems}
+                columns={TOP_ITEMS_COLUMNS}
+                rowKey="name"
+                pagination={false}
+                size="middle"
+                scroll={{ x: 850, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+                rowClassName={(_, index) => index < 3 ? 'bg-amber-50 dark:bg-amber-900/10' : ''}
+              />
+            )}
+          </div>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

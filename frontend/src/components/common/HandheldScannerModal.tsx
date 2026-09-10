@@ -195,6 +195,8 @@ export const HandheldScannerModal: React.FC<HandheldScannerModalProps> = ({
                 <Select
                   size="small"
                   className="flex-1 text-xs"
+                  showSearch
+                  optionFilterProp="label"
                   value={selectedCameraId}
                   onChange={(id) => {
                     setSelectedCameraId(id);

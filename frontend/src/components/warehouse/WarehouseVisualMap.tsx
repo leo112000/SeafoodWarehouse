@@ -190,7 +190,7 @@ export const WarehouseVisualMap: React.FC<WarehouseVisualMapProps> = ({
             <Tag color="cyan" className="font-semibold ml-2">Bản đồ tương tác 2D</Tag>
           </div>
           <p className="text-xs text-sky-200 mt-1 mb-0">
-            Giám sát nhiệt độ buồng lạnh, tỷ lệ lấp đầy từng dãy kệ và vị trí chi tiết của từng lô hải sản.
+            Giám sát trực quan tỷ lệ lấp đầy từng dãy kệ và vị trí chi tiết của từng lô hải sản.
           </p>
         </div>
 
@@ -236,7 +236,7 @@ export const WarehouseVisualMap: React.FC<WarehouseVisualMapProps> = ({
                 </div>
               }
               extra={
-                <div className="flex items-center gap-2 w-48 text-xs">
+                <div className="hidden sm:flex items-center gap-2 w-44 text-xs">
                   <span className="text-gray-500 whitespace-nowrap">Lấp đầy:</span>
                   <Progress percent={zonePercent} size="small" status={zonePercent > 85 ? 'exception' : 'active'} />
                 </div>
@@ -328,7 +328,7 @@ export const WarehouseVisualMap: React.FC<WarehouseVisualMapProps> = ({
           </div>
         }
         placement="right"
-        width={450}
+        styles={{ wrapper: { width: typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : 450 } }}
         onClose={() => setSelectedBin(null)}
         open={!!selectedBin}
       >

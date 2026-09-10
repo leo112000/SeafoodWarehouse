@@ -1,0 +1,272 @@
+
+  <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+        xmlns:w="urn:schemas-microsoft-com:office:word" 
+        xmlns="http://www.w3.org/TR/REC-html40">
+  <head>
+    <meta charset="utf-8">
+    <title>Hướng Dẫn Sử Dụng Hệ Thống - Seafood WMS</title>
+    <!--[if gte mso 9]>
+    <xml>
+      <w:WordDocument>
+        <w:View>Print</w:View>
+        <w:Zoom>100</w:Zoom>
+        <w:DoNotOptimizeForBrowser/>
+      </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+      body {
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #1e293b;
+        margin: 2.5cm 2cm 2.5cm 2.5cm;
+      }
+      h1 { font-family: 'Arial', sans-serif; font-size: 20pt; color: #0369a1; text-transform: uppercase; }
+      h2 { font-family: 'Arial', sans-serif; font-size: 14pt; color: #0284c7; }
+      h3 { font-family: 'Arial', sans-serif; font-size: 12pt; color: #0f172a; }
+      p { margin-bottom: 8px; text-align: justify; }
+      table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+      th { background-color: #0284c7; color: white; border: 1px solid #94a3b8; padding: 7px; font-family: 'Arial', sans-serif; font-size: 10pt; }
+      td { border: 1px solid #cbd5e1; padding: 6px; font-size: 10pt; font-family: 'Arial', sans-serif; }
+      tr:nth-child(even) { background-color: #f8fafc; }
+      li { margin-bottom: 4px; }
+      .header-cover {
+        text-align: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #0284c7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header-cover">
+      <h1 style="margin:0;">HỆ THỐNG QUẢN LÝ KHO HẢI SẢN (SEAFOOD WMS)</h1>
+      <h3 style="color:#0284c7; margin-top:6px;">TÀI LIỆU HƯỚNG DẪN SỬ DỤNG DÀNH CHO NGƯỜI DÙNG CUỐI (USER MANUAL)</h3>
+      <p style="text-align:center; font-style:italic; color:#64748b; margin-top:4px;">
+        Chuyên viên Đào tạo & Triển khai WMS &bull; Giao diện React / Ant Design &bull; 23/08/2026
+      </p>
+    </div>
+    <h1 style="color:#0284c7; font-family:Arial, sans-serif; font-size:22pt; text-align:center; margin-bottom:6px;">TÀI LIỆU HƯỚNG DẪN SỬ DỤNG HỆ THỐNG</h1>
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">HỆ THỐNG QUẢN LÝ KHO THỦY HẢI SẢN (SEAFOOD WAREHOUSE MANAGEMENT SYSTEM - WMS)</h2>
+
+---
+
+<strong>Dành cho</strong>: Thủ kho, Nhân viên Kiểm hàng (QC), Quản lý Kho, Kế toán Kho
+<strong>Phiên bản ứng dụng</strong>: 2.0 (Giao diện React / Ant Design)
+<strong>Ngày phát hành</strong>: 23/08/2026
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">MỤC LỤC</h2>
+1. [HƯỚNG DẪN ĐĂNG NHẬP & TỔNG QUAN GIAO DIỆN](#1-hướng-dẫn-đăng-nhập--tổng-quan-giao-diện)
+<li style="margin-bottom:5px;">1.1. [Đăng nhập & Đổi mật khẩu cá nhân](#11-đăng-nhập--đổi-mật-khẩu-cá-nhân)</li>
+<li style="margin-bottom:5px;">1.2. [Bố cục màn hình & Chuyển đổi Giao diện (Sáng / Tối)](#12-bố-cục-màn-hình--chuyển-đổi-giao-diện-sáng--tối)</li>
+<li style="margin-bottom:5px;">1.3. [Xem & Khai thác Bảng Điều Khiển Tổng Quan (Dashboard)](#13-xem--khai-thác-bảng-điều-khiển-tổng-quan-dashboard)</li>
+2. [QUY TRÌNH VẬN HÀNH NGHIỆP VỤ (STEP-BY-STEP)](#2-quy-trình-vận-hành-nghiệp-vụ-step-by-step)
+<li style="margin-bottom:5px;">2.1. [Quy trình 1: Khai báo Danh mục Hải sản, Vỏ sọt Bao bì & Vị trí Kho Lạnh](#21-quy-trình-1-khai-báo-danh-mục-hải-sản-vỏ-sọt-bao-bì--vị-trí-kho-lạnh)</li>
+<li style="margin-bottom:5px;">2.2. [Quy trình 2: Tiếp nhận & Tạo Phiếu Nhập Kho Hải sản (Inbound)](#22-quy-trình-2-tiếp-nhận--tạo-phiếu-nhập-kho-hải-sản-inbound)</li>
+<li style="margin-bottom:5px;">2.3. [Quy trình 3: Tạo & Xử lý Phiếu Xuất Kho theo Chiến lược FEFO (Outbound)](#23-quy-trình-3-tạo--xử-lý-phiếu-xuất-kho-theo-chiến-lược-fefo-outbound)</li>
+<li style="margin-bottom:5px;">2.4. [Quy trình 4: Quản lý Sơ đồ Kho 2D, Kiểm kê & Xử lý Hao hụt Khối lượng](#24-quy-trình-4-quản-lý-sơ-đồ-kho-2d-kiểm-kê--xử-lý-hao-hụt-khối-lượng)</li>
+3. [HƯỚNG DẪN SỬ DỤNG CHẾ ĐỘ MÁY QUÉT CẦM TAY (PDA SCANNER MODE)](#3-hướng-dẫn-sử-dụng-chế-độ-máy-quét-cầm-tay-pda-scanner-mode)
+4. [XỬ LÝ SỰ CỐ & CÁC LỖI THƯỜNG GẶP (TROUBLESHOOTING & FAQS)](#4-xử-lý-sự-cố--các-lỗi-thường-gặp-troubleshooting--faqs)
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">1. HƯỚNG DẪN ĐĂNG NHẬP & TỔNG QUAN GIAO DIỆN</h2>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">1.1. Đăng nhập & Đổi mật khẩu cá nhân</h3>
+1. Mở trình duyệt web (Google Chrome, Edge) và truy cập vào địa chỉ hệ thống kho.
+2. Tại màn hình Đăng nhập:
+<li style="margin-bottom:5px;">Nhập <strong>Tên đăng nhập / Email</strong> (Ví dụ: <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">thukho1@seafood.vn</code> hoặc <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">admin</code>).</li>
+<li style="margin-bottom:5px;">Nhập <strong>Mật khẩu</strong>.</li>
+<li style="margin-bottom:5px;">Bấm nút <strong>"Đăng nhập"</strong> (màu xanh dương).</li>
+3. <strong>Đổi mật khẩu cá nhân</strong>:
+<li style="margin-bottom:5px;">Nhấp chuột vào <strong>Avatar (Hình đại diện)</strong> ở góc trên bên phải màn hình -> Chọn <strong>"Đổi mật khẩu"</strong>.</li>
+<li style="margin-bottom:5px;">Nhập Mật khẩu hiện tại -> Nhập Mật khẩu mới -> Xác nhận mật khẩu mới -> Bấm <strong>"Cập nhật"</strong>.</li>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">1.2. Bố cục màn hình & Chuyển đổi Giao diện (Sáng / Tối)</h3>
+<li style="margin-bottom:5px;"><strong>Thanh Menu bên trái (Sidebar)</strong>: Chứa toàn bộ các phân hệ nghiệp vụ:</li>
+<li style="margin-bottom:5px;">📊 <strong>Bảng điều khiển</strong>: Xem tổng quan chỉ số, cảnh báo, biểu đồ luồng hàng.</li>
+<li style="margin-bottom:5px;">🗄️ <strong>Quản lý kho</strong>: Tồn kho hiện tại, 🗺️ Sơ đồ kho 2D, Nhập kho, Xuất kho, Lịch sử giao dịch, Hao hụt & Phân loại, Thu hồi vỏ sọt.</li>
+<li style="margin-bottom:5px;">📁 <strong>Dữ liệu nền</strong>: Nhóm danh mục, Hải sản, Kho bãi, Bao bì, Đối tác tàu cá & Khách hàng.</li>
+<li style="margin-bottom:5px;">📈 <strong>Báo cáo & Phân tích</strong>: Thống kê tổng hợp, Cảnh báo kho lạnh.</li>
+<li style="margin-bottom:5px;"><strong>Thanh Header trên cùng</strong>:</li>
+<li style="margin-bottom:5px;">Nút <strong><code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">📱 Quét PDA</code></strong> (Màu xanh): Mở ngay màn hình máy quét mã vạch chuyên dụng.</li>
+<li style="margin-bottom:5px;">Nút <strong>Mặt trời / Mặt trăng</strong>: Chuyển đổi chế độ <strong>Giao diện Tối (Dark Mode)</strong> giúp chống chói mắt khi làm việc ban đêm trong kho lạnh.</li>
+<li style="margin-bottom:5px;">Nút <strong>Chuông thông báo</strong>: Hiển thị các cảnh báo nhiệt độ kho hoặc lô hàng cận hạn.</li>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">1.3. Xem & Khai thác Bảng Điều Khiển Tổng Quan (Dashboard)</h3>
+Ngay khi đăng nhập, màn hình Dashboard cung cấp 4 khối thông tin quan trọng:
+1. <strong>Khối Cảnh báo Khẩn (Băng đỏ trên cùng)</strong>:
+<li style="margin-bottom:5px;">Thông báo ngay số lượng <em>Lô hàng sắp hết hạn</em>, <em>Tủ đông lệch nhiệt độ</em>, <em>Mặt hàng sắp cạn kho</em>.</li>
+<li style="margin-bottom:5px;">Nhấp trực tiếp vào thẻ để xem chi tiết danh sách cảnh báo.</li>
+2. <strong>Khối 4 Thẻ Chỉ Số Phát Sáng (KPI Cards)</strong>:
+<li style="margin-bottom:5px;"><strong>Tổng Tồn Kho Hiện Tại</strong>: Tổng khối lượng (Kg) và Ước tính tổng giá trị hàng tồn (VNĐ).</li>
+<li style="margin-bottom:5px;"><strong>Nhập Kho Hôm Nay</strong>: Số Kg nhập và tổng số phiếu nhập trong ngày.</li>
+<li style="margin-bottom:5px;"><strong>Xuất Kho Hôm Nay</strong>: Số Kg xuất và tổng số giao dịch xuất cho khách.</li>
+<li style="margin-bottom:5px;"><strong>Tỷ Lệ Hao Hụt Tháng</strong>: Tỷ lệ % hao hụt so với định mức cho phép (<= 2.0%).</li>
+3. <strong>Biểu đồ Sản lượng Nhập - Xuất 7 ngày & Cơ cấu Tồn kho</strong>:
+<li style="margin-bottom:5px;">Cột xanh dương (Nhập), Cột xanh lá (Xuất).</li>
+<li style="margin-bottom:5px;">Biểu đồ tròn thể hiện tỷ trọng giữa các nhóm (Cá đông lạnh, Tôm, Cua ghẹ, Thân mềm).</li>
+4. <strong>Thao Tác Nhanh</strong>: Các nút bấm lớn dẫn thẳng đến <em>Sơ đồ kho 2D</em>, <em>Nhập kho</em>, <em>Xuất kho</em>, <em>Báo hao hụt</em>.
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">2. QUY TRÌNH VẬN HÀNH NGHIỆP VỤ (STEP-BY-STEP)</h2>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">2.1. Quy trình 1: Khai báo Danh mục Hải sản, Vỏ sọt Bao bì & Vị trí Kho Lạnh</h3>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">Bước 1: Khai báo Sản phẩm Hải sản</h4>
+1. Vào menu <strong>Dữ liệu nền</strong> -> Chọn <strong>"Danh mục hải sản"</strong>.
+2. Nhấn nút <strong>"+ Thêm mới sản phẩm"</strong> (góc phải trên).
+3. Điền các trường thông tin trong Modal:
+<li style="margin-bottom:5px;"><strong>Mã sản phẩm</strong>: Nhập mã duy nhất (Ví dụ: <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">CA-HOI-01</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">TOM-SU-20</code>).</li>
+<li style="margin-bottom:5px;"><strong>Tên hải sản</strong>: Nhập tên thương phẩm (Ví dụ: <em>Cá Hồi Na Uy Phi Lê</em>).</li>
+<li style="margin-bottom:5px;"><strong>Nhóm danh mục</strong>: Chọn từ danh sách (<em>Cá tươi, Cá đông lạnh, Tôm/Cua...</em>).</li>
+<li style="margin-bottom:5px;"><strong>Loại bảo quản</strong>: Chọn <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Cấp đông sâu (-25°C)</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Kho mát</code>, hoặc <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">Bể oxy</code>.</li>
+<li style="margin-bottom:5px;"><strong>Hạn bảo quản tối đa (Ngày)</strong>: Ví dụ <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">180</code> ngày đối với hàng đông lạnh hoặc <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">3</code> ngày đối với hàng sống.</li>
+<li style="margin-bottom:5px;"><strong>Ngưỡng tồn tối thiểu (Kg)</strong>: Nhập mức cảnh báo cạn hàng (Ví dụ: <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">500</code> kg).</li>
+4. Bấm <strong>"Lưu thông tin"</strong> -> Hệ thống hiển thị thông báo xanh: <em>"Thêm sản phẩm thành công"</em>.
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">Bước 2: Khai báo Vỏ sọt / Bao bì Luân chuyển</h4>
+1. Vào menu <strong>Dữ liệu nền</strong> -> Chọn <strong>"Danh mục bao bì"</strong>.
+2. Bấm <strong>"+ Thêm loại bao bì"</strong>:
+<li style="margin-bottom:5px;"><strong>Mã bao bì</strong>: Ví dụ <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">SOT-VANG-20KG</code>, <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">KHAY-CAPDONG</code>.</li>
+<li style="margin-bottom:5px;"><strong>Tên quy cách</strong>: <em>Sọt nhựa vàng tiêu chuẩn 20kg</em>.</li>
+<li style="margin-bottom:5px;"><strong>Trọng lượng bì (Tare weight - Kg)</strong>: Ví dụ <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">1.8</code> kg (Trọng lượng này sẽ tự động trừ đi khi cân cả sọt hàng).</li>
+<li style="margin-bottom:5px;"><strong>Giá trị cọc (VNĐ)</strong>: Ví dụ <code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">50.000</code> VNĐ/vỏ sọt.</li>
+3. Bấm <strong>"Xác nhận"</strong>.
+
+---
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">2.2. Quy trình 2: Tiếp nhận & Tạo Phiếu Nhập Kho Hải sản (Inbound)</h3>
+
+``<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">mermaid
+graph TD
+A[Bốc dỡ sọt từ Tàu cá / NCC] --> B[Cân tổng khối lượng Gross Weight]
+B --> C[Đo nhiệt độ tiếp nhận & Đánh giá phẩm cấp Grade A/B/C]
+C --> D[Mở trang Nhập kho & Điền thông tin phiếu]
+D --> E[Hệ thống tự động trừ Trọng lượng bì & Sinh mã Lô LOT]
+E --> F[In Tem nhãn Barcode dán lên sọt]
+F --> G[Xếp hàng vào Ô kệ kho lạnh theo chỉ định]
+</code>`<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">Chi tiết các bước thực hiện trên phần mềm:</h4>
+1. Vào menu <strong>Quản lý kho</strong> -> Chọn <strong>"Nhập kho hải sản"</strong> (hoặc bấm phím tắt trên Dashboard).
+2. <strong>Phần Thông Tin Chung</strong>:
+<li style="margin-bottom:5px;"><strong>Chọn Tàu cá / Nhà cung cấp</strong>: Chọn tên đối tác (Ví dụ: <em>Tàu cá Kiên Giang KG-94567-TS</em>).</li>
+<li style="margin-bottom:5px;"><strong>Chọn Kho tiếp nhận</strong>: Chọn kho (Ví dụ: <em>Tổng Kho Lạnh A</em>).</li>
+<li style="margin-bottom:5px;"><strong>Ngày nhập</strong>: Mặc định ngày giờ hiện tại.</li>
+3. <strong>Phần Chi Tiết Lô Hàng</strong>:
+<li style="margin-bottom:5px;"><strong>Sản phẩm</strong>: Chọn hải sản cần nhập.</li>
+<li style="margin-bottom:5px;"><strong>Khối lượng tổng cân được (Gross)</strong>: Nhập số cân đo được.</li>
+<li style="margin-bottom:5px;"><strong>Loại sọt & Số lượng sọt</strong>: Chọn loại sọt (Hệ thống sẽ lấy <em>Số sọt x Trọng lượng bì</em> để tự động tính ra <strong>Khối lượng tịnh thực tế Net Weight</strong>).</li>
+<li style="margin-bottom:5px;"><strong>Đơn giá thu mua</strong>: Nhập giá/kg.</li>
+<li style="margin-bottom:5px;"><strong>Ngày đánh bắt / Cấp đông</strong>: Chọn ngày.</li>
+<li style="margin-bottom:5px;"><strong>Hạn sử dụng</strong>: Chọn hạn dùng (Hệ thống tự gợi ý theo số ngày bảo quản của sản phẩm).</li>
+<li style="margin-bottom:5px;"><strong>Nhiệt độ lúc nhập (°C)</strong>: Nhập số đo nhiệt kế (Ví dụ: </code>-21.0<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">).</li>
+<li style="margin-bottom:5px;"><strong>Phẩm cấp</strong>: Chọn </code>Grade A<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"> (Loại 1 tươi ngon), </code>Grade B<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"> (Loại 2), hoặc </code>Grade C<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">.</li>
+<li style="margin-bottom:5px;"><strong>Vị trí xếp kho</strong>: Chọn Ô kệ đích (Ví dụ: Ô </code>A1-01<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">).</li>
+4. <strong>Lưu & In Mã Tem Nhãn</strong>:
+<li style="margin-bottom:5px;">Nhấn nút <strong>"Lưu & In Mã Tem"</strong> (Màu xanh lá).</li>
+<li style="margin-bottom:5px;">Hệ thống phát âm thanh <strong>Beep</strong> thành công, cấp mã lô định dạng </code>LOT-YYYYMMDD-XXXX<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;"> và mở cửa sổ in tem mã vạch QR.</li>
+<li style="margin-bottom:5px;">Dán tem in lên thân sọt hàng và tiến hành xếp sọt vào đúng vị trí ô kệ đã đăng ký.</li>
+
+---
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">2.3. Quy trình 3: Tạo & Xử lý Phiếu Xuất Kho theo Chiến lược FEFO (Outbound)</h3>
+
+> <strong>LƯU Ý CỐT LÕI (FEFO)</strong>: Hệ thống luôn ưu tiên bắt buộc xuất các lô hàng có <strong>Hạn sử dụng gần nhất</strong> trước để đảm bảo hải sản không bị suy giảm chất lượng hoặc tồn kho quá lâu.
+
+</code>`<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">mermaid
+graph TD
+A[Nhận đơn đặt hàng từ Khách] --> B[Mở màn hình Xuất kho & Chọn Khách hàng]
+B --> C[Hệ thống tự động đề xuất Lô Hàng Cận Hạn Nhất FEFO]
+C --> D[Thủ kho đến đúng Ô Kệ & Dùng PDA quét mã trên sọt]
+D --> E{Quét đúng lô FEFO?}
+E -- Đúng --> F[Phát tiếng Beep & Xác nhận khối lượng xuất]
+E -- Sai / Quá hạn --> G[Phát tiếng Buzzer cảnh báo đỏ]
+F --> H[Ghi nhận vỏ sọt trả/mượn & In phiếu xuất kho A4]
+</code>`<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">Chi tiết các bước thực hiện trên phần mềm:</h4>
+1. Vào menu <strong>Quản lý kho</strong> -> Chọn <strong>"Xuất kho hải sản"</strong>.
+2. Chọn <strong>Khách hàng / Đại lý thu mua</strong> và <strong>Kho xuất</strong>.
+3. Chọn mặt hàng cần xuất -> Hệ thống tự động kích hoạt <strong>Thuật toán Gợi ý FEFO</strong>:
+<li style="margin-bottom:5px;">Bảng danh sách hiển thị các lô hàng khả dụng, <strong>lô có hạn dùng ngắn nhất được xếp lên vị trí số 1</strong> kèm biểu tượng ngôi sao ưu tiên và vị trí ô kệ (Ví dụ: <em>Lô LOT-20260810-001 tại Kệ A1-02 còn hạn 14 ngày</em>).</li>
+4. <strong>Xác thực quét mã bằng Máy quét / Camera PDA</strong>:
+<li style="margin-bottom:5px;">Bấm nút <strong>"Quét mã xác thực"</strong> trên dòng lô hàng.</li>
+<li style="margin-bottom:5px;">Đưa máy quét vào mã QR trên sọt:</li>
+<li style="margin-bottom:5px;">Nếu quét đúng: Hệ thống phát tiếng <strong>Beep</strong>, hiển thị dấu tick xanh và tự động điền mã lô.</li>
+<li style="margin-bottom:5px;">Nếu quét sai lô: Hệ thống phát tiếng <strong>Buzzer</strong> cảnh báo và hiển thị hộp thoại: <em>"Cảnh báo: Lô này không phải lô ưu tiên xuất trước theo nguyên tắc FEFO"</em>.</li>
+5. Nhập <strong>Khối lượng xuất thực tế (Kg)</strong> và <strong>Đơn giá bán</strong>.
+6. <strong>Giao mượn / Thu hồi vỏ sọt</strong>:
+<li style="margin-bottom:5px;">Nhập số lượng sọt khách trả lại tại chỗ.</li>
+<li style="margin-bottom:5px;">Nhập số lượng sọt cho khách mượn chở hàng về (Công nợ sọt sẽ tự động ghi vào hồ sơ khách hàng).</li>
+7. Bấm <strong>"Hoàn tất Phiếu Xuất"</strong> -> In phiếu xuất kho 2 liên (1 liên lưu kho, 1 liên giao tài xế/khách).
+
+---
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">2.4. Quy trình 4: Quản lý Sơ đồ Kho 2D, Kiểm kê & Xử lý Hao hụt Khối lượng</h3>
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">1. Sử dụng Sơ đồ Kho Lạnh 2D (Visual Map)</h4>
+1. Vào menu <strong>Quản lý kho</strong> -> Chọn <strong>"🗺️ Sơ đồ kho 2D"</strong> (đường dẫn </code>/inventory/map<code style="background:#f1f5f9; padding:2px 5px; border-radius:4px; font-family:Consolas, monospace; font-size:10pt; color:#0369a1;">).
+2. Quan sát trực quan các phân khu:
+<li style="margin-bottom:5px;"><strong>Zone A</strong>: Cấp đông sâu (-25°C ~ -18°C).</li>
+<li style="margin-bottom:5px;"><strong>Zone B</strong>: Kho mát (-18°C ~ -10°C).</li>
+<li style="margin-bottom:5px;"><strong>Zone C</strong>: Bể sống oxy (15°C ~ 18°C).</li>
+3. Nhìn màu sắc của các ô:
+<li style="margin-bottom:5px;">🟢 <strong>Xanh lá</strong>: Ô trống hoặc còn nhiều chỗ (< 50%).</li>
+<li style="margin-bottom:5px;">🟡 <strong>Vàng</strong>: Ô đã chứa 50% - 85%.</li>
+<li style="margin-bottom:5px;">🔴 <strong>Đỏ</strong>: Ô đầy tải (> 85%).</li>
+<li style="margin-bottom:5px;">🟣 <strong>Tím nhấp nháy</strong>: Trong ô có lô hàng <strong>Cận Date</strong> cần ưu tiên xuất gấp!</li>
+4. <strong>Xem chi tiết & Thao tác nhanh</strong>: Nhấp chuột vào bất kỳ ô nào -> Cửa sổ bên phải hiển thị danh sách toàn bộ các lô đang lưu -> Bấm nút <strong>"Xuất nhanh lô này"</strong> để tạo phiếu xuất tức thì.
+
+<h4 style="color:#0369a1; font-family:Arial, sans-serif; font-size:11pt; margin-top:14px; margin-bottom:6px;">2. Xử lý Hao hụt Khối lượng & Hạ phẩm cấp (Wastage)</h4>
+Khi kiểm tra phát hiện hải sản bị hao hụt trọng lượng do thoát hơi nước trữ đông hoặc hư hỏng:
+1. Vào menu <strong>Quản lý kho</strong> -> Chọn <strong>"Hao hụt & Phân loại"</strong>.
+2. Bấm <strong>"+ Tạo biên bản hao hụt"</strong>:
+<li style="margin-bottom:5px;">Chọn <strong>Lô hàng</strong> phát sinh sự cố.</li>
+<li style="margin-bottom:5px;">Chọn <strong>Lý do</strong>: <em>Mất nước tự nhiên (Shrinkage), Hư hỏng rã đông, Chết trong bể oxy, hoặc Hạ phẩm cấp (Grade A -> Grade B)</em>.</li>
+<li style="margin-bottom:5px;">Nhập <strong>Khối lượng hao hụt (Kg)</strong>.</li>
+<li style="margin-bottom:5px;">Chọn <strong>Biện pháp xử lý</strong>: <em>Hủy bỏ tiêu hủy, Bán thanh lý giảm giá, hoặc Tái chế làm thức ăn gia súc</em>.</li>
+3. Bấm <strong>"Gửi phê duyệt"</strong>:
+<li style="margin-bottom:5px;">Phiếu dưới 5 triệu VNĐ: Thủ kho tự duyệt và hệ thống trừ tồn kho ngay.</li>
+<li style="margin-bottom:5px;">Phiếu trên 5 triệu VNĐ: Chuyển trạng thái <em>"Chờ Quản lý duyệt"</em> trước khi trừ tồn kho.</li>
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">3. HƯỚNG DẪN SỬ DỤNG CHẾ ĐỘ MÁY QUÉT CẦM TAY (PDA SCANNER MODE)</h2>
+
+Chế độ <strong>Quét PDA</strong> được thiết kế đặc biệt cho công nhân mang găng tay bảo hộ dày, thao tác bằng một tay trong kho lạnh.
+
+1. Bấm nút <strong></code>📱 Quét PDA`</strong> trên thanh Header (hoặc phím tắt nhanh).
+2. Màn hình quét toàn diện hiện ra:
+<li style="margin-bottom:5px;"><strong>Khung Camera Viewfinder</strong>: Có đường tia laser xanh quét lên xuống.</li>
+<li style="margin-bottom:5px;"><strong>Công tắc "Âm báo"</strong>: Bật/Tắt âm thanh phản hồi (Mặc định: BẬT).</li>
+<li style="margin-bottom:5px;"><strong>Công tắc "Quét liên tục"</strong>: Khi BẬT, máy sẽ quét liên tiếp nhiều sọt mà không bị đóng màn hình.</li>
+3. Hướng đầu đọc hoặc camera vào mã QR trên sọt hải sản:
+<li style="margin-bottom:5px;">Ngay khi quét được, hệ thống phát tiếng <strong>Beep</strong> và hiển thị ngay: <em>Tên hải sản, Mã lô, Vị trí ô kệ, Số kg tồn và Hạn dùng</em>.</li>
+<li style="margin-bottom:5px;">Phía dưới có sẵn nút bấm to: <strong>"Tạo Phiếu Xuất Kho Với Mã Này"</strong> hoặc <strong>"Tạo Phiếu Nhập Kho"</strong>.</li>
+
+---
+
+<h2 style="color:#0f172a; font-family:Arial, sans-serif; font-size:15pt; border-bottom:2px solid #0284c7; padding-bottom:5px; margin-top:28px; margin-bottom:12px;">4. XỬ LÝ SỰ CỐ & CÁC LỖI THƯỜNG GẶP (TROUBLESHOOTING & FAQS)</h2>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">4.1. Bảng Tra Cứu Thông Báo Lỗi & Cách Khắc Phục</h3>
+
+<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse; width:100%; border:1px solid #cbd5e1; margin:16px 0; font-size:10pt;"><tr style="background:#0284c7; color:#ffffff; font-weight:bold;"><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Mã / Hiện tượng lỗi</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Nguyên nhân</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; font-family:Arial, sans-serif;">Hướng dẫn xử lý</th></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">⚠️ <strong>"Cảnh báo: Lô hàng không theo nguyên tắc FEFO"</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Bạn đang chọn hoặc quét một lô có hạn sử dụng dài hơn trong khi kho vẫn còn lô cận hạn hơn.</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Khắc phục</strong>: Kiểm tra lại gợi ý FEFO màu xanh trên đầu danh sách và lấy đúng lô cận hạn xuất trước. Nếu khách yêu cầu đích danh lô mới, cần nhập lý do giải trình.</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">❌ <strong>"Lô hàng đã quá hạn sử dụng (Expired)"</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Hạn sử dụng của lô nhỏ hơn ngày hiện tại.</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Khắc phục</strong>: Hệ thống tự động khóa không cho xuất bán thương phẩm. Vui lòng chuyển sang phân hệ <em>Hao hụt & Phân loại</em> để lập biên bản xử lý hủy hoặc bán thanh lý bột cá.</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">📷 <strong>"Không nhận được hình ảnh Camera"</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Trình duyệt chưa được cấp quyền truy cập Camera hoặc Camera đang bị ứng dụng khác chiếm giữ.</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Khắc phục</strong>: 1. Bấm nút <strong>"Thử kết nối lại"</strong>; 2. Kiểm tra biểu tượng ổ khóa cạnh thanh địa chỉ web để "Cho phép (Allow) Camera"; 3. Chọn lại Camera sau trong danh sách dropdown.</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">⚠️ <strong>"Mã quét hợp lệ nhưng chưa gắn với lô hàng tồn"</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Mã QR/Barcode vừa quét là mã mới in chưa nhập kho hoặc đã xuất hết sạch tồn (Qty = 0).</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Khắc phục</strong>: Kiểm tra lại xem phiếu Nhập kho của lô này đã được bấm lưu thành công chưa tại trang <em>Lịch sử giao dịch</em>.</td></tr><tr style="border-bottom:1px solid #e2e8f0;"><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">🚫 <strong>"Số lượng xuất vượt quá tồn kho thực tế"</strong></td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;">Nhập số Kg xuất lớn hơn số Kg còn lại trong lô.</td><td style="border:1px solid #cbd5e1; padding:6px; font-family:Arial, sans-serif;"><strong>Khắc phục</strong>: Kiểm tra lại số cân tồn hiển thị trên màn hình. Nếu thực tế trong kho còn nhiều hơn do cân sai lúc nhập, cần báo Quản lý làm phiếu điều chỉnh tồn.</td></tr></table>
+
+<h3 style="color:#0284c7; font-family:Arial, sans-serif; font-size:13pt; margin-top:20px; margin-bottom:8px;">4.2. Các Câu Hỏi Thường Gặp (FAQs)</h3>
+<li style="margin-bottom:5px;"><strong>Q: Tại sao khi cân một sọt cá 21.8 kg hệ thống chỉ ghi nhận 20.0 kg?</strong>  </li>
+<em>A: Vì hệ thống đã tự động trừ đi 1.8 kg Trọng lượng bì (Tare weight) của vỏ sọt nhựa vàng mà bạn đã chọn.</em>
+<li style="margin-bottom:5px;"><strong>Q: Làm thế nào khi mất mạng Internet trong lúc đang quét hàng trong kho lạnh?</strong>  </li>
+<em>A: Hệ thống có bộ đệm lưu trữ tạm thời. Sau khi thiết bị bắt lại sóng Wi-Fi kho, hãy bấm nút "Làm mới" (Reload) để dữ liệu đồng bộ hoàn toàn lên máy chủ.</em>
+
+---
+<em>Tài liệu này được lưu hành nội bộ phục vụ đào tạo nhân sự vận hành hệ thống Seafood Warehouse Management System.</em>
+
+  </body>
+  </html>
+  

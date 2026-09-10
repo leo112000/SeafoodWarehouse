@@ -17,10 +17,57 @@ namespace Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "9.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.AppNotification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DataJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Link")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NotificationName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AppNotifications");
+                });
 
             modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.AuditLog", b =>
                 {
@@ -32,7 +79,8 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Action")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Browser")
                         .IsRequired()
@@ -67,24 +115,32 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("TargetModule")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Timestamp")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UserName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("UserRole")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Timestamp")
+                        .HasDatabaseName("IX_AuditLogs_Tenant_Timestamp");
 
                     b.ToTable("AuditLogs");
                 });
@@ -170,7 +226,13 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("LotBatchId");
 
-                    b.HasIndex("WarehouseId");
+                    b.HasIndex("TenantId", "WarehouseId")
+                        .HasDatabaseName("IX_InventoryItems_Tenant_Warehouse");
+
+                    b.HasIndex("WarehouseId", "LotBatchId")
+                        .HasDatabaseName("IX_InventoryItems_Warehouse_LotBatch");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("WarehouseId", "LotBatchId"), new[] { "StorageBin", "Quantity" });
 
                     b.ToTable("InventoryItems");
                 });
@@ -250,9 +312,18 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("DestinationWarehouseId");
 
-                    b.HasIndex("LotBatchId");
+                    b.HasIndex("ReferenceNumber")
+                        .HasDatabaseName("IX_InventoryTransactions_ReferenceNumber");
 
                     b.HasIndex("SourceWarehouseId");
+
+                    b.HasIndex("LotBatchId", "Type")
+                        .HasDatabaseName("IX_InventoryTransactions_LotBatch_Type");
+
+                    b.HasIndex("TenantId", "CreatedAt")
+                        .HasDatabaseName("IX_InventoryTransactions_Tenant_CreatedAt");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("TenantId", "CreatedAt"), new[] { "Type", "Quantity", "ReferenceNumber" });
 
                     b.ToTable("InventoryTransactions");
                 });
@@ -325,12 +396,155 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BatchCode")
-                        .IsUnique();
+                    b.HasIndex("BatchCode");
 
-                    b.HasIndex("ProductId");
+                    b.HasIndex("ProductId", "ExpirationDate")
+                        .HasDatabaseName("IX_LotBatches_FEFO")
+                        .HasFilter("[CurrentQuantity] > 0 AND [IsDeleted] = 0");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ProductId", "ExpirationDate"), new[] { "BatchCode", "CurrentQuantity" });
+
+                    b.HasIndex("TenantId", "BatchCode")
+                        .HasDatabaseName("IX_LotBatches_Tenant_BatchCode");
 
                     b.ToTable("LotBatches");
+                });
+
+            modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.OutboundReceipt", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("DiscountReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ReferenceNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("SuppliesTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TotalWeightKg")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReferenceNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_OutboundReceipts_ReferenceNumber");
+
+                    b.HasIndex("TenantId", "CreatedAt")
+                        .HasDatabaseName("IX_OutboundReceipts_Tenant_CreatedAt");
+
+                    b.ToTable("OutboundReceipts");
+                });
+
+            modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.OutboundSupply", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("OutboundReceiptId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PackagingCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OutboundReceiptId");
+
+                    b.ToTable("OutboundSupplies");
                 });
 
             modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.Packaging", b =>
@@ -404,20 +618,26 @@ namespace Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int>("PackagingId")
                         .HasColumnType("int");
 
                     b.Property<string>("PartnerName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("PartnerType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int>("ReturnedQty")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TenantId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -426,6 +646,12 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PackagingId");
+
+                    b.HasIndex("TenantId", "LoanDate")
+                        .HasDatabaseName("IX_PackagingLoans_Tenant_LoanDate");
+
+                    b.HasIndex("TenantId", "PartnerName", "PackagingId")
+                        .HasDatabaseName("IX_PackagingLoans_Tenant_Partner_Packaging");
 
                     b.ToTable("PackagingLoans");
                 });
@@ -460,6 +686,9 @@ namespace Infrastructure.Migrations
                     b.Property<int>("ReturnedQty")
                         .HasColumnType("int");
 
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -468,6 +697,68 @@ namespace Infrastructure.Migrations
                     b.HasIndex("PackagingLoanId");
 
                     b.ToTable("PackagingReturns");
+                });
+
+            modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.Partner", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContactPerson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TaxCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Partners");
                 });
 
             modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.Product", b =>
@@ -764,6 +1055,48 @@ namespace Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.UserNotification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("NotificationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("State")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotificationId");
+
+                    b.HasIndex("UserId", "State", "CreatedAt")
+                        .HasDatabaseName("IX_UserNotifications_User_State_CreatedAt");
+
+                    b.ToTable("UserNotifications");
+                });
+
             modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.UserRole", b =>
                 {
                     b.Property<int>("Id")
@@ -811,6 +1144,9 @@ namespace Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -908,12 +1244,23 @@ namespace Infrastructure.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.OutboundSupply", b =>
+                {
+                    b.HasOne("SeafoodWarehouseManagement.Domain.Entities.OutboundReceipt", "OutboundReceipt")
+                        .WithMany("Supplies")
+                        .HasForeignKey("OutboundReceiptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("OutboundReceipt");
+                });
+
             modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.PackagingLoan", b =>
                 {
                     b.HasOne("SeafoodWarehouseManagement.Domain.Entities.Packaging", "Packaging")
                         .WithMany("Loans")
                         .HasForeignKey("PackagingId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Packaging");
@@ -952,6 +1299,25 @@ namespace Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.UserNotification", b =>
+                {
+                    b.HasOne("SeafoodWarehouseManagement.Domain.Entities.AppNotification", "Notification")
+                        .WithMany("UserNotifications")
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SeafoodWarehouseManagement.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notification");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.UserRole", b =>
                 {
                     b.HasOne("SeafoodWarehouseManagement.Domain.Entities.Role", "Role")
@@ -971,6 +1337,11 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.AppNotification", b =>
+                {
+                    b.Navigation("UserNotifications");
+                });
+
             modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.Category", b =>
                 {
                     b.Navigation("Products");
@@ -981,6 +1352,11 @@ namespace Infrastructure.Migrations
                     b.Navigation("InventoryItems");
 
                     b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.OutboundReceipt", b =>
+                {
+                    b.Navigation("Supplies");
                 });
 
             modelBuilder.Entity("SeafoodWarehouseManagement.Domain.Entities.Packaging", b =>

@@ -4,6 +4,7 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, SafetyCertificateOutlined, 
 import type { Role } from '../../types/seafood';
 import { PERMISSION_CATEGORIES, PERMISSIONS } from '../../stores/useRoleStore';
 import { roleService } from '../../services/roleService';
+import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
 
 type RoleFormValues = Pick<Role, 'name' | 'description' | 'permissions'>;
 
@@ -11,6 +12,7 @@ export const RolesPage: React.FC = () => {
   const { message } = App.useApp();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [form] = Form.useForm<RoleFormValues>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -116,12 +118,11 @@ export const RolesPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 m-0">Quản Lý Vai Trò & Phân Quyền</h1>
-          <p className="text-gray-500 mt-1">Cấu hình vai trò và gán quyền chi tiết cho nhân viên trong hệ thống.</p>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 m-0 truncate">Quản Lý Vai Trò & Phân Quyền</h1>
         </div>
-        <Space wrap>
+        <Space wrap size="small">
           <Button icon={<ReloadOutlined />} onClick={fetchRoles} loading={loading}>
             Làm mới
           </Button>
@@ -131,9 +132,21 @@ export const RolesPage: React.FC = () => {
         </Space>
       </div>
 
-      <Card className="shadow-sm">
+      <Card
+        className="shadow-sm"
+        title="Danh sách vai trò & quyền hạn"
+        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
+      >
         <Table dataSource={roles} columns={columns} rowKey="id" loading={loading} pagination={false} scroll={{ x: 700 }} />
       </Card>
+
+      <ZoomViewerModal
+        open={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        title="Danh sách vai trò & quyền hạn"
+      >
+        <Table dataSource={roles} columns={columns} rowKey="id" loading={loading} pagination={false} scroll={{ x: 'max-content' }} />
+      </ZoomViewerModal>
 
       <Modal
         title={

@@ -194,8 +194,9 @@ public class AuthController : BaseApiController
             {
                 isPasswordValid = true;
             }
-            else if (user.PasswordHash == request.Password || request.Password == "Admin@123" || request.Password == "123456")
+            else if (!string.IsNullOrEmpty(user.PasswordHash) && user.PasswordHash == request.Password)
             {
+                // Tự động nâng cấp mã hóa sang BCrypt cho các tài khoản cũ chưa băm mật khẩu
                 isPasswordValid = true;
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
                 await _context.SaveChangesAsync(cancellationToken);

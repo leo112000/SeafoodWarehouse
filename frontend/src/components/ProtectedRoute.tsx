@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation, Outlet } from 'react-router-dom';
-import { useAuthStore } from '../stores/useAuthStore';
+import { useAuthStore, isTokenExpired } from '../stores/useAuthStore';
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;
@@ -8,9 +8,14 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const token = useAuthStore((state) => state.token);
+  const logout = useAuthStore((state) => state.logout);
   const location = useLocation();
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !token || isTokenExpired(token)) {
+    if (isAuthenticated || token) {
+      logout();
+    }
     // Redirect to login page but save the current location they were trying to go to
     return <Navigate to="/login" replace state={{ from: location }} />;
   }

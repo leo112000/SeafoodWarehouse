@@ -22,37 +22,49 @@ public class UpdateSettingDto
 public class SettingsController : BaseApiController
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICacheService _cacheService;
+    private readonly ICurrentTenant _currentTenant;
 
-    public SettingsController(IApplicationDbContext context)
+    public SettingsController(IApplicationDbContext context, ICacheService cacheService, ICurrentTenant currentTenant)
     {
         _context = context;
+        _cacheService = cacheService;
+        _currentTenant = currentTenant;
     }
 
+    private string GetCacheKey() => $"settings:{(_currentTenant.Id.HasValue ? $"t{_currentTenant.Id.Value}" : "host")}";
+
     /// <summary>
-    /// Lấy cài đặt hệ thống hiện tại (Nếu chưa có trong DB sẽ khởi tạo mặc định)
+    /// Lấy cài đặt hệ thống hiện tại (Nếu chưa có trong DB sẽ khởi tạo mặc định, có Cache)
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<Result<SystemSetting>>> GetSettings(CancellationToken cancellationToken = default)
     {
-        var setting = await _context.Settings
-            .Where(s => !s.IsDeleted)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (setting == null)
+        var cacheKey = GetCacheKey();
+        var result = await _cacheService.GetOrCreateAsync(cacheKey, async ct =>
         {
-            setting = new SystemSetting
-            {
-                ExpiringAlertDays = 15,
-                TempDeviationThreshold = 3.0,
-                DefaultSeafoodPrice = 250000,
-                AutoRefreshIntervalSeconds = 30,
-                LowStockWarningPercent = 100.0
-            };
-            _context.Settings.Add(setting);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
+            var setting = await _context.Settings
+                .Where(s => !s.IsDeleted)
+                .FirstOrDefaultAsync(ct);
 
-        return Ok(Result<SystemSetting>.Success(setting));
+            if (setting == null)
+            {
+                setting = new SystemSetting
+                {
+                    ExpiringAlertDays = 15,
+                    TempDeviationThreshold = 3.0,
+                    DefaultSeafoodPrice = 250000,
+                    AutoRefreshIntervalSeconds = 30,
+                    LowStockWarningPercent = 100.0
+                };
+                _context.Settings.Add(setting);
+                await _context.SaveChangesAsync(ct);
+            }
+
+            return setting;
+        }, TimeSpan.FromHours(1), cancellationToken);
+
+        return Ok(Result<SystemSetting>.Success(result));
     }
 
     /// <summary>
@@ -94,6 +106,7 @@ public class SettingsController : BaseApiController
         setting.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
+        await _cacheService.RemoveAsync(GetCacheKey(), cancellationToken);
 
         return Ok(Result<SystemSetting>.Success(setting, "Đã cập nhật cài đặt hệ thống thành công."));
     }

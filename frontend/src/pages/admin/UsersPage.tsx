@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Tag, Button, Modal, Form, Input, Select, Switch, Space, App } from 'antd';
 import { UserAddOutlined, EditOutlined, SafetyCertificateOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
 import { userService, type UserRecord } from '../../services/userService';
+import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
 
 export const UsersPage: React.FC = () => {
   const { message, modal } = App.useApp();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
@@ -222,14 +224,11 @@ export const UsersPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 m-0">Quản lý Phân Quyền & Nhân Viên</h1>
-          <p className="text-gray-500 mt-1">
-            Quản lý tài khoản, thay đổi quyền hạn (Role-Based Access Control) và trạng thái hoạt động của nhân viên kho.
-          </p>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 m-0 truncate">Quản lý Phân Quyền & Nhân Viên</h1>
         </div>
-        <Space>
+        <Space size="small">
           <Button icon={<ReloadOutlined />} onClick={fetchUsers} loading={loading}>
             Làm mới
           </Button>
@@ -244,7 +243,11 @@ export const UsersPage: React.FC = () => {
         </Space>
       </div>
 
-      <Card className="shadow-sm">
+      <Card
+        className="shadow-sm"
+        title="Danh sách tài khoản nhân viên"
+        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
+      >
         <Table
           dataSource={users}
           columns={columns}
@@ -260,6 +263,21 @@ export const UsersPage: React.FC = () => {
           scroll={{ x: 'max-content' }}
         />
       </Card>
+
+      <ZoomViewerModal
+        open={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        title="Danh sách tài khoản nhân viên"
+      >
+        <Table
+          dataSource={users}
+          columns={columns}
+          rowKey="id"
+          loading={loading}
+          pagination={false}
+          scroll={{ x: 'max-content' }}
+        />
+      </ZoomViewerModal>
 
       <Modal
         title={
@@ -320,7 +338,7 @@ export const UsersPage: React.FC = () => {
             label="Vai trò hệ thống"
             rules={[{ required: true, message: 'Vui lòng chọn ít nhất một vai trò!' }]}
           >
-            <Select mode="multiple" placeholder="Chọn vai trò">
+            <Select mode="multiple" placeholder="Chọn vai trò" showSearch optionFilterProp="children">
               <Select.Option value="Admin">Quản trị viên (Admin)</Select.Option>
               <Select.Option value="Thukho">Thủ kho (Thukho)</Select.Option>
               <Select.Option value="Nhanvien">Nhân viên (Nhanvien)</Select.Option>

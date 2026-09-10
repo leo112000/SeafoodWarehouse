@@ -35,10 +35,10 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         if (scannerRef.current.isScanning) {
           await scannerRef.current.stop();
         }
-      } catch {}
+      } catch { }
       try {
         scannerRef.current.clear();
-      } catch {}
+      } catch { }
       scannerRef.current = null;
     }
 
@@ -56,7 +56,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         });
         container.innerHTML = '';
       }
-    } catch {}
+    } catch { }
     setIsStarted(false);
   };
 
@@ -90,7 +90,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
           if (Date.now() - openTimeRef.current < 1000) return;
           handleSuccess(decodedText);
         },
-        () => {}
+        () => { }
       );
 
       setIsStarted(true);

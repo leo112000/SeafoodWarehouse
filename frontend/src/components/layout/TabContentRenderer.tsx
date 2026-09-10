@@ -1,7 +1,6 @@
 import React from 'react';
 import { DashboardPage } from '../../pages/dashboard/DashboardPage';
 import InventoryStockPage from '../../pages/inventory/InventoryStockPage';
-import WarehouseMapPage from '../../pages/inventory/WarehouseMapPage';
 import WarehousesPage from '../../pages/master-data/WarehousesPage';
 import { UsersPage } from '../../pages/admin/UsersPage';
 import { InboundPage } from '../../pages/inventory/InboundPage';
@@ -39,13 +38,6 @@ export const TabContentRenderer: React.FC = () => {
         return (
           <PermissionGuard permission="Pages.Inbound.View">
             <InventoryStockPage />
-          </PermissionGuard>
-        );
-
-      case '/inventory/map':
-        return (
-          <PermissionGuard permission="Pages.Inbound.View">
-            <WarehouseMapPage />
           </PermissionGuard>
         );
 

@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, App, Row, Col, Statistic } from 'antd';
+import { Card, Table, Tag, Button, Modal, Form, Input, InputNumber, Select, Space, App, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, InboxOutlined, ShoppingOutlined, CalculatorOutlined, ReloadOutlined, WarningOutlined, PlusCircleOutlined } from '@ant-design/icons';
 import type { PackagingType } from '../../types/seafood';
 import { packagingService } from '../../services/packagingService';
 import { generateCodeFromName } from '../../utils/codeGenerator';
+import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
 
 export const PackagingPage: React.FC = () => {
   const { message, modal } = App.useApp();
   const [packagings, setPackagings] = useState<PackagingType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
@@ -247,101 +249,165 @@ export const PackagingPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 m-0">Danh Mục Bao Bì & Quản Lý Luồng Sọt</h1>
-          <p className="text-gray-500 mt-1">
-            Quản lý danh sách các loại sọt nhựa, khay inox, thùng xốp, báo mất/hỏng và nhập bổ sung vỏ sọt.
-          </p>
-        </div>
-        <Space wrap>
-          <Button icon={<ReloadOutlined />} onClick={fetchPackagings} loading={loading}>
-            Làm mới
-          </Button>
-          <Button
-            icon={<PlusCircleOutlined className="text-emerald-500" />}
-            onClick={() => handleOpenAdjustModal(undefined, 'ADD')}
-          >
-            Nhập Thêm Sọt
-          </Button>
-          <Button
-            danger
-            icon={<WarningOutlined />}
-            onClick={() => handleOpenAdjustModal(undefined, 'LOSS')}
-          >
-            ⚠️ Báo Hỏng / Mất
+      {/* ── Page Header: Tiêu đề trang & Nút Làm mới + Thêm mới ngang hàng ── */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 m-0 truncate">
+          Danh Mục Bao Bì
+        </h1>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Button icon={<ReloadOutlined />} onClick={fetchPackagings} loading={loading} size="middle">
+            <span className="hidden sm:inline">Làm mới</span>
           </Button>
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={handleOpenAddModal}
-            className="bg-sky-500 hover:bg-sky-600 border-none"
+            className="bg-sky-500 hover:bg-sky-600 border-none font-medium"
+            size="middle"
           >
-            Tạo Loại Bao Bì Mới
+            <span className="hidden sm:inline">Thêm Mới</span>
+            <span className="sm:hidden">Thêm</span>
           </Button>
-        </Space>
+        </div>
       </div>
 
-      <Row gutter={[16, 16]} className="mb-6">
-        <Col xs={24} sm={12} md={6}>
-          <Card className="shadow-sm border-l-4 border-l-sky-500">
-            <Statistic
-              title="Tổng loại Bao Bì / Vật Tư"
-              value={totalTypes}
-              prefix={<InboxOutlined className="text-sky-500" />}
-            />
+      {/* ── Sub Action Bar: 2 nút Thao tác Sọt ngang hàng nhau ── */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <Button
+          icon={<PlusCircleOutlined className="text-emerald-500" />}
+          onClick={() => handleOpenAdjustModal(undefined, 'ADD')}
+          className="w-full flex items-center justify-center font-medium border-emerald-300 dark:border-emerald-800 hover:border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30"
+          size="middle"
+        >
+          <span className="truncate">Nhập Thêm Sọt</span>
+        </Button>
+        <Button
+          danger
+          icon={<WarningOutlined />}
+          onClick={() => handleOpenAdjustModal(undefined, 'LOSS')}
+          className="w-full flex items-center justify-center font-medium"
+          size="middle"
+        >
+          <span className="truncate">Báo Hỏng / Mất</span>
+        </Button>
+      </div>
+
+      {/* ── Statistics Cards (Gọn gàng, mỏng nhẹ, không bị đẩy chữ) ── */}
+      <Row gutter={[8, 8]} className="mb-4">
+        <Col xs={12} sm={12} md={6}>
+          <Card
+            bordered={false}
+            className="shadow-xs rounded-xl h-full border-l-4 border-l-sky-500"
+            styles={{ body: { padding: '8px 8px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">
+                  Loại bao bì
+                </div>
+                <div className="text-sm sm:text-xl font-black text-sky-600 mt-0.5 truncate">
+                  {totalTypes}
+                </div>
+              </div>
+              <div className="p-1 sm:p-2 bg-sky-50 dark:bg-sky-950/40 rounded-lg text-sky-500 shrink-0 hidden sm:flex">
+                <InboxOutlined className="text-sm sm:text-base" />
+              </div>
+            </div>
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="shadow-sm border-l-4 border-l-blue-500">
-            <Statistic
-              title="Sọt / Khay Luân Chuyển"
-              value={containerCount}
-              prefix={<ShoppingOutlined className="text-blue-500" />}
-            />
+
+        <Col xs={12} sm={12} md={6}>
+          <Card
+            bordered={false}
+            className="shadow-xs rounded-xl h-full border-l-4 border-l-blue-500"
+            styles={{ body: { padding: '8px 8px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">
+                  Sọt luân chuyển
+                </div>
+                <div className="text-sm sm:text-xl font-black text-blue-600 mt-0.5 truncate">
+                  {containerCount}
+                </div>
+              </div>
+              <div className="p-1 sm:p-2 bg-blue-50 dark:bg-blue-950/40 rounded-lg text-blue-500 shrink-0 hidden sm:flex">
+                <ShoppingOutlined className="text-sm sm:text-base" />
+              </div>
+            </div>
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="shadow-sm border-l-4 border-l-orange-500">
-            <Statistic
-              title="Vật Tư Dùng 1 Lần"
-              value={consumableCount}
-              prefix={<CalculatorOutlined className="text-orange-500" />}
-            />
+
+        <Col xs={12} sm={12} md={6}>
+          <Card
+            bordered={false}
+            className="shadow-xs rounded-xl h-full border-l-4 border-l-orange-500"
+            styles={{ body: { padding: '8px 8px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">
+                  Vật tư 1 lần
+                </div>
+                <div className="text-sm sm:text-xl font-black text-orange-600 mt-0.5 truncate">
+                  {consumableCount}
+                </div>
+              </div>
+              <div className="p-1 sm:p-2 bg-orange-50 dark:bg-orange-950/40 rounded-lg text-orange-500 shrink-0 hidden sm:flex">
+                <CalculatorOutlined className="text-sm sm:text-base" />
+              </div>
+            </div>
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="shadow-sm border-l-4 border-l-emerald-500">
-            <Statistic
-              title="Tổng Số Lượng Tồn Kho"
-              value={totalStock}
-              prefix={<InboxOutlined className="text-emerald-500" />}
-            />
+
+        <Col xs={12} sm={12} md={6}>
+          <Card
+            bordered={false}
+            className="shadow-xs rounded-xl h-full border-l-4 border-l-emerald-500"
+            styles={{ body: { padding: '8px 8px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 font-semibold uppercase tracking-tight truncate">
+                  Tồn kho sọt
+                </div>
+                <div className="text-sm sm:text-xl font-black text-emerald-600 mt-0.5 truncate">
+                  {totalStock.toLocaleString()}
+                </div>
+              </div>
+              <div className="p-1 sm:p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-emerald-500 shrink-0 hidden sm:flex">
+                <InboxOutlined className="text-sm sm:text-base" />
+              </div>
+            </div>
           </Card>
         </Col>
       </Row>
 
-      <Card className="shadow-sm mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-          <Space wrap className="w-full md:w-auto">
-            <Input.Search
-              placeholder="Tìm kiếm mã sọt, tên sọt..."
-              allowClear
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: 250 }}
-            />
-            <Select
-              value={categoryFilter}
-              onChange={(val) => setCategoryFilter(val)}
-              style={{ width: 200 }}
-              options={[
-                { value: 'ALL', label: 'Tất cả phân loại' },
-                { value: 'CONTAINER', label: 'Sọt / Khay luân chuyển' },
-                { value: 'CONSUMABLE', label: 'Vật tư 1 lần' },
-              ]}
-            />
-          </Space>
+      <Card
+        className="shadow-sm mb-6"
+        title="Danh sách vỏ bao bì & sọt chứa"
+        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
+      >
+        <div className="grid grid-cols-2 lg:flex gap-2 items-center mb-4">
+          <Input.Search
+            placeholder="Tìm mã, tên sọt..."
+            allowClear
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="col-span-2 lg:w-64"
+          />
+          <Select
+            value={categoryFilter}
+            onChange={(val) => setCategoryFilter(val)}
+            showSearch
+            optionFilterProp="label"
+            className="col-span-2 sm:col-span-1 lg:w-56"
+            options={[
+              { value: 'ALL', label: 'Tất cả phân loại' },
+              { value: 'CONTAINER', label: 'Sọt / Khay luân chuyển' },
+              { value: 'CONSUMABLE', label: 'Vật tư 1 lần' },
+            ]}
+          />
         </div>
 
         <Table
@@ -360,6 +426,21 @@ export const PackagingPage: React.FC = () => {
         />
       </Card>
 
+      <ZoomViewerModal
+        open={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        title="Danh sách vỏ bao bì & sọt chứa"
+      >
+        <Table
+          dataSource={filteredPackagings}
+          columns={columns}
+          rowKey="id"
+          loading={loading}
+          pagination={false}
+          scroll={{ x: 'max-content' }}
+        />
+      </ZoomViewerModal>
+
       <Modal
         title={editingPkg ? 'Chỉnh sửa thông tin bao bì' : 'Thêm danh mục bao bì mới'}
         open={isModalOpen}
@@ -367,7 +448,7 @@ export const PackagingPage: React.FC = () => {
         onCancel={() => setIsModalOpen(false)}
         okText={editingPkg ? 'Lưu thay đổi' : 'Tạo mới'}
         cancelText="Hủy bỏ"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={form}
@@ -412,6 +493,8 @@ export const PackagingPage: React.FC = () => {
                 rules={[{ required: true }]}
               >
                 <Select
+                  showSearch
+                  optionFilterProp="label"
                   options={[
                     { value: 'CONTAINER', label: 'Sọt / Khay luân chuyển' },
                     { value: 'CONSUMABLE', label: 'Vật tư dùng 1 lần' },
@@ -479,6 +562,8 @@ export const PackagingPage: React.FC = () => {
             initialValue={selectedPkgForAdjust?.id}
           >
             <Select
+              showSearch
+              optionFilterProp="label"
               options={packagings.map((p) => ({
                 value: p.id,
                 label: `${p.name} (${p.code}) - Tồn hiện tại: ${p.stockQuantity} ${p.unit}`,

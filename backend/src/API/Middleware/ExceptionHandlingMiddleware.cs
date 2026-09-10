@@ -40,23 +40,41 @@ public class ExceptionHandlingMiddleware
         {
             _logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
             var errorMessage = ex.InnerException != null ? $"{ex.Message} -> {ex.InnerException.Message}" : ex.Message;
-            await HandleExceptionAsync(context, HttpStatusCode.InternalServerError, errorMessage);
+            await HandleExceptionAsync(context, HttpStatusCode.InternalServerError, errorMessage, ex.ToString());
         }
     }
 
-    private static async Task HandleExceptionAsync(HttpContext context, HttpStatusCode statusCode, string message)
+
+    private static async Task HandleExceptionAsync(HttpContext context, HttpStatusCode statusCode, string message, string? details = null)
     {
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
 
+        // Chuẩn hóa JSON Envelope theo đặc tả chuẩn của ASP.NET Boilerplate (ABP Framework)
         var response = new
         {
+            success = false,
+            result = (object?)null,
+            error = new
+            {
+                code = (int)statusCode,
+                message = message,
+                details = details,
+                validationErrors = (object?)null
+            },
+            unAuthorizedRequest = statusCode == HttpStatusCode.Unauthorized,
+            __abp = true,
+
+            // Giữ lại các trường truyền thống để đảm bảo tương thích ngược
             StatusCode = (int)statusCode,
             Message = message,
             Timestamp = DateTime.UtcNow
         };
 
-        var json = JsonSerializer.Serialize(response);
+        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
         await context.Response.WriteAsync(json);
     }
-}
+}

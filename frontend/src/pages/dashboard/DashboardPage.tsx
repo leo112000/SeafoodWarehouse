@@ -1,14 +1,11 @@
 import React from 'react';
-import { Card, Row, Col, Alert, Button, Table, Typography, Space, Tag, Tooltip, Drawer } from 'antd';
+import { Card, Row, Col, Button, Table, Typography, Space, Tag, Tooltip, Drawer } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import {
-  AlertOutlined,
-  ArrowRightOutlined,
   InboxOutlined,
   UploadOutlined,
   WarningOutlined,
   DatabaseOutlined,
-  CalendarOutlined,
   HistoryOutlined,
   LineChartOutlined,
 } from '@ant-design/icons';
@@ -30,16 +27,17 @@ import {
 import { EMPTY_DASHBOARD_DATA, type DashboardData, type RecentTransaction } from '../../services/mockDashboardData';
 import { dashboardService } from '../../services/dashboardService';
 import { formatCurrency, formatWeight } from '../../utils/format';
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
-const { Title, Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = React.useState<DashboardData>(EMPTY_DASHBOARD_DATA);
   const [loading, setLoading] = React.useState(false);
-  const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null);
   const [drawerTx, setDrawerTx] = React.useState<RecentTransaction | null>(null);
   const [drawerVisible, setDrawerVisible] = React.useState(false);
+  const [zoomTarget, setZoomTarget] = React.useState<'flowChart' | 'categoryPie' | 'recentTransactions' | null>(null);
 
   const fetchData = React.useCallback(async () => {
     setLoading(true);
@@ -47,7 +45,6 @@ export const DashboardPage: React.FC = () => {
       const res = await dashboardService.getDashboardData();
       if (res) {
         setData(res);
-        setLastUpdated(new Date());
       }
     } catch {
       // Backend API error
@@ -155,20 +152,13 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <div>
-          <Title level={2} className="m-0">Bảng Điều Khiển Tổng Quan</Title>
-          <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            Giám sát trực quan dữ liệu nhập xuất, tồn kho hải sản và cảnh báo vận hành thời gian thực.
-          </Paragraph>
-          {lastUpdated && (
-            <span style={{ fontSize: 12, color: '#999' }}>
-              Cập nhật lúc: {lastUpdated.toLocaleTimeString('vi-VN')} &nbsp;·&nbsp; Tự động làm mới mỗi 30s
-            </span>
-          )}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-baseline gap-2.5">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">Tổng Quan</h1>
         </div>
         <Tooltip title="Làm mới dữ liệu ngay">
           <Button
+            size="small"
             icon={<ReloadOutlined spin={loading} />}
             onClick={fetchData}
             loading={loading}
@@ -178,170 +168,148 @@ export const DashboardPage: React.FC = () => {
         </Tooltip>
       </div>
 
-      {/* Khối 1: Header Cảnh Báo Khẩn (Alert Banner) */}
-      {(alerts.expiringBatchesCount > 0 || alerts.deviatedFreezersCount > 0 || alerts.lowStockProductsCount > 0) && (
-        <Alert
-          message={<Text strong className="text-red-800">CẢNH BÁO HỆ THỐNG CẦN XỬ LÝ GẤP</Text>}
-          description={
-            <Row gutter={[16, 16]} className="mt-2">
-              <Col xs={24} md={8}>
-                <div
-                  onClick={() => navigate('/reports/alerts')}
-                  className="bg-red-50 hover:bg-red-100 border border-red-200 rounded p-3 cursor-pointer transition flex items-center justify-between"
-                >
-                  <Space>
-                    <WarningOutlined className="text-red-500 text-lg" />
-                    <Text className="text-red-700 font-medium">
-                      {alerts.expiringBatchesCount} lô hàng sắp hết hạn
-                    </Text>
-                  </Space>
-                  <ArrowRightOutlined className="text-red-400" />
-                </div>
-              </Col>
-              <Col xs={24} md={8}>
-                <div
-                  onClick={() => navigate('/reports/alerts')}
-                  className="bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded p-3 cursor-pointer transition flex items-center justify-between"
-                >
-                  <Space>
-                    <AlertOutlined className="text-orange-500 text-lg" />
-                    <Text className="text-orange-700 font-medium">
-                      {alerts.deviatedFreezersCount} tủ đông lệch nhiệt độ
-                    </Text>
-                  </Space>
-                  <ArrowRightOutlined className="text-orange-400" />
-                </div>
-              </Col>
-              <Col xs={24} md={8}>
-                <div
-                  onClick={() => navigate('/reports/alerts')}
-                  className="bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 rounded p-3 cursor-pointer transition flex items-center justify-between"
-                >
-                  <Space>
-                    <WarningOutlined className="text-yellow-600 text-lg" />
-                    <Text className="text-yellow-700 font-medium">
-                      {alerts.lowStockProductsCount} mặt sản phẩm sắp hết
-                    </Text>
-                  </Space>
-                  <ArrowRightOutlined className="text-yellow-500" />
-                </div>
-              </Col>
-            </Row>
-          }
-          type="error"
-          showIcon
-          className="shadow-sm border-red-200"
-        />
+      {/* Khối 1: Header Cảnh Báo Khẩn (Alert Banner mỏng & hiện đại) */}
+      {(alerts.expiringBatchesCount > 0 || alerts.lowStockProductsCount > 0) && (
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+            </span>
+            <span className="text-xs font-bold text-rose-800 dark:text-rose-200">CẢNH BÁO CẦN XỬ LÝ:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {alerts.expiringBatchesCount > 0 && (
+              <Tag
+                color="error"
+                className="cursor-pointer font-medium hover:opacity-80 m-0 text-xs"
+                onClick={() => navigate('/reports/alerts')}
+              >
+                ⚠️ {alerts.expiringBatchesCount} lô cận date
+              </Tag>
+            )}
+            {alerts.lowStockProductsCount > 0 && (
+              <Tag
+                color="orange"
+                className="cursor-pointer font-medium hover:opacity-80 m-0 text-xs"
+                onClick={() => navigate('/reports/alerts')}
+              >
+                📦 {alerts.lowStockProductsCount} SP sắp hết
+              </Tag>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Khối 2: 4 Thẻ KPI Statistic Sang Trọng */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} xl={6}>
-          <div className="bg-gradient-to-br from-blue-500 to-sky-600 rounded-2xl p-4 text-white shadow-lg shadow-sky-500/20 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs uppercase font-semibold text-blue-100 tracking-wider">Tổng Tồn Kho Hiện Tại</div>
-                <div className="text-2xl font-black mt-1">
-                  {kpis.totalStockKg.value?.toLocaleString()} <span className="text-sm font-normal text-blue-100">kg</span>
+      {/* Khối 2: 4 Thẻ KPI - Chia theo cặp logic: [Nhập - Xuất] và [Tồn kho - Hao hụt] trên cùng dòng */}
+      <Row gutter={[12, 12]}>
+        {/* Cặp 1: Giao dịch hôm nay (Nhập kho - Xuất kho) */}
+        <Col xs={12} lg={6}>
+          <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-3 sm:p-4 text-white shadow-md shadow-indigo-500/15 relative overflow-hidden h-full flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[11px] sm:text-xs uppercase font-semibold text-indigo-100 tracking-tight truncate">Nhập Kho Hôm Nay</div>
+                <div className="text-lg sm:text-2xl font-black mt-0.5 truncate">
+                  {kpis.todayInboundKg.value?.toLocaleString()} <span className="text-xs font-normal text-indigo-100">kg</span>
                 </div>
               </div>
-              <div className="p-3 bg-white/15 backdrop-blur-md rounded-xl text-white text-2xl">
-                <DatabaseOutlined />
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-white/20 text-xs text-blue-100 flex items-center justify-between">
-              <span>Ước tính giá trị:</span>
-              <strong className="text-white text-sm">{formatCurrency(kpis.totalStockValue.value)}</strong>
-            </div>
-          </div>
-        </Col>
-
-        <Col xs={24} sm={12} xl={6}>
-          <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-4 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs uppercase font-semibold text-indigo-100 tracking-wider">Nhập Kho Hôm Nay</div>
-                <div className="text-2xl font-black mt-1">
-                  {kpis.todayInboundKg.value?.toLocaleString()} <span className="text-sm font-normal text-indigo-100">kg</span>
-                </div>
-              </div>
-              <div className="p-3 bg-white/15 backdrop-blur-md rounded-xl text-white text-2xl">
+              <div className="p-1.5 sm:p-2.5 bg-white/15 backdrop-blur-md rounded-xl text-white text-base sm:text-xl shrink-0">
                 <InboxOutlined />
               </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-white/20 text-xs text-indigo-100 flex items-center justify-between">
-              <span>{kpis.todayInboundReceipts.value} phiếu nhập:</span>
-              <strong className="text-white text-sm">
-                {formatCurrency(kpis.todayInboundValue?.value || 0)}
-              </strong>
+            <div className="mt-2 pt-1.5 border-t border-white/20 text-[10px] sm:text-xs text-indigo-100 flex items-center justify-between truncate">
+              <span>{kpis.todayInboundReceipts.value} phiếu</span>
+              <strong className="text-white ml-1 truncate">{formatCurrency(kpis.todayInboundValue?.value || 0)}</strong>
             </div>
           </div>
         </Col>
 
-        <Col xs={24} sm={12} xl={6}>
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/20 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs uppercase font-semibold text-emerald-100 tracking-wider">Xuất Kho Hôm Nay</div>
-                <div className="text-2xl font-black mt-1">
-                  {kpis.todayOutboundKg.value?.toLocaleString()} <span className="text-sm font-normal text-emerald-100">kg</span>
+        <Col xs={12} lg={6}>
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-3 sm:p-4 text-white shadow-md shadow-emerald-500/15 relative overflow-hidden h-full flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[11px] sm:text-xs uppercase font-semibold text-emerald-100 tracking-tight truncate">Xuất Kho Hôm Nay</div>
+                <div className="text-lg sm:text-2xl font-black mt-0.5 truncate">
+                  {kpis.todayOutboundKg.value?.toLocaleString()} <span className="text-xs font-normal text-emerald-100">kg</span>
                 </div>
               </div>
-              <div className="p-3 bg-white/15 backdrop-blur-md rounded-xl text-white text-2xl">
+              <div className="p-1.5 sm:p-2.5 bg-white/15 backdrop-blur-md rounded-xl text-white text-base sm:text-xl shrink-0">
                 <UploadOutlined />
               </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-white/20 text-xs text-emerald-100 flex items-center justify-between">
-              <span>{kpis.todayOutboundTransactions.value} đơn xuất:</span>
-              <strong className="text-white text-sm">
-                {formatCurrency(kpis.todayOutboundValue?.value || 0)}
-              </strong>
+            <div className="mt-2 pt-1.5 border-t border-white/20 text-[10px] sm:text-xs text-emerald-100 flex items-center justify-between truncate">
+              <span>{kpis.todayOutboundTransactions.value} đơn</span>
+              <strong className="text-white ml-1 truncate">{formatCurrency(kpis.todayOutboundValue?.value || 0)}</strong>
             </div>
           </div>
         </Col>
 
-        <Col xs={24} sm={12} xl={6}>
-          <div className="bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl p-4 text-white shadow-lg shadow-rose-500/20 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs uppercase font-semibold text-rose-100 tracking-wider">Tỷ Lệ Hao Hụt Tháng</div>
-                <div className="text-2xl font-black mt-1">
+        {/* Cặp 2: Trữ lượng & Chất lượng kho (Tồn kho - Tỷ lệ hao hụt) */}
+        <Col xs={12} lg={6}>
+          <div className="bg-gradient-to-br from-sky-500 to-blue-600 rounded-2xl p-3 sm:p-4 text-white shadow-md shadow-sky-500/15 relative overflow-hidden h-full flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[11px] sm:text-xs uppercase font-semibold text-sky-100 tracking-tight truncate">Tổng Tồn Kho Hiện Tại</div>
+                <div className="text-lg sm:text-2xl font-black mt-0.5 truncate">
+                  {kpis.totalStockKg.value?.toLocaleString()} <span className="text-xs font-normal text-sky-100">kg</span>
+                </div>
+              </div>
+              <div className="p-1.5 sm:p-2.5 bg-white/15 backdrop-blur-md rounded-xl text-white text-base sm:text-xl shrink-0">
+                <DatabaseOutlined />
+              </div>
+            </div>
+            <div className="mt-2 pt-1.5 border-t border-white/20 text-[10px] sm:text-xs text-sky-100 flex items-center justify-between truncate">
+              <span>Ước tính giá trị</span>
+              <strong className="text-white ml-1 truncate">{formatCurrency(kpis.totalStockValue.value)}</strong>
+            </div>
+          </div>
+        </Col>
+
+        <Col xs={12} lg={6}>
+          <div className="bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl p-3 sm:p-4 text-white shadow-md shadow-rose-500/15 relative overflow-hidden h-full flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[11px] sm:text-xs uppercase font-semibold text-rose-100 tracking-tight truncate">Tỷ Lệ Hao Hụt Tháng</div>
+                <div className="text-lg sm:text-2xl font-black mt-0.5 truncate">
                   {kpis.monthlyLossRate.value}%
                 </div>
               </div>
-              <div className="p-3 bg-white/15 backdrop-blur-md rounded-xl text-white text-2xl">
+              <div className="p-1.5 sm:p-2.5 bg-white/15 backdrop-blur-md rounded-xl text-white text-base sm:text-xl shrink-0">
                 <WarningOutlined />
               </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-white/20 text-xs text-rose-100 flex items-center justify-between">
-              <span>Định mức an toàn:</span>
-              <strong className="text-white text-sm">&le; 2.0%</strong>
+            <div className="mt-2 pt-1.5 border-t border-white/20 text-[10px] sm:text-xs text-rose-100 flex items-center justify-between truncate">
+              <span>Định mức an toàn</span>
+              <strong className="text-white ml-1 truncate">&le; 2.0%</strong>
             </div>
           </div>
         </Col>
       </Row>
 
-      {/* Khối 3: Biểu Đồ Thống Kê */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={16}>
+      {/* Khối 3: Biểu Đồ Thống Kê (Chiều cao tối ưu, thoáng và bao quát) */}
+      <Row gutter={[12, 12]}>
+        <Col xs={24} lg={15}>
           <Card
             title={
               <Space>
                 <LineChartOutlined className="text-blue-500" />
-                <span>Sản Lượng Nhập – Xuất 7 Ngày Gần Nhất</span>
+                <span className="text-sm sm:text-base font-bold">Sản Lượng Nhập – Xuất 7 Ngày Gần Nhất</span>
               </Space>
             }
-            className="shadow-sm"
+            extra={<ZoomButton onClick={() => setZoomTarget('flowChart')} />}
+            className="shadow-sm rounded-2xl"
+            styles={{ body: { padding: '12px 16px' } }}
           >
-            <ResponsiveContainer width="100%" height={320}>
-              <ComposedChart data={dailyFlow} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={240}>
+              <ComposedChart data={dailyFlow} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="date" tickLine={false} />
-                <YAxis yAxisId="left" tickLine={false} label={{ value: 'Kg', angle: -90, position: 'insideLeft', offset: 15 }} />
+                <XAxis dataKey="date" tickLine={false} tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="left" tickLine={false} tick={{ fontSize: 11 }} label={{ value: 'Kg', angle: -90, position: 'insideLeft', offset: 15 }} />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
                   tickLine={false}
+                  tick={{ fontSize: 11 }}
                   tickFormatter={(val) => `${(val / 1_000_000).toFixed(1)} tr`}
                   label={{ value: 'Triệu VNĐ', angle: 90, position: 'insideRight', offset: 15 }}
                 />
@@ -353,34 +321,36 @@ export const DashboardPage: React.FC = () => {
                     return [`${Number(value).toLocaleString()} kg`, name];
                   }}
                 />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
                 <Bar yAxisId="left" name="Nhập kho (kg)" dataKey="inboundKg" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 <Bar yAxisId="left" name="Xuất kho (kg)" dataKey="outboundKg" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" type="monotone" name="Tiền nhập (VNĐ)" dataKey="inboundAmount" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 4 }} />
-                <Line yAxisId="right" type="monotone" name="Tiền xuất (VNĐ)" dataKey="outboundAmount" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 4 }} />
+                <Line yAxisId="right" type="monotone" name="Tiền nhập (VNĐ)" dataKey="inboundAmount" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line yAxisId="right" type="monotone" name="Tiền xuất (VNĐ)" dataKey="outboundAmount" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </Card>
         </Col>
 
-        <Col xs={24} lg={8}>
+        <Col xs={24} lg={9}>
           <Card
             title={
               <Space>
                 <DatabaseOutlined className="text-orange-500" />
-                <span>Cơ Cấu Tồn Kho</span>
+                <span className="text-sm sm:text-base font-bold">Cơ Cấu Tồn Kho</span>
               </Space>
             }
-            className="shadow-sm h-full"
+            extra={<ZoomButton onClick={() => setZoomTarget('categoryPie')} />}
+            className="shadow-sm rounded-2xl h-full"
+            styles={{ body: { padding: '12px 16px' } }}
           >
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={160}>
               <PieChart>
                 <Pie
                   data={categoryStock}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={45}
+                  outerRadius={65}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -391,14 +361,14 @@ export const DashboardPage: React.FC = () => {
                 <RechartTooltip formatter={(value) => `${value} kg`} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="space-y-2 mt-4">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-2">
               {categoryStock.map((item) => (
-                <div key={item.name} className="flex items-center justify-between text-sm text-gray-600">
-                  <Space>
-                    <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span>{item.name}</span>
-                  </Space>
-                  <span className="font-semibold text-gray-800">{item.value} kg</span>
+                <div key={item.name} className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-800/60 p-1.5 rounded-lg">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="truncate">{item.name}</span>
+                  </div>
+                  <span className="font-semibold text-gray-800 dark:text-gray-100 ml-1">{item.value}k</span>
                 </div>
               ))}
             </div>
@@ -406,97 +376,45 @@ export const DashboardPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Khối 4: Phím Tắt & Lịch Sử Giao Dịch */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={7} lg={6}>
-          <Card
-            title={
-              <Space>
-                <CalendarOutlined className="text-blue-500" />
-                <span>Thao Tác Nhanh</span>
-              </Space>
-            }
-            className="shadow-sm h-full"
-          >
-            <div className="flex flex-col gap-2.5">
-              <Button
-                type="primary"
-                icon={<DatabaseOutlined />}
-                onClick={() => navigate('/inventory/map')}
-                size="large"
-                className="w-full bg-sky-600 hover:bg-sky-700 font-semibold"
-              >
-                🗺️ Sơ Đồ Kho Lạnh 2D
-              </Button>
-              <Button
-                type="primary"
-                icon={<InboxOutlined />}
-                onClick={() => navigate('/inventory/inbound')}
-                size="large"
-                className="w-full bg-blue-600 hover:bg-blue-700 font-semibold"
-              >
-                Nhập kho hải sản
-              </Button>
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                onClick={() => navigate('/inventory/outbound')}
-                size="large"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 border-none font-semibold"
-              >
-                Xuất kho hải sản
-              </Button>
-              <Button
-                danger
-                type="primary"
-                icon={<WarningOutlined />}
-                onClick={() => navigate('/inventory/wastage')}
-                size="large"
-                className="w-full font-semibold"
-              >
-                Báo hao hụt / Phân loại
-              </Button>
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} md={17} lg={18}>
-          <Card
-            title={
-              <Space>
-                <HistoryOutlined className="text-indigo-500" />
-                <span>Lịch Sử Giao Dịch Mới Nhất</span>
-              </Space>
-            }
-            extra={
-              <Text type="secondary" className="text-xs">
-                💡 Nhấp vào dòng để xem chi tiết phiếu bên góc phải
-              </Text>
-            }
-            className="shadow-sm"
-          >
-            <Table
-              dataSource={recentTransactions}
-              columns={transactionColumns}
-              rowKey="id"
-              pagination={false}
-              size="middle"
-              scroll={{ x: 'max-content' }}
-              rowClassName={(record) =>
-                record.id === drawerTx?.id && drawerVisible
-                  ? '!bg-sky-100 dark:!bg-sky-950/60 !border-l-4 !border-l-sky-600 font-medium transition-colors'
-                  : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors'
-              }
-              onRow={(record) => ({
-                onClick: () => {
-                  setDrawerTx(record);
-                  setDrawerVisible(true);
-                },
-              })}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* Khối 4: Lịch Sử Giao Dịch Toàn Màn Hình (Rộng rãi & Bao quát) */}
+      <Card
+        title={
+          <Space>
+            <HistoryOutlined className="text-indigo-500" />
+            <span className="text-sm sm:text-base font-bold">Lịch Sử Giao Dịch Mới Nhất</span>
+          </Space>
+        }
+        extra={
+          <Space>
+            <Text type="secondary" className="text-xs hidden sm:inline">
+              💡 Nhấp vào dòng để xem chi tiết phiếu bên góc phải
+            </Text>
+            <ZoomButton onClick={() => setZoomTarget('recentTransactions')} />
+          </Space>
+        }
+        className="shadow-sm rounded-2xl"
+        styles={{ body: { padding: '12px' } }}
+      >
+        <Table
+          dataSource={recentTransactions.slice(0, 5)}
+          columns={transactionColumns}
+          rowKey="id"
+          pagination={false}
+          size="middle"
+          scroll={{ x: 800 }}
+          rowClassName={(record) =>
+            record.id === drawerTx?.id && drawerVisible
+              ? '!bg-sky-100 dark:!bg-sky-950/60 !border-l-4 !border-l-sky-600 font-medium transition-colors'
+              : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors'
+          }
+          onRow={(record) => ({
+            onClick: () => {
+              setDrawerTx(record);
+              setDrawerVisible(true);
+            },
+          })}
+        />
+      </Card>
 
       {/* Drawer xem chi tiết Phiếu Nhập / Xuất Kho khi bấm vào dòng */}
       <Drawer
@@ -509,13 +427,15 @@ export const DashboardPage: React.FC = () => {
           </div>
         }
         placement="right"
-        width={500}
         onClose={() => {
           setDrawerVisible(false);
           setDrawerTx(null);
         }}
         open={drawerVisible}
-        bodyStyle={{ padding: '20px' }}
+        styles={{
+          wrapper: { width: typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : 500 },
+          body: { padding: '16px' }
+        }}
       >
         {drawerTx && (
           <div className="space-y-4">
@@ -543,8 +463,8 @@ export const DashboardPage: React.FC = () => {
                 <span>1. Danh sách hải sản ({drawerTx.items?.length || 1} món)</span>
                 <span className="text-blue-600 font-semibold">{formatWeight(drawerTx.weightKg)}</span>
               </div>
-              <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
-                <table className="w-full text-left border-collapse">
+              <div className="border border-gray-200 rounded-lg overflow-x-auto text-xs">
+                <table className="w-full text-left border-collapse min-w-[340px]">
                   <thead className="bg-gray-100 text-gray-600 border-b border-gray-200">
                     <tr>
                       <th className="p-2">Mã Lô / Tên</th>
@@ -591,8 +511,8 @@ export const DashboardPage: React.FC = () => {
                   <span>2. Vật phẩm bán kèm &amp; Thùng xốp</span>
                   <span className="text-sky-600 font-semibold">{formatCurrency(drawerTx.suppliesTotal || 0)}</span>
                 </div>
-                <div className="border border-gray-200 rounded-lg overflow-hidden text-xs">
-                  <table className="w-full text-left border-collapse">
+                <div className="border border-gray-200 rounded-lg overflow-x-auto text-xs">
+                  <table className="w-full text-left border-collapse min-w-[320px]">
                     <thead className="bg-gray-100 text-gray-600 border-b border-gray-200">
                       <tr>
                         <th className="p-2">Vật phẩm</th>
@@ -652,6 +572,120 @@ export const DashboardPage: React.FC = () => {
           </div>
         )}
       </Drawer>
+
+      {/* Modal Phóng To & Quay Ngang Toàn Màn Hình */}
+      <ZoomViewerModal
+        open={zoomTarget !== null}
+        onClose={() => setZoomTarget(null)}
+        title={
+          zoomTarget === 'flowChart'
+            ? 'Sản Lượng Nhập – Xuất 7 Ngày Gần Nhất'
+            : zoomTarget === 'categoryPie'
+            ? 'Cơ Cấu Tồn Kho Hải Sản'
+            : 'Lịch Sử Giao Dịch Chi Tiết'
+        }
+        subtitle={
+          zoomTarget === 'flowChart'
+            ? 'Tương quan khối lượng nhập/xuất và dòng tiền giao dịch'
+            : zoomTarget === 'categoryPie'
+            ? 'Tỷ lệ phân bố tồn kho theo từng ngành hàng'
+            : 'Bảng dữ liệu mở rộng các phiếu nhập và xuất kho mới nhất'
+        }
+      >
+        {({ isRotated }) => (
+          <>
+            {zoomTarget === 'flowChart' && (
+              <div className="w-full h-full min-h-[300px] p-2 flex flex-col">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={dailyFlow} margin={{ top: 20, right: 35, left: 10, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis dataKey="date" tickLine={false} tick={{ fontSize: 13, fontWeight: 600 }} />
+                    <YAxis yAxisId="left" tickLine={false} tick={{ fontSize: 12 }} label={{ value: 'Khối lượng (Kg)', angle: -90, position: 'insideLeft', offset: 10 }} />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tickLine={false}
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(val) => `${(val / 1_000_000).toFixed(1)} tr`}
+                      label={{ value: 'Doanh số (Triệu VNĐ)', angle: 90, position: 'insideRight', offset: 15 }}
+                    />
+                    <RechartTooltip
+                      formatter={(value: any, name: any) => {
+                        if (String(name).includes('Tiền')) {
+                          return [formatCurrency(Number(value)), name];
+                        }
+                        return [`${Number(value).toLocaleString()} kg`, name];
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
+                    <Bar yAxisId="left" name="Nhập kho (kg)" dataKey="inboundKg" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                    <Bar yAxisId="left" name="Xuất kho (kg)" dataKey="outboundKg" fill="#10b981" radius={[6, 6, 0, 0]} />
+                    <Line yAxisId="right" type="monotone" name="Tiền nhập (VNĐ)" dataKey="inboundAmount" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4 }} />
+                    <Line yAxisId="right" type="monotone" name="Tiền xuất (VNĐ)" dataKey="outboundAmount" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {zoomTarget === 'categoryPie' && (
+              <div className="w-full h-full flex flex-col md:flex-row items-center justify-around gap-6 p-4">
+                <div className="w-full md:w-1/2 h-64 sm:h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryStock}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={65}
+                        outerRadius={105}
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
+                      >
+                        {categoryStock.map((entry, index) => (
+                          <Cell key={`cell-zoom-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartTooltip formatter={(value) => `${value} kg`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="w-full md:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {categoryStock.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between text-sm p-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="font-semibold text-gray-800 dark:text-gray-200">{item.name}</span>
+                      </div>
+                      <span className="font-bold text-base text-gray-900 dark:text-gray-100">{item.value.toLocaleString()} kg</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {zoomTarget === 'recentTransactions' && (
+              <div className="w-full h-full flex flex-col">
+                <Table
+                  dataSource={recentTransactions}
+                  columns={transactionColumns}
+                  rowKey="id"
+                  pagination={{ pageSize: 10, showSizeChanger: true, responsive: true }}
+                  size="middle"
+                  scroll={{ x: 850, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 250px)' }}
+                  onRow={(record) => ({
+                    onClick: () => {
+                      setDrawerTx(record);
+                      setDrawerVisible(true);
+                    },
+                  })}
+                  rowClassName="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                />
+              </div>
+            )}
+          </>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

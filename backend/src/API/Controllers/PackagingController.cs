@@ -59,6 +59,19 @@ public class CreateReturnDto
     public string? Note { get; set; }
 }
 
+public class PackagingReturnHistoryDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string LoanId { get; set; } = string.Empty;
+    public string PartnerName { get; set; } = string.Empty;
+    public string PackagingCode { get; set; } = string.Empty;
+    public string PackagingName { get; set; } = string.Empty;
+    public int ReturnedQty { get; set; }
+    public string ReturnDate { get; set; } = string.Empty;
+    public string RecordedBy { get; set; } = "Hệ thống";
+    public string? Note { get; set; }
+}
+
 /// <summary>
 /// API Quản lý Bao bì, Sọt chứa & Thu hồi vỏ bao bì
 /// </summary>
@@ -214,8 +227,11 @@ public class PackagingController : BaseApiController
 
     /// <summary>
     /// Lấy danh sách phiếu mượn sọt / vỏ bao bì
+    /// <summary>
+    /// Lấy danh sách phiếu mượn sọt / vỏ bao bì
     /// </summary>
     [HttpGet("loans")]
+    [HttpGet("/api/packaging-loans")]
     public async Task<ActionResult<Result<List<PackagingLoanDto>>>> GetLoans(CancellationToken cancellationToken = default)
     {
         var loans = await _context.PackagingLoans
@@ -245,6 +261,7 @@ public class PackagingController : BaseApiController
     /// Tạo phiếu mượn vỏ sọt / bao bì
     /// </summary>
     [HttpPost("loans")]
+    [HttpPost("/api/packaging-loans")]
     public async Task<ActionResult<Result<PackagingLoanDto>>> CreateLoan([FromBody] CreateLoanDto dto, CancellationToken cancellationToken = default)
     {
         var pkg = await _context.Packagings.FirstOrDefaultAsync(p => p.Code == dto.PackagingCode && !p.IsDeleted, cancellationToken);
@@ -284,9 +301,41 @@ public class PackagingController : BaseApiController
     }
 
     /// <summary>
+    /// Lấy danh sách lịch sử trả sọt / vỏ bao bì
+    /// </summary>
+    [HttpGet("returns")]
+    [HttpGet("/api/packaging-returns")]
+    public async Task<ActionResult<Result<List<PackagingReturnHistoryDto>>>> GetReturns(CancellationToken cancellationToken = default)
+    {
+        var returns = await _context.PackagingReturns
+            .Where(r => !r.IsDeleted)
+            .Include(r => r.PackagingLoan)
+            .ThenInclude(l => l.Packaging)
+            .OrderByDescending(r => r.ReturnDate)
+            .ThenByDescending(r => r.Id)
+            .ToListAsync(cancellationToken);
+
+        var dtos = returns.Select(r => new PackagingReturnHistoryDto
+        {
+            Id = r.Id.ToString(),
+            LoanId = r.PackagingLoanId.ToString(),
+            PartnerName = r.PackagingLoan?.PartnerName ?? "",
+            PackagingCode = r.PackagingLoan?.Packaging?.Code ?? "",
+            PackagingName = r.PackagingLoan?.Packaging?.Name ?? "",
+            ReturnedQty = r.ReturnedQty,
+            ReturnDate = r.ReturnDate.ToString("yyyy-MM-dd HH:mm"),
+            RecordedBy = r.RecordedBy,
+            Note = r.Note
+        }).ToList();
+
+        return Ok(Result<List<PackagingReturnHistoryDto>>.Success(dtos));
+    }
+
+    /// <summary>
     /// Ghi nhận thu hồi / trả lại sọt nhựa
     /// </summary>
     [HttpPost("returns")]
+    [HttpPost("/api/packaging-returns")]
     public async Task<ActionResult<Result<bool>>> CreateReturn([FromBody] CreateReturnDto dto, CancellationToken cancellationToken = default)
     {
         var loan = await _context.PackagingLoans.FirstOrDefaultAsync(l => l.Id == dto.LoanId && !l.IsDeleted, cancellationToken);

@@ -15,6 +15,7 @@ import { generateCodeFromName } from '../../utils/codeGenerator';
 import { useProductStore } from '../../stores/useProductStore';
 import { useCategoryStore } from '../../stores/useCategoryStore';
 import { QRCodeSVG } from 'qrcode.react';
+import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 
 
@@ -45,6 +46,9 @@ export const ProductsPage: React.FC = () => {
   const { categories, fetchCategories } = useCategoryStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [selectedProductQr, setSelectedProductQr] = useState<Product | null>(null);
+  const [isZoomed, setIsZoomed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [storageFilter, setStorageFilter] = useState<Product['storageType'] | 'ALL'>('ALL');
@@ -55,8 +59,6 @@ export const ProductsPage: React.FC = () => {
     storage: 'ALL' as Product['storageType'] | 'ALL',
     status: 'ALL' as 'ALL' | 'ACTIVE' | 'INACTIVE',
   });
-  const [selectedProductQr, setSelectedProductQr] = useState<Product | null>(null);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
 
@@ -307,84 +309,93 @@ export const ProductsPage: React.FC = () => {
     <div className="space-y-6">
 
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white m-0">
-            Danh Mục Hải Sản & Hàng Hóa
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
+            Danh Mục Hải Sản
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Quản lý toàn bộ danh mục hải sản, thông số bảo quản và cài đặt mức tồn kho.
-          </p>
         </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          size="large"
+          size="middle"
           onClick={openAdd}
+          className="flex-shrink-0 font-medium"
         >
-          Thêm Sản Phẩm Mới
+          <span className="hidden sm:inline">Thêm Sản Phẩm Mới</span>
+          <span className="sm:hidden">Thêm mới</span>
         </Button>
       </div>
 
-      {/* ── Statistics Cards ── */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+      {/* ── Statistics Cards (2 cột 1 dòng trên mobile) ── */}
+      <Row gutter={[10, 10]}>
+        <Col xs={12} sm={12} lg={6}>
+          <Card bordered={false} className="shadow-xs rounded-xl" styles={{ body: { padding: '12px' } }}>
             <Statistic
-              title="Tổng danh mục sản phẩm"
+              title={<span className="text-xs">Tổng sản phẩm</span>}
               value={products.length}
-              prefix={<BarChartOutlined className="text-sky-500 mr-2" />}
+              prefix={<BarChartOutlined className="text-sky-500 mr-1" />}
+              valueStyle={{ fontSize: '1.25rem', fontWeight: 800 }}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+        <Col xs={12} sm={12} lg={6}>
+          <Card bordered={false} className="shadow-xs rounded-xl" styles={{ body: { padding: '12px' } }}>
             <Statistic
-              title="Đang hoạt động"
+              title={<span className="text-xs">Đang hoạt động</span>}
               value={activeCount}
-              prefix={<CheckCircleOutlined className="text-green-500 mr-2" />}
-              valueStyle={{ color: '#22c55e' }}
+              prefix={<CheckCircleOutlined className="text-green-500 mr-1" />}
+              valueStyle={{ color: '#22c55e', fontSize: '1.25rem', fontWeight: 800 }}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+        <Col xs={12} sm={12} lg={6}>
+          <Card bordered={false} className="shadow-xs rounded-xl" styles={{ body: { padding: '12px' } }}>
             <Statistic
-              title="Hàng cấp đông"
+              title={<span className="text-xs">Hàng cấp đông</span>}
               value={frozenCount}
-              prefix={<SlidersOutlined className="text-blue-500 mr-2" />}
-              valueStyle={{ color: '#3b82f6' }}
+              prefix={<SlidersOutlined className="text-blue-500 mr-1" />}
+              valueStyle={{ color: '#3b82f6', fontSize: '1.25rem', fontWeight: 800 }}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} className="shadow-sm">
+        <Col xs={12} sm={12} lg={6}>
+          <Card bordered={false} className="shadow-xs rounded-xl" styles={{ body: { padding: '12px' } }}>
             <Statistic
-              title="Nhóm danh mục"
+              title={<span className="text-xs">Nhóm danh mục</span>}
               value={categoryCount}
-              prefix={<DropboxOutlined className="text-purple-500 mr-2" />}
+              prefix={<DropboxOutlined className="text-purple-500 mr-1" />}
+              valueStyle={{ fontSize: '1.25rem', fontWeight: 800 }}
             />
           </Card>
         </Col>
       </Row>
 
       {/* ── Filter + Table ── */}
-      <Card bordered={false} className="shadow-sm">
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 mb-5 items-center">
+      <Card
+        bordered={false}
+        className="shadow-sm rounded-2xl"
+        extra={<ZoomButton onClick={() => setIsZoomed(true)} />}
+      >
+        {/* Filters: 2 cột trên mobile, dàn ngang trên desktop */}
+        <div className="grid grid-cols-2 lg:flex lg:flex-wrap items-center gap-2 mb-4">
           <Input
-            placeholder="Tìm theo tên hoặc mã hàng..."
+            placeholder="Tìm tên / mã hàng..."
             prefix={<SearchOutlined />}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onPressEnter={handleFilter}
             allowClear
-            className="w-full sm:w-60"
+            size="middle"
+            className="col-span-2 lg:w-52"
           />
           <Select
             value={categoryFilter}
             onChange={setCategoryFilter}
-            className="w-full sm:w-44"
+            showSearch
+            optionFilterProp="label"
+            size="middle"
+            className="col-span-1 lg:w-40"
             options={[
               { value: 'ALL', label: 'Tất cả danh mục' },
               ...categories.map(c => ({ value: c.id, label: c.name })),
@@ -393,7 +404,10 @@ export const ProductsPage: React.FC = () => {
           <Select
             value={storageFilter}
             onChange={setStorageFilter}
-            className="w-full sm:w-40"
+            showSearch
+            optionFilterProp="label"
+            size="middle"
+            className="col-span-1 lg:w-36"
             options={[
               { value: 'ALL', label: 'Tất cả bảo quản' },
               ...Object.entries(STORAGE_TYPE_CONFIG).map(([k, v]) => ({ value: k, label: v.label })),
@@ -402,19 +416,24 @@ export const ProductsPage: React.FC = () => {
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
-            className="w-full sm:w-44"
+            showSearch
+            optionFilterProp="label"
+            size="middle"
+            className="col-span-1 lg:w-36"
             options={[
               { value: 'ALL', label: 'Tất cả trạng thái' },
               { value: 'ACTIVE', label: 'Đang hoạt động' },
-              { value: 'INACTIVE', label: 'Ngừng kinh doanh' },
+              { value: 'INACTIVE', label: 'Ngừng bán' },
             ]}
           />
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleFilter}>
-            Lọc Dữ Liệu
-          </Button>
-          <Button icon={<ReloadOutlined />} onClick={handleReset}>
-            Đặt lại
-          </Button>
+          <div className="col-span-1 flex items-center gap-1.5">
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleFilter} size="middle" className="flex-1 font-semibold">
+              Lọc
+            </Button>
+            <Tooltip title="Đặt lại bộ lọc">
+              <Button icon={<ReloadOutlined />} onClick={handleReset} size="middle" />
+            </Tooltip>
+          </div>
         </div>
 
         <Table
@@ -496,6 +515,8 @@ export const ProductsPage: React.FC = () => {
                 <Select
                   options={categories.map(c => ({ value: c.id, label: c.name }))}
                   placeholder="Chọn danh mục"
+                  showSearch
+                  optionFilterProp="label"
                 />
               </Form.Item>
             </Col>
@@ -507,6 +528,8 @@ export const ProductsPage: React.FC = () => {
             <Col span={8}>
               <Form.Item name="storageType" label="Loại Bảo Quản" rules={[{ required: true }]}>
                 <Select
+                  showSearch
+                  optionFilterProp="label"
                   options={Object.entries(STORAGE_TYPE_CONFIG).map(([k, v]) => ({
                     value: k, label: `${v.label} (${v.temp})`,
                   }))}
@@ -647,6 +670,33 @@ export const ProductsPage: React.FC = () => {
           </div>
         )}
       </Modal>
+      {/* Modal Phóng To Bảng Sản Phẩm & Quay Ngang */}
+      <ZoomViewerModal
+        visible={isZoomed}
+        onClose={() => setIsZoomed(false)}
+        title="🐟 Danh Mục Sản Phẩm Hải Sản"
+        subtitle={`Hiển thị ${filtered.length} sản phẩm chi tiết`}
+      >
+        {({ isRotated }) => (
+          <div className="w-full h-full flex flex-col">
+            <Table
+              columns={columns}
+              dataSource={filtered}
+              rowKey="id"
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                showSizeChanger: true,
+                pageSizeOptions: ['5', '10', '20', '50'],
+                onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+                showTotal: (t) => `Tổng ${t} sản phẩm`,
+              }}
+              size="middle"
+              scroll={{ x: 1000, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
+            />
+          </div>
+        )}
+      </ZoomViewerModal>
     </div>
   );
 };

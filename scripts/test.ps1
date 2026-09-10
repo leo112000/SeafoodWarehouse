@@ -26,8 +26,7 @@ npm test -- --run
 Set-Location ..
 
 Write-Host "`n[6/6] E2E Tests (Requires local dev server running)"
-# Uncomment when local test server is configured
-# npx playwright test
+npx playwright test
 
 Write-Host "`n============================="
 Write-Host "ALL TESTS PASSED"

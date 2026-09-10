@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Tag, Space, App, Typography, Badge, Row, Col, Popconfirm, Tooltip } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Tag, Space, App, Badge, Row, Col, Popconfirm, Tooltip } from 'antd';
 import { ShopOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PhoneOutlined, MailOutlined, HomeOutlined, NumberOutlined, LoginOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { tenantService, type TenantItem, type CreateTenantDto } from '../../services/tenantService';
@@ -7,8 +7,7 @@ import { generateCodeFromName } from '../../utils/codeGenerator';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useTenantStore } from '../../stores/useTenantStore';
 import { authService } from '../../services/authService';
-
-const { Title, Paragraph } = Typography;
+import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
 
 export const TenantsPage: React.FC = () => {
   const { message } = App.useApp();
@@ -18,6 +17,7 @@ export const TenantsPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
   const [editingTenant, setEditingTenant] = useState<TenantItem | null>(null);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
@@ -188,22 +188,23 @@ export const TenantsPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <Title level={2} className="m-0 flex items-center gap-2">
-            <SafetyCertificateOutlined className="text-sky-600" /> Quản Lý Khách Hàng / Đơn Vị Thuê (SaaS Tenants)
-          </Title>
-          <Paragraph type="secondary" className="mb-0">
-            Chỉ dành riêng cho Tài khoản Quản trị Nền tảng (Host Super Admin). Quản lý danh sách các công ty thuê bao phần mềm và truy cập trực tiếp vào tenant.
-          </Paragraph>
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate flex items-center gap-2">
+            <SafetyCertificateOutlined className="text-sky-600" /> Quản Lý Đơn Vị Thuê (SaaS Tenants)
+          </h1>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-          Đăng Ký Doanh Nghiệp Mới
+          Đăng Ký Mới
         </Button>
       </div>
 
-      <Card className="shadow-sm">
+      <Card
+        className="shadow-sm"
+        title="Danh sách doanh nghiệp & chi nhánh"
+        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
+      >
         <Table
           dataSource={tenants}
           columns={columns}
@@ -218,6 +219,20 @@ export const TenantsPage: React.FC = () => {
           scroll={{ x: 850 }}
         />
       </Card>
+
+      <ZoomViewerModal
+        open={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        title="Danh sách doanh nghiệp & chi nhánh"
+      >
+        <Table
+          dataSource={tenants}
+          columns={columns}
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: 'max-content' }}
+        />
+      </ZoomViewerModal>
 
       <Modal
         title={editingTenant ? `Sửa Thông Tin ${editingTenant.name}` : 'Thêm Cửa Hàng / Chi Nhánh Mới'}

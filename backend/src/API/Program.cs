@@ -90,12 +90,29 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// Cấu hình CORS
+// Cấu hình CORS chặt chẽ: chỉ cho phép Vercel và local development
+var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[]
+    {
+        "https://seafood-warehouse.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4200",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    };
+
+var cleanOrigins = configuredOrigins
+    .Where(o => !string.IsNullOrWhiteSpace(o))
+    .Select(o => o.Trim().TrimEnd('/'))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true)
+        policy.WithOrigins(cleanOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
