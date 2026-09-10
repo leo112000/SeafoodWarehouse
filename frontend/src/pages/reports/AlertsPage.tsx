@@ -241,19 +241,70 @@ export const AlertsPage: React.FC = () => {
             </Space>
           }
           extra={<ZoomButton onClick={() => setZoomAlert('expiry')} />}
-          className="shadow-sm rounded-2xl"
-          styles={{ body: { padding: '10px 14px' } }}
+          className="shadow-sm rounded-2xl overflow-hidden"
+          styles={{ body: { padding: '12px' } }}
         >
-          <Table
-            dataSource={expiryAlerts}
-            columns={expiryColumns}
-            rowKey="batchCode"
-            loading={loading}
-            pagination={false}
-            size="small"
-            locale={{ emptyText: 'Hiện tại tất cả các lô hàng trong kho đều an toàn (chưa có lô nào sắp hết hạn).' }}
-            scroll={{ x: 500 }}
-          />
+          {/* Mobile View: Dạng Card Cảnh Báo Kiểu App */}
+          <div className="block sm:hidden space-y-2.5">
+            {expiryAlerts.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 text-xs">
+                Hiện tại tất cả các lô hàng đều an toàn (chưa có lô nào sắp hết hạn).
+              </div>
+            ) : (
+              expiryAlerts.map((record) => {
+                const days = record.daysLeft;
+                let color = 'red';
+                let label = 'Nguy cấp';
+                if (days > 3 && days <= 7) {
+                  color = 'orange';
+                  label = 'Cảnh báo';
+                } else if (days > 7) {
+                  color = 'gold';
+                  label = 'Lưu ý';
+                }
+                return (
+                  <div
+                    key={record.batchCode}
+                    className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="font-bold text-xs text-sky-600 dark:text-sky-400 font-mono">
+                        {record.batchCode}
+                      </span>
+                      <Tag color={color} className="font-bold text-[11px] m-0 border-0">
+                        {days <= 0 ? 'ĐÃ HẾT HẠN!' : `${days} ngày (${label})`}
+                      </Tag>
+                    </div>
+                    <div className="flex items-start justify-between gap-2 text-xs">
+                      <div>
+                        <div className="font-bold text-slate-800 dark:text-slate-100">{record.productName}</div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">HSD: {record.expiryDate}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                          {formatWeight(record.quantity || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop View */}
+          <div className="hidden sm:block">
+            <Table
+              dataSource={expiryAlerts}
+              columns={expiryColumns}
+              rowKey="batchCode"
+              loading={loading}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Hiện tại tất cả các lô hàng trong kho đều an toàn (chưa có lô nào sắp hết hạn).' }}
+              scroll={{ x: 500 }}
+            />
+          </div>
         </Card>
 
         <Card
@@ -264,19 +315,57 @@ export const AlertsPage: React.FC = () => {
             </Space>
           }
           extra={<ZoomButton onClick={() => setZoomAlert('lowStock')} />}
-          className="shadow-sm rounded-2xl"
-          styles={{ body: { padding: '10px 14px' } }}
+          className="shadow-sm rounded-2xl overflow-hidden"
+          styles={{ body: { padding: '12px' } }}
         >
-          <Table
-            dataSource={lowStockAlerts}
-            columns={lowStockColumns}
-            rowKey="id"
-            loading={loading}
-            pagination={false}
-            size="small"
-            locale={{ emptyText: 'Tất cả mặt hàng hải sản đều đạt hoặc vượt định mức tồn kho tối thiểu.' }}
-            scroll={{ x: 380 }}
-          />
+          {/* Mobile View: Dạng Card Cảnh Báo Kiểu App */}
+          <div className="block sm:hidden space-y-2.5">
+            {lowStockAlerts.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 text-xs">
+                Tất cả mặt hàng hải sản đều đạt hoặc vượt định mức tồn kho tối thiểu.
+              </div>
+            ) : (
+              lowStockAlerts.map((record) => {
+                const deficit = Math.max(0, record.minStock - record.currentStock);
+                return (
+                  <div
+                    key={record.id}
+                    className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                        {record.name}
+                      </span>
+                      <Tag color="volcano" className="text-[11px] m-0 border-0 font-semibold">
+                        Thiếu {deficit} {record.unit}
+                      </Tag>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono text-[11px] text-gray-400">{record.code}</span>
+                      <div className="text-right">
+                        <span className="text-red-500 font-black">{record.currentStock}</span>
+                        <span className="text-gray-400 text-xs"> / {record.minStock} {record.unit}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop View */}
+          <div className="hidden sm:block">
+            <Table
+              dataSource={lowStockAlerts}
+              columns={lowStockColumns}
+              rowKey="id"
+              loading={loading}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Tất cả mặt hàng hải sản đều đạt hoặc vượt định mức tồn kho tối thiểu.' }}
+              scroll={{ x: 380 }}
+            />
+          </div>
         </Card>
       </Space>
 

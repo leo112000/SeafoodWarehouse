@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography, Tabs, Badge, Tooltip } from 'antd';
+import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography, Tabs, Badge, Tooltip, Pagination } from 'antd';
 import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined, FileExcelOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useInboundStore } from '../../stores/useInboundStore';
@@ -469,6 +469,11 @@ export const TransactionHistoryPage: React.FC = () => {
   const inboundCount = useMemo(() => unifiedTransactions.filter((t) => t.type === 'INBOUND').length, [unifiedTransactions]);
   const outboundCount = useMemo(() => unifiedTransactions.filter((t) => t.type === 'OUTBOUND').length, [unifiedTransactions]);
 
+  const pagedTransactions = useMemo(() => {
+    const start = (pagination.current - 1) * pagination.pageSize;
+    return filteredTransactions.slice(start, start + pagination.pageSize);
+  }, [filteredTransactions, pagination.current, pagination.pageSize]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -601,25 +606,132 @@ export const TransactionHistoryPage: React.FC = () => {
         </Row>
       </Card>
 
-      {/* Main Table */}
+      {/* Main Table & Mobile Card View */}
       <Card
         title="📋 Danh Sách Giao Dịch Chi Tiết"
-        extra={<ZoomButton onClick={() => setIsZoomed(true)} />}
-        className="shadow-sm rounded-2xl"
+        extra={
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 hidden sm:inline">Tổng {filteredTransactions.length} giao dịch</span>
+            <ZoomButton onClick={() => setIsZoomed(true)} />
+          </div>
+        }
+        className="shadow-sm rounded-2xl overflow-hidden"
+        styles={{ body: { padding: '12px' } }}
       >
-        <Table
-          dataSource={filteredTransactions}
-          columns={columns}
-          rowKey="id"
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50'],
-            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-          }}
-          scroll={{ x: 'max-content' }}
-        />
+        {/* Mobile View: Dạng Card Chạm Lướt Kiểu App Hiện Đại */}
+        <div className="block sm:hidden space-y-2.5">
+          {filteredTransactions.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 text-xs">
+              Không tìm thấy giao dịch nào phù hợp
+            </div>
+          ) : (
+            pagedTransactions.map((tx) => (
+              <div
+                key={tx.id}
+                onClick={() => handleOpenDetail(tx)}
+                className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs active:bg-slate-100 dark:active:bg-slate-800 transition-colors cursor-pointer"
+              >
+                {/* Header card: Tag loại phiếu + Mã số + Thời gian */}
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Tag
+                      color={tx.type === 'INBOUND' ? 'blue' : 'green'}
+                      className="font-bold text-[11px] m-0 px-1.5 py-0.5 border-0"
+                    >
+                      {tx.type === 'INBOUND' ? '📥 NHẬP KHO' : '📤 XUẤT KHO'}
+                    </Tag>
+                    <span className="font-bold text-xs font-mono text-sky-600 dark:text-sky-400 tracking-tight">
+                      {tx.id}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-gray-400">
+                    {formatDate(tx.date).split(' ')[0]}
+                  </span>
+                </div>
+
+                {/* Body card: Tên sản phẩm + Đối tác */}
+                <div className="flex items-start justify-between gap-2 text-xs mb-2">
+                  <div className="min-w-0 pr-2">
+                    <div className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                      {tx.items?.[0]?.seafoodName || 'Hải sản'}
+                      {tx.items && tx.items.length > 1 ? (
+                        <span className="text-violet-600 dark:text-violet-400 font-medium ml-1 text-[11px]">
+                          +{tx.items.length - 1} món
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                      👤 {tx.partnerName || 'Khách vãng lai'}
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                      {formatWeight(tx.totalWeightKg)}
+                    </div>
+                    <div className="font-black text-emerald-600 dark:text-emerald-400 text-xs">
+                      {formatCurrency(tx.totalAmount)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer card: Nút thao tác nhanh */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+                  <span className="text-gray-400">
+                    {tx.createdBy ? `NV: ${tx.createdBy}` : 'Hệ thống'}
+                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenInvoice(tx);
+                      }}
+                      className="text-sky-600 dark:text-sky-400 font-medium hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
+                    >
+                      <PrinterOutlined /> In phiếu
+                    </button>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-0.5">
+                      Chi tiết &rarr;
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* Phân trang Mobile */}
+          {filteredTransactions.length > pagination.pageSize && (
+            <div className="flex justify-center pt-2">
+              <Pagination
+                size="small"
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                total={filteredTransactions.length}
+                onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Desktop / Tablet View: Bảng chi tiết đầy đủ cột */}
+        <div className="hidden sm:block">
+          <Table
+            dataSource={filteredTransactions}
+            columns={columns}
+            rowKey="id"
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              showSizeChanger: true,
+              pageSizeOptions: ['10', '20', '50'],
+              onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+            }}
+            scroll={{ x: 'max-content' }}
+          />
+        </div>
       </Card>
 
       {/* Detail Modal */}

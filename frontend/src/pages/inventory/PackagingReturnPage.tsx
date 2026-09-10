@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Card, Table, Tag, Button, Modal, Form, Select, InputNumber,
-  Input, Row, Col, Statistic, App, Tabs, Badge, Tooltip,
+  Input, Row, Col, App, Tabs, Badge, Tooltip, Pagination,
 } from 'antd';
 import {
   RollbackOutlined, PlusOutlined, WarningOutlined,
@@ -117,6 +117,16 @@ const PackagingReturnPage: React.FC = () => {
 
   const [loanPagination, setLoanPagination] = useState({ current: 1, pageSize: 10 });
   const [returnPagination, setReturnPagination] = useState({ current: 1, pageSize: 10 });
+
+  const pagedLoans = useMemo(() => {
+    const start = (loanPagination.current - 1) * loanPagination.pageSize;
+    return filteredLoans.slice(start, start + loanPagination.pageSize);
+  }, [filteredLoans, loanPagination.current, loanPagination.pageSize]);
+
+  const pagedReturns = useMemo(() => {
+    const start = (returnPagination.current - 1) * returnPagination.pageSize;
+    return returns.slice(start, start + returnPagination.pageSize);
+  }, [returns, returnPagination.current, returnPagination.pageSize]);
 
   // ── loan table columns ────────────────────────────────────────────────────────
 
@@ -286,49 +296,93 @@ const PackagingReturnPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Summary Cards ── */}
-      <Row gutter={[8, 8]}>
+      {/* ── Summary Cards (Thu nhỏ kích thước, gọn gàng, tiết kiệm diện tích) ── */}
+      <Row gutter={[6, 6]} className="mb-3">
         <Col xs={12} sm={12} lg={6}>
-          <Card variant="borderless" className="shadow-sm p-1 sm:p-4">
-            <Statistic
-              title="Đã giao mượn"
-              value={totalLoaned}
-              suffix="cái"
-              prefix={<InboxOutlined className="text-sky-500 mr-1" />}
-            />
+          <Card
+            bordered={false}
+            className="shadow-2xs rounded-xl h-full border-l-4 border-l-sky-500 bg-white dark:bg-slate-900"
+            styles={{ body: { padding: '6px 10px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-tight truncate">
+                  Đã giao mượn
+                </div>
+                <div className="text-sm sm:text-base font-black text-sky-600 dark:text-sky-400 mt-0.5 truncate">
+                  {totalLoaned.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">cái</span>
+                </div>
+              </div>
+              <div className="p-1 sm:p-1.5 bg-sky-50 dark:bg-sky-950/40 rounded-lg text-sky-500 shrink-0">
+                <InboxOutlined className="text-xs sm:text-sm" />
+              </div>
+            </div>
           </Card>
         </Col>
+
         <Col xs={12} sm={12} lg={6}>
-          <Card variant="borderless" className="shadow-sm p-1 sm:p-4">
-            <Statistic
-              title="Đã thu hồi"
-              value={totalReturned}
-              suffix="cái"
-              prefix={<CheckCircleOutlined className="text-green-500 mr-1" />}
-              styles={{ content: { color: '#22c55e' } }}
-            />
+          <Card
+            bordered={false}
+            className="shadow-2xs rounded-xl h-full border-l-4 border-l-emerald-500 bg-white dark:bg-slate-900"
+            styles={{ body: { padding: '6px 10px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-tight truncate">
+                  Đã thu hồi
+                </div>
+                <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
+                  {totalReturned.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">cái</span>
+                </div>
+              </div>
+              <div className="p-1 sm:p-1.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-emerald-500 shrink-0">
+                <CheckCircleOutlined className="text-xs sm:text-sm" />
+              </div>
+            </div>
           </Card>
         </Col>
+
         <Col xs={12} sm={12} lg={6}>
-          <Card variant="borderless" className="shadow-sm p-1 sm:p-4">
-            <Statistic
-              title="Còn nợ ngoài kho"
-              value={totalDebt}
-              suffix="cái"
-              prefix={<WarningOutlined className="text-orange-500 mr-1" />}
-              styles={{ content: { color: totalDebt > 0 ? '#f97316' : '#22c55e' } }}
-            />
+          <Card
+            bordered={false}
+            className="shadow-2xs rounded-xl h-full border-l-4 border-l-orange-500 bg-white dark:bg-slate-900"
+            styles={{ body: { padding: '6px 10px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-tight truncate">
+                  Còn nợ ngoài kho
+                </div>
+                <div className="text-sm sm:text-base font-black text-orange-600 dark:text-orange-400 mt-0.5 truncate">
+                  {totalDebt.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">cái</span>
+                </div>
+              </div>
+              <div className="p-1 sm:p-1.5 bg-orange-50 dark:bg-orange-950/40 rounded-lg text-orange-500 shrink-0">
+                <WarningOutlined className="text-xs sm:text-sm" />
+              </div>
+            </div>
           </Card>
         </Col>
+
         <Col xs={12} sm={12} lg={6}>
-          <Card variant="borderless" className="shadow-sm p-1 sm:p-4">
-            <Statistic
-              title="Đối tác nợ"
-              value={pendingLoans}
-              suffix="phiếu"
-              prefix={<HistoryOutlined className="text-red-500 mr-1" />}
-              styles={{ content: { color: pendingLoans > 0 ? '#ef4444' : '#22c55e' } }}
-            />
+          <Card
+            bordered={false}
+            className="shadow-2xs rounded-xl h-full border-l-4 border-l-rose-500 bg-white dark:bg-slate-900"
+            styles={{ body: { padding: '6px 10px' } }}
+          >
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-tight truncate">
+                  Đối tác nợ
+                </div>
+                <div className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 mt-0.5 truncate">
+                  {pendingLoans} <span className="text-[10px] font-normal text-gray-400">phiếu</span>
+                </div>
+              </div>
+              <div className="p-1 sm:p-1.5 bg-rose-50 dark:bg-rose-950/40 rounded-lg text-rose-500 shrink-0">
+                <HistoryOutlined className="text-xs sm:text-sm" />
+              </div>
+            </div>
           </Card>
         </Col>
       </Row>
@@ -354,41 +408,114 @@ const PackagingReturnPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-sm text-slate-500">Lọc theo đối tác:</span>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-slate-500">Lọc đối tác:</span>
                     <Select
                       showSearch
                       optionFilterProp="label"
                       value={partnerFilter}
                       onChange={setPartnerFilter}
-                      className="w-56"
+                      size="small"
+                      className="w-48 sm:w-56"
                       options={[
                         { value: 'ALL', label: 'Tất cả đối tác' },
                         ...partners.map((p) => ({ value: p, label: p })),
                       ]}
                     />
                   </div>
-                  <Table
-                    columns={loanColumns}
-                    dataSource={filteredLoans}
-                    rowKey="id"
-                    pagination={{
-                      current: loanPagination.current,
-                      pageSize: loanPagination.pageSize,
-                      showSizeChanger: true,
-                      pageSizeOptions: ['5', '10', '20', '50'],
-                      onChange: (page, pageSize) => setLoanPagination({ current: page, pageSize }),
-                    }}
-                    rowClassName={(record) => {
-                      const debt = record.loanedQty - record.returnedQty;
-                      if (debt > 5) return 'bg-red-50 dark:bg-red-950';
-                      if (debt > 0) return 'bg-orange-50 dark:bg-orange-950';
-                      return '';
-                    }}
-                    className="rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800"
-                    scroll={{ x: 'max-content' }}
-                  />
+                  {/* Mobile View: Thẻ Công Nợ Vỏ Sọt Kiểu App (Thu gọn kích thước) */}
+                  <div className="block sm:hidden space-y-2">
+                    {filteredLoans.length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 text-xs">Không có dữ liệu công nợ vỏ</div>
+                    ) : (
+                      pagedLoans.map((loan) => {
+                        const debt = loan.loanedQty - loan.returnedQty;
+                        return (
+                          <div
+                            key={loan.id}
+                            className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between gap-1.5 mb-1">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                                  {loan.partnerName}
+                                </span>
+                                <Tag color={loan.partnerType === 'CUSTOMER' ? 'blue' : 'purple'} className="text-[10px] m-0 px-1 py-0 border-0 shrink-0">
+                                  {loan.partnerType === 'CUSTOMER' ? 'Khách' : 'NCC'}
+                                </Tag>
+                              </div>
+                              <div className="shrink-0">{debtLabel(loan)}</div>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 text-[11px] mb-1.5">
+                              <div className="min-w-0 truncate text-slate-600 dark:text-slate-300">
+                                {loan.packagingName} <span className="font-mono text-gray-400 text-[10px]">({loan.packagingCode})</span>
+                              </div>
+                              <div className="text-right shrink-0 flex items-center gap-2">
+                                <span className="text-gray-500">Mượn: <strong className="text-slate-700 dark:text-slate-200">{loan.loanedQty}</strong></span>
+                                <span className="text-emerald-600 font-medium">Trả: <strong>{loan.returnedQty}</strong></span>
+                              </div>
+                            </div>
+
+                            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-gray-400">
+                              <span>Ngày: {loan.date}</span>
+                              {debt > 0 ? (
+                                <Button
+                                  type="primary"
+                                  size="small"
+                                  icon={<RollbackOutlined className="text-[10px]" />}
+                                  onClick={() => openReturnModal(loan)}
+                                  className="bg-orange-500 hover:bg-orange-600 border-none font-medium text-[11px] h-6 px-2 rounded-md"
+                                >
+                                  Trả ({debt})
+                                </Button>
+                              ) : (
+                                <span className="text-green-600 font-medium text-[11px]">Đã xong</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+
+                    {filteredLoans.length > loanPagination.pageSize && (
+                      <div className="flex justify-center pt-1.5">
+                        <Pagination
+                          size="small"
+                          current={loanPagination.current}
+                          pageSize={loanPagination.pageSize}
+                          total={filteredLoans.length}
+                          onChange={(page, pageSize) => setLoanPagination({ current: page, pageSize })}
+                          showSizeChanger={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop View */}
+                  <div className="hidden sm:block">
+                    <Table
+                      columns={loanColumns}
+                      dataSource={filteredLoans}
+                      rowKey="id"
+                      pagination={{
+                        current: loanPagination.current,
+                        pageSize: loanPagination.pageSize,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['5', '10', '20', '50'],
+                        onChange: (page, pageSize) => setLoanPagination({ current: page, pageSize }),
+                      }}
+                      rowClassName={(record) => {
+                        const debt = record.loanedQty - record.returnedQty;
+                        if (debt > 5) return 'bg-red-50 dark:bg-red-950';
+                        if (debt > 0) return 'bg-orange-50 dark:bg-orange-950';
+                        return '';
+                      }}
+                      className="rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800"
+                      scroll={{ x: 'max-content' }}
+                    />
+                  </div>
                 </div>
               ),
             },
@@ -401,20 +528,69 @@ const PackagingReturnPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <Table
-                  columns={returnColumns}
-                  dataSource={returns}
-                  rowKey="id"
-                  pagination={{
-                    current: returnPagination.current,
-                    pageSize: returnPagination.pageSize,
-                    showSizeChanger: true,
-                    pageSizeOptions: ['5', '10', '20', '50'],
-                    onChange: (page, pageSize) => setReturnPagination({ current: page, pageSize }),
-                  }}
-                  locale={{ emptyText: 'Chưa có lịch sử trả vỏ nào.' }}
-                  scroll={{ x: 'max-content' }}
-                />
+                <div>
+                  {/* Mobile View: Thẻ Lịch Sử Trả Vỏ Kiểu App (Thu gọn kích thước) */}
+                  <div className="block sm:hidden space-y-2">
+                    {returns.length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 text-xs">Chưa có lịch sử trả vỏ nào</div>
+                    ) : (
+                      pagedReturns.map((ret) => (
+                        <div
+                          key={ret.id}
+                          className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between gap-1.5 mb-1">
+                            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                              {ret.partnerName}
+                            </span>
+                            <Tag color="green" className="font-bold text-[11px] m-0 px-1.5 py-0 border-0">
+                              +{ret.returnedQty} cái
+                            </Tag>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
+                            <span className="truncate">{ret.packagingName}</span>
+                            <span className="text-[10px] text-gray-400 shrink-0">{ret.returnDate}</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 mt-1 pt-1 border-t border-slate-100 dark:border-slate-800 flex justify-between">
+                            <span>NV: {ret.recordedBy}</span>
+                            {ret.note && <span className="italic truncate max-w-[140px]">{ret.note}</span>}
+                          </div>
+                        </div>
+                      ))
+                    )}
+
+                    {returns.length > returnPagination.pageSize && (
+                      <div className="flex justify-center pt-1.5">
+                        <Pagination
+                          size="small"
+                          current={returnPagination.current}
+                          pageSize={returnPagination.pageSize}
+                          total={returns.length}
+                          onChange={(page, pageSize) => setReturnPagination({ current: page, pageSize })}
+                          showSizeChanger={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop View */}
+                  <div className="hidden sm:block">
+                    <Table
+                      columns={returnColumns}
+                      dataSource={returns}
+                      rowKey="id"
+                      pagination={{
+                        current: returnPagination.current,
+                        pageSize: returnPagination.pageSize,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['5', '10', '20', '50'],
+                        onChange: (page, pageSize) => setReturnPagination({ current: page, pageSize }),
+                      }}
+                      locale={{ emptyText: 'Chưa có lịch sử trả vỏ nào.' }}
+                      scroll={{ x: 'max-content' }}
+                    />
+                  </div>
+                </div>
               ),
             },
           ]}

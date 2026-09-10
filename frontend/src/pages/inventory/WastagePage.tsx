@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Form, Button, Select, InputNumber, Row, Col, Space, Table, Tag, DatePicker, Radio, App } from 'antd';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card, Form, Button, Select, InputNumber, Row, Col, Space, Table, Tag, DatePicker, Radio, App, Pagination } from 'antd';
 import { SaveOutlined, ReloadOutlined, SwapOutlined, WarningOutlined } from '@ant-design/icons';
 import { api } from '../../services/api';
 import { useBatchStore } from '../../stores/useBatchStore';
@@ -93,6 +93,11 @@ export const WastagePage: React.FC = () => {
   }, []);
 
   const [pagination, setPagination] = useState({ current: 1, pageSize: 5 });
+
+  const pagedLogs = useMemo(() => {
+    const start = (pagination.current - 1) * pagination.pageSize;
+    return logs.slice(start, start + pagination.pageSize);
+  }, [logs, pagination.current, pagination.pageSize]);
 
   const logColumns = [
     {
@@ -259,31 +264,51 @@ export const WastagePage: React.FC = () => {
             extra={<ZoomButton onClick={() => setZoomSection('stats')} />}
             className="shadow-sm h-full"
           >
-            <Table
-              dataSource={monthlyStats}
-              columns={[
-                {
-                  title: 'STT',
-                  key: 'stt',
-                  width: 55,
-                  align: 'center' as const,
-                  render: (_: any, __: any, index: number) => index + 1,
-                },
-                { title: 'Tháng', dataIndex: 'month', key: 'month' },
-                { title: 'Tổng khối lượng nhập (kg)', dataIndex: 'totalInbound', key: 'totalInbound', render: (val) => `${val.toLocaleString()} kg` },
-                { title: 'Hao hụt (kg)', dataIndex: 'totalWastage', key: 'totalWastage', render: (val) => `${val} kg` },
-                {
-                  title: 'Tỷ lệ hao hụt (%)',
-                  dataIndex: 'rate',
-                  key: 'rate',
-                  render: (val) => <Tag color={val > 1.2 ? 'red' : 'green'}>{val}%</Tag>,
-                },
-              ]}
-              rowKey="month"
-              pagination={false}
-              size="small"
-              scroll={{ x: 'max-content' }}
-            />
+            {/* Mobile View: Thống kê tỷ lệ hao hụt dạng thẻ nhỏ */}
+            <div className="block sm:hidden space-y-2 mb-3">
+              {monthlyStats.map((item) => (
+                <div key={item.month} className="p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <div className="font-bold text-slate-800 dark:text-slate-100">{item.month}</div>
+                    <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      Nhập: {item.totalInbound.toLocaleString()} kg • Hao hụt: {item.totalWastage} kg
+                    </div>
+                  </div>
+                  <Tag color={item.rate > 1.2 ? 'red' : 'green'} className="font-bold text-xs m-0">
+                    {item.rate}%
+                  </Tag>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View: Bảng */}
+            <div className="hidden sm:block">
+              <Table
+                dataSource={monthlyStats}
+                columns={[
+                  {
+                    title: 'STT',
+                    key: 'stt',
+                    width: 55,
+                    align: 'center' as const,
+                    render: (_: any, __: any, index: number) => index + 1,
+                  },
+                  { title: 'Tháng', dataIndex: 'month', key: 'month' },
+                  { title: 'Tổng khối lượng nhập (kg)', dataIndex: 'totalInbound', key: 'totalInbound', render: (val) => `${val.toLocaleString()} kg` },
+                  { title: 'Hao hụt (kg)', dataIndex: 'totalWastage', key: 'totalWastage', render: (val) => `${val} kg` },
+                  {
+                    title: 'Tỷ lệ hao hụt (%)',
+                    dataIndex: 'rate',
+                    key: 'rate',
+                    render: (val) => <Tag color={val > 1.2 ? 'red' : 'green'}>{val}%</Tag>,
+                  },
+                ]}
+                rowKey="month"
+                pagination={false}
+                size="small"
+                scroll={{ x: 'max-content' }}
+              />
+            </div>
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-slate-900 border border-yellow-100 dark:border-gray-800 text-xs text-gray-500 rounded">
               * Tỷ lệ hao hụt an toàn tiêu chuẩn của kho hải sản được khuyến nghị ở mức <strong>&lt; 1.5%</strong>. Nếu vượt quá, vui lòng rà soát lại kỹ quy trình bảo quản và nhiệt độ tủ đông.
             </div>
@@ -294,21 +319,89 @@ export const WastagePage: React.FC = () => {
       <Card
         title="Lịch sử nhật ký hao hụt & chuyển đổi phân loại"
         extra={<ZoomButton onClick={() => setZoomSection('logs')} />}
-        className="shadow-sm mt-6"
+        className="shadow-sm mt-6 rounded-2xl overflow-hidden"
+        styles={{ body: { padding: '12px' } }}
       >
-        <Table
-          dataSource={logs}
-          columns={logColumns}
-          rowKey="id"
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            showSizeChanger: true,
-            pageSizeOptions: ['5', '10', '20', '50'],
-            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-          }}
-          scroll={{ x: 'max-content' }}
-        />
+        {/* Mobile View: Dạng Card Chạm Lướt Kiểu App Hiện Đại */}
+        <div className="block sm:hidden space-y-2.5">
+          {logs.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 text-xs">Chưa có nhật ký nào</div>
+          ) : (
+            pagedLogs.map((item) => (
+              <div
+                key={item.id}
+                className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs"
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Tag
+                      color={item.type === 'Hao hụt' ? 'red' : 'blue'}
+                      className="font-bold text-[11px] m-0 px-1.5 py-0.5 border-0"
+                    >
+                      {item.type === 'Hao hụt' ? '⚠️ Hao hụt' : '🔄 Chuyển phân loại'}
+                    </Tag>
+                    <span className="font-bold text-xs font-mono text-slate-700 dark:text-slate-300">
+                      {item.id}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-gray-400">{item.date}</span>
+                </div>
+
+                <div className="flex items-start justify-between gap-2 text-xs mb-1">
+                  <div className="min-w-0 pr-2">
+                    <div className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                      {item.seafoodName}
+                    </div>
+                    <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                      Lô nguồn: <span className="font-mono text-sky-600 dark:text-sky-400 font-semibold">{item.batchCode}</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className={`font-black text-xs ${item.type === 'Hao hụt' ? 'text-rose-600 dark:text-rose-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                      {formatWeight(item.weight)}
+                    </div>
+                  </div>
+                </div>
+
+                {item.reason && (
+                  <div className="text-[11px] text-gray-500 dark:text-gray-400 italic bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 rounded-lg mt-1.5 border border-slate-100 dark:border-slate-800">
+                    Lý do: {item.reason}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+
+          {logs.length > pagination.pageSize && (
+            <div className="flex justify-center pt-2">
+              <Pagination
+                size="small"
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                total={logs.length}
+                onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View */}
+        <div className="hidden sm:block">
+          <Table
+            dataSource={logs}
+            columns={logColumns}
+            rowKey="id"
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              showSizeChanger: true,
+              pageSizeOptions: ['5', '10', '20', '50'],
+              onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+            }}
+            scroll={{ x: 'max-content' }}
+          />
+        </div>
       </Card>
 
       {/* Modal Phóng To & Quay Ngang Toàn Màn Hình */}

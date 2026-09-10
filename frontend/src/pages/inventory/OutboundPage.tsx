@@ -571,7 +571,7 @@ export const OutboundPage: React.FC = () => {
               {(fields, { add, remove }) => (
                 <div className="space-y-3">
                   {fields.map(({ key, name, ...restField }) => (
-                    <Card key={key} size="small" type="inner" className="bg-slate-50 border border-slate-200">
+                    <Card key={key} size="small" type="inner" className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
                       <Row gutter={[12, 12]} align="middle">
                         <Col xs={24} md={8}>
                           <Form.Item
@@ -686,7 +686,10 @@ export const OutboundPage: React.FC = () => {
           </Card>
 
           {/* 3. Chiết khấu & Tổng kết đơn hàng */}
-          <Card title="3. Chiết khấu &amp; Tổng kết thanh toán" className="shadow-sm mb-6 bg-gradient-to-br from-slate-50 to-sky-50/30">
+          <Card
+            title={<span className="font-bold text-slate-800 dark:text-slate-100">3. Chiết khấu &amp; Tổng kết thanh toán</span>}
+            className="shadow-sm mb-6 bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl"
+          >
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
                 <Row gutter={12}>
@@ -695,6 +698,7 @@ export const OutboundPage: React.FC = () => {
                       <InputNumber
                         min={0}
                         className="w-full"
+                        inputMode="numeric"
                         placeholder="Ví dụ: 50,000"
                         formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                         parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
@@ -723,30 +727,30 @@ export const OutboundPage: React.FC = () => {
                     const grandTotal = Math.max(0, seafoodTotal + suppliesTotal - discount);
 
                     return (
-                      <div className="bg-white p-4 rounded-xl border border-sky-200 shadow-sm space-y-2">
-                        <div className="flex justify-between text-sm text-gray-600">
+                      <div className="bg-white dark:bg-slate-800/90 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
+                        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                           <span>Tổng khối lượng hải sản:</span>
-                          <span className="font-semibold text-slate-800">{totalWeight.toFixed(1)} kg</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-100">{totalWeight.toFixed(1)} kg</span>
                         </div>
-                        <div className="flex justify-between text-sm text-gray-600">
+                        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                           <span>Tiền hàng hải sản:</span>
-                          <span className="font-semibold text-slate-800">{formatCurrency(seafoodTotal)}</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-100">{formatCurrency(seafoodTotal)}</span>
                         </div>
                         {suppliesTotal > 0 && (
-                          <div className="flex justify-between text-sm text-sky-600">
+                          <div className="flex justify-between text-sm text-sky-600 dark:text-sky-400">
                             <span>Tiền thùng xốp / vật phẩm kèm:</span>
                             <span className="font-semibold">+{formatCurrency(suppliesTotal)}</span>
                           </div>
                         )}
                         {discount > 0 && (
-                          <div className="flex justify-between text-sm text-rose-600">
-                            <span>Giảm giá / Voucher {formValues.discountReason ? `(${formValues.discountReason})` : ''}:</span>
-                            <span className="font-semibold">-{formatCurrency(discount)}</span>
+                          <div className="flex justify-between items-center text-sm px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300">
+                            <span>🎁 Chiết khấu {formValues.discountReason ? `(${formValues.discountReason})` : ''}:</span>
+                            <span className="font-bold text-rose-600 dark:text-rose-400">-{formatCurrency(discount)}</span>
                           </div>
                         )}
-                        <div className="border-t border-sky-100 pt-2 flex justify-between items-center">
-                          <span className="font-bold text-base text-sky-900">TỔNG THANH TOÁN:</span>
-                          <span className="text-2xl font-black text-emerald-600">{formatCurrency(grandTotal)}</span>
+                        <div className="border-t border-slate-200 dark:border-slate-700 pt-2.5 flex justify-between items-center">
+                          <span className="font-bold text-base text-slate-900 dark:text-white">TỔNG THANH TOÁN:</span>
+                          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(grandTotal)}</span>
                         </div>
                       </div>
                     );

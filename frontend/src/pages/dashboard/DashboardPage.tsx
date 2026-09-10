@@ -292,10 +292,12 @@ export const DashboardPage: React.FC = () => {
         <Col xs={24} lg={15}>
           <Card
             title={
-              <Space>
-                <LineChartOutlined className="text-blue-500" />
-                <span className="text-sm sm:text-base font-bold">Biểu Đồ 7 Ngày Gần Nhất</span>
-              </Space>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <LineChartOutlined className="text-blue-500 shrink-0 text-sm sm:text-base" />
+                <span className="text-xs sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
+                  Biểu Đồ 7 Ngày <span className="hidden sm:inline">Gần Nhất</span>
+                </span>
+              </div>
             }
             extra={
               <Space size="small">
@@ -304,15 +306,34 @@ export const DashboardPage: React.FC = () => {
                   value={chartMetric}
                   onChange={(v) => setChartMetric(v as 'KG' | 'VND')}
                   options={[
-                    { label: '📦 Khối lượng (Kg)', value: 'KG' },
-                    { label: '💰 Doanh số (VNĐ)', value: 'VND' },
+                    {
+                      label: (
+                        <span>
+                          <span className="hidden sm:inline">📦 Khối lượng (Kg)</span>
+                          <span className="sm:hidden font-semibold">📦 Kg</span>
+                        </span>
+                      ),
+                      value: 'KG',
+                    },
+                    {
+                      label: (
+                        <span>
+                          <span className="hidden sm:inline">💰 Doanh số (VNĐ)</span>
+                          <span className="sm:hidden font-semibold">💰 VNĐ</span>
+                        </span>
+                      ),
+                      value: 'VND',
+                    },
                   ]}
                 />
                 <ZoomButton onClick={() => setZoomTarget('flowChart')} />
               </Space>
             }
             className="shadow-sm rounded-2xl"
-            styles={{ body: { padding: '12px 16px' } }}
+            styles={{
+              header: { padding: '8px 12px', minHeight: 46 },
+              body: { padding: '12px 16px' },
+            }}
           >
             <ResponsiveContainer width="100%" height={240}>
               <ComposedChart data={dailyFlow} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
@@ -369,14 +390,19 @@ export const DashboardPage: React.FC = () => {
         <Col xs={24} lg={9}>
           <Card
             title={
-              <Space>
-                <DatabaseOutlined className="text-orange-500" />
-                <span className="text-sm sm:text-base font-bold">Cơ Cấu Tồn Kho</span>
-              </Space>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <DatabaseOutlined className="text-orange-500 shrink-0 text-sm sm:text-base" />
+                <span className="text-xs sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
+                  Cơ Cấu Tồn Kho
+                </span>
+              </div>
             }
             extra={<ZoomButton onClick={() => setZoomTarget('categoryPie')} />}
             className="shadow-sm rounded-2xl h-full"
-            styles={{ body: { padding: '12px 16px' } }}
+            styles={{
+              header: { padding: '8px 12px', minHeight: 46 },
+              body: { padding: '12px 16px' },
+            }}
           >
             <ResponsiveContainer width="100%" height={160}>
               <PieChart>
@@ -414,10 +440,12 @@ export const DashboardPage: React.FC = () => {
       {/* Khối 4: Lịch Sử Giao Dịch Mới Nhất (Tối ưu App Mobile & Desktop) */}
       <Card
         title={
-          <Space>
-            <HistoryOutlined className="text-indigo-500" />
-            <span className="text-sm sm:text-base font-bold">Lịch Sử Giao Dịch Mới Nhất</span>
-          </Space>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <HistoryOutlined className="text-indigo-500 shrink-0 text-sm sm:text-base" />
+            <span className="text-xs sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate">
+              Lịch Sử Giao Dịch <span className="hidden sm:inline">Mới Nhất</span>
+            </span>
+          </div>
         }
         extra={
           <Space>
@@ -428,7 +456,10 @@ export const DashboardPage: React.FC = () => {
           </Space>
         }
         className="shadow-sm rounded-2xl"
-        styles={{ body: { padding: '12px' } }}
+        styles={{
+          header: { padding: '8px 12px', minHeight: 46 },
+          body: { padding: '12px' },
+        }}
       >
         {/* Mobile View: Dạng Card chạm lướt kiểu App */}
         <div className="block sm:hidden space-y-2.5">

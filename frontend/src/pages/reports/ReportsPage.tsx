@@ -327,16 +327,18 @@ export const ReportsPage: React.FC = () => {
                     value={selectedWeek}
                     onChange={setSelectedWeek}
                     options={WEEK_OPTIONS}
-                    className="w-28 sm:w-32"
+                    className="w-32 sm:w-36"
                     showSearch
+                    popupMatchSelectWidth={false}
                     optionFilterProp="label"
                   />
                   <Select
                     value={selectedYear}
                     onChange={setSelectedYear}
                     options={YEAR_OPTIONS}
-                    className="w-24 sm:w-28"
+                    className="w-32 sm:w-36"
                     showSearch
+                    popupMatchSelectWidth={false}
                     optionFilterProp="label"
                   />
                 </>
@@ -347,16 +349,18 @@ export const ReportsPage: React.FC = () => {
                     value={selectedMonth}
                     onChange={setSelectedMonth}
                     options={MONTH_OPTIONS}
-                    className="w-28 sm:w-32"
+                    className="w-32 sm:w-36"
                     showSearch
+                    popupMatchSelectWidth={false}
                     optionFilterProp="label"
                   />
                   <Select
                     value={selectedYear}
                     onChange={setSelectedYear}
                     options={YEAR_OPTIONS}
-                    className="w-24 sm:w-28"
+                    className="w-32 sm:w-36"
                     showSearch
+                    popupMatchSelectWidth={false}
                     optionFilterProp="label"
                   />
                 </>
@@ -367,16 +371,18 @@ export const ReportsPage: React.FC = () => {
                     value={selectedQuarter}
                     onChange={setSelectedQuarter}
                     options={QUARTER_OPTIONS}
-                    className="w-36 sm:w-44"
+                    className="w-44 sm:w-48"
                     showSearch
+                    popupMatchSelectWidth={false}
                     optionFilterProp="label"
                   />
                   <Select
                     value={selectedYear}
                     onChange={setSelectedYear}
                     options={YEAR_OPTIONS}
-                    className="w-24 sm:w-28"
+                    className="w-32 sm:w-36"
                     showSearch
+                    popupMatchSelectWidth={false}
                     optionFilterProp="label"
                   />
                 </>
@@ -386,8 +392,9 @@ export const ReportsPage: React.FC = () => {
                   value={selectedYear}
                   onChange={setSelectedYear}
                   options={YEAR_OPTIONS}
-                  className="w-28 sm:w-36"
+                  className="w-36 sm:w-40"
                   showSearch
+                  popupMatchSelectWidth={false}
                   optionFilterProp="label"
                 />
               )}
