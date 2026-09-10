@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography } from 'antd';
-import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useInboundStore } from '../../stores/useInboundStore';
 import { exportToExcel } from '../../utils/exportUtils';
 import type { InboundReceipt } from '../../stores/useInboundStore';
@@ -282,17 +282,10 @@ export const InboundHistoryPage: React.FC = () => {
           <Col xs={12} sm={12} md={7}>
             <div className="flex items-center justify-end gap-1.5 w-full">
               {(supplierQuery || filterDate) && (
-                <Button icon={<ReloadOutlined />} onClick={handleResetFilters} size="middle" />
+                <Button icon={<ReloadOutlined />} onClick={handleResetFilters} size="middle">
+                  Đặt lại
+                </Button>
               )}
-              <Button
-                type="primary"
-                icon={<FileExcelOutlined />}
-                className="bg-emerald-600 hover:bg-emerald-700 border-none flex-1 sm:flex-initial"
-                onClick={handleExportExcel}
-                size="middle"
-              >
-                Xuất Excel
-              </Button>
             </div>
           </Col>
         </Row>
@@ -300,7 +293,20 @@ export const InboundHistoryPage: React.FC = () => {
 
       <Card
         title="📥 Danh Sách Phiếu Nhập Kho"
-        extra={<ZoomButton onClick={() => setIsZoomed(true)} />}
+        extra={
+          <div className="flex items-center gap-2">
+            <Button
+              size="small"
+              onClick={handleExportExcel}
+              className="text-xs flex items-center gap-1 border-slate-200 dark:border-slate-700 font-medium"
+            >
+              <span>📥</span>
+              <span className="hidden sm:inline">Xuất Excel</span>
+              <span className="sm:hidden">Excel</span>
+            </Button>
+            <ZoomButton onClick={() => setIsZoomed(true)} />
+          </div>
+        }
         className="shadow-sm rounded-2xl"
       >
         <Table

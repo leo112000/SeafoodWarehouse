@@ -174,23 +174,13 @@ export const InventoryStockPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── Page Header: Tiêu đề trang & Nút xuất Excel ngang hàng ── */}
+      {/* ── Page Header: Tiêu đề trang ── */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
             Tồn Kho Hiện Tại
           </h1>
         </div>
-        <Button
-          type="default"
-          size="middle"
-          className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 font-medium flex items-center justify-center gap-1.5 shrink-0"
-          onClick={handleExportExcel}
-        >
-          <span>📥</span>
-          <span className="hidden sm:inline">Xuất Excel</span>
-          <span className="sm:hidden">Xuất Excel</span>
-        </Button>
       </div>
 
       {/* Metrics Row: 3 thẻ chia 3 cột trên cùng 1 dòng, tối ưu chiều dọc tối đa */}
@@ -338,9 +328,11 @@ export const InventoryStockPage: React.FC = () => {
             <Button
               size="small"
               onClick={handleExportExcel}
-              className="text-xs hidden sm:inline-flex"
+              className="text-xs flex items-center gap-1 border-slate-200 dark:border-slate-700 font-medium"
             >
-              📥 Xuất Excel
+              <span>📥</span>
+              <span className="hidden sm:inline">Xuất Excel</span>
+              <span className="sm:hidden">Excel</span>
             </Button>
             <ZoomButton onClick={() => setIsZoomed(true)} />
           </div>

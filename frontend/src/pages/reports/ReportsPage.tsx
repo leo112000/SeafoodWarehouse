@@ -5,7 +5,7 @@ import {
 import type { RadioChangeEvent } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  DownloadOutlined, PrinterOutlined, ArrowUpOutlined, ArrowDownOutlined,
+  PrinterOutlined, ArrowUpOutlined, ArrowDownOutlined,
   RiseOutlined, FallOutlined, BarChartOutlined,
 } from '@ant-design/icons';
 import {
@@ -282,19 +282,10 @@ export const ReportsPage: React.FC = () => {
           Báo Cáo Thống Kê
         </h1>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Tooltip title="Xuất báo cáo ra file Excel">
-            <Button
-              type="primary"
-              icon={<DownloadOutlined />}
-              onClick={handleExport}
-              size="middle"
-              className="bg-emerald-600 hover:bg-emerald-700 border-none font-semibold"
-            >
-              <span className="hidden sm:inline">Xuất Excel</span>
-            </Button>
-          </Tooltip>
           <Tooltip title="In báo cáo">
-            <Button icon={<PrinterOutlined />} onClick={handlePrint} size="middle" />
+            <Button icon={<PrinterOutlined />} onClick={handlePrint} size="middle">
+              <span className="hidden sm:inline">In báo cáo</span>
+            </Button>
           </Tooltip>
         </div>
       </div>
@@ -609,6 +600,15 @@ export const ReportsPage: React.FC = () => {
             <Text type="secondary" className="text-xs hidden sm:inline">
               {periodLabel}
             </Text>
+            <Button
+              size="small"
+              onClick={handleExport}
+              className="text-xs flex items-center gap-1 border-slate-200 dark:border-slate-700 font-medium"
+            >
+              <span>📥</span>
+              <span className="hidden sm:inline">Xuất Excel</span>
+              <span className="sm:hidden">Excel</span>
+            </Button>
             <ZoomButton onClick={() => setZoomSection('table')} />
           </Space>
         }

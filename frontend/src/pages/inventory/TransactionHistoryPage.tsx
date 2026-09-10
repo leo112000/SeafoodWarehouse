@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography, Tabs, Badge, Tooltip, Pagination } from 'antd';
-import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined, FileExcelOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
+import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography, Tabs, Badge, Pagination } from 'antd';
+import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useInboundStore } from '../../stores/useInboundStore';
 import { useOutboundStore } from '../../stores/useOutboundStore';
@@ -588,19 +588,10 @@ export const TransactionHistoryPage: React.FC = () => {
           <Col xs={24} sm={10} md={6}>
             <div className="flex items-center justify-end gap-1.5 w-full">
               {(searchQuery || dateRange || activeTab !== 'ALL') && (
-                <Tooltip title="Đặt lại bộ lọc">
-                  <Button icon={<ReloadOutlined />} onClick={handleResetFilters} size="middle" />
-                </Tooltip>
+                <Button icon={<ReloadOutlined />} onClick={handleResetFilters} size="middle">
+                  Đặt lại bộ lọc
+                </Button>
               )}
-              <Button
-                type="primary"
-                icon={<FileExcelOutlined />}
-                className="bg-emerald-600 hover:bg-emerald-700 border-none flex-1 sm:flex-initial"
-                onClick={handleExportExcel}
-                size="middle"
-              >
-                Xuất Excel
-              </Button>
             </div>
           </Col>
         </Row>
@@ -612,6 +603,15 @@ export const TransactionHistoryPage: React.FC = () => {
         extra={
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400 hidden sm:inline">Tổng {filteredTransactions.length} giao dịch</span>
+            <Button
+              size="small"
+              onClick={handleExportExcel}
+              className="text-xs flex items-center gap-1 border-slate-200 dark:border-slate-700 font-medium"
+            >
+              <span>📥</span>
+              <span className="hidden sm:inline">Xuất Excel</span>
+              <span className="sm:hidden">Excel</span>
+            </Button>
             <ZoomButton onClick={() => setIsZoomed(true)} />
           </div>
         }
