@@ -24,6 +24,6 @@ describe('formatDate', () => {
     const result = formatDate(isoString);
     // Since local timezone might affect the exact hour, we check for date parts
     expect(result).toContain('2026');
-    expect(result).toContain('12/08');
+    expect(result).toContain('08-12');
   });
 });

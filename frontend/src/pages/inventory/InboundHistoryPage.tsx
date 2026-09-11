@@ -4,7 +4,7 @@ import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined } from '@a
 import { useInboundStore } from '../../stores/useInboundStore';
 import { exportToExcel } from '../../utils/exportUtils';
 import type { InboundReceipt } from '../../stores/useInboundStore';
-import { formatCurrency, formatWeight, formatDate } from '../../utils/format';
+import { formatCurrency, formatWeight, formatDate, formatDateTime } from '../../utils/format';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
 import type { InvoicePrintData } from '../../types';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -33,7 +33,7 @@ const toInvoiceData = (receipt: InboundReceipt, staffName: string): InvoicePrint
   return {
     type: 'INBOUND',
     invoiceNo: receipt.id,
-    date: receipt.inboundDate,
+    date: formatDateTime(receipt.inboundDate),
     partnerName: receipt.supplier,
     storageLocation: receipt.storageLocation,
     warehouseStaff: staffName,
@@ -121,7 +121,7 @@ export const InboundHistoryPage: React.FC = () => {
   // Filter receipt list
   const filteredReceipts = receipts.filter((r) => {
     const matchesSupplier = r.supplier.toLowerCase().includes(supplierQuery.toLowerCase());
-    const matchesDate = !filterDate || r.inboundDate === filterDate;
+    const matchesDate = !filterDate || formatDateTime(r.inboundDate, 'YYYY-MM-DD') === filterDate;
     return matchesSupplier && matchesDate;
   });
 
@@ -149,7 +149,7 @@ export const InboundHistoryPage: React.FC = () => {
       title: 'Ngày nhập kho',
       dataIndex: 'inboundDate',
       key: 'inboundDate',
-      render: (dateStr: string) => formatDate(dateStr).split(' ')[0],
+      render: (dateStr: string) => <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">{formatDateTime(dateStr)}</span>,
       responsive: ['sm'] as any,
     },
     {
@@ -360,7 +360,7 @@ export const InboundHistoryPage: React.FC = () => {
                 </Col>
                 <Col xs={12} sm={6}>
                   <div className="text-xs text-gray-400">NGÀY NHẬP KHO</div>
-                  <div className="font-semibold text-gray-800 dark:text-gray-100">{selectedReceipt.inboundDate}</div>
+                  <div className="font-semibold text-gray-800 dark:text-gray-100">{formatDateTime(selectedReceipt.inboundDate)}</div>
                 </Col>
                 <Col xs={12} sm={6}>
                   <div className="text-xs text-gray-400">KHO LƯU TRỮ CHÍNH</div>

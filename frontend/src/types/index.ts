@@ -1,3 +1,5 @@
+import type { StockStatus } from '../constants/enums';
+
 export interface SeafoodProduct {
   id: string;
   name: string;
@@ -5,7 +7,7 @@ export interface SeafoodProduct {
   quantity: number; // in kg
   price: number; // in VND
   storageLocation: string; // e.g. Cold room A, Freezer B
-  status: 'InStock' | 'OutofStock' | 'LowStock';
+  status: StockStatus;
   lastUpdated: string;
 }
 
@@ -16,5 +18,7 @@ export interface WarehouseStats {
   categoriesCount: Record<string, number>;
 }
 
+export * from '../constants/enums';
 export * from './seafood';
+
 

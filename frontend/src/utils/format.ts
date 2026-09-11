@@ -1,3 +1,7 @@
+import { formatDateTime } from './dateUtils';
+
+export { formatDateTime };
+
 /**
  * Format number as currency (VND)
  */
@@ -16,15 +20,9 @@ export const formatWeight = (value: number): string => {
 };
 
 /**
- * Format date string to readable format
+ * Format date string to readable format according to Vietnam Timezone (UTC+7)
  */
-export const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleString('vi-VN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+export const formatDate = (dateInput: string | number | Date | null | undefined): string => {
+  return formatDateTime(dateInput, 'YYYY-MM-DD HH:mm:ss');
 };
+

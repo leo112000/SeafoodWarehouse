@@ -12,9 +12,10 @@ import {
 import type { Category, Product } from '../../types/seafood';
 import { useCategoryStore } from '../../stores/useCategoryStore';
 import { useProductStore } from '../../stores/useProductStore';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatDate } from '../../utils/format';
 import { generateCodeFromName } from '../../utils/codeGenerator';
 import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
+import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 
 // ─── component ─────────────────────────────────────────────────────────────────
 
@@ -48,8 +49,8 @@ export const CategoriesPage: React.FC = () => {
   // ── statistics ───────────────────────────────────────────────────────────────
   const totalCategories = categories.length;
   const totalProducts = useMemo(
-    () => categories.reduce((sum, c) => sum + c.productCount, 0),
-    [categories]
+    () => (products.length > 0 ? products.length : categories.reduce((sum, c) => sum + (c.productCount || 0), 0)),
+    [products, categories]
   );
   const recentCount = useMemo(() => {
     const thirtyDaysAgo = new Date();
@@ -139,7 +140,7 @@ export const CategoriesPage: React.FC = () => {
     });
   };
 
-  const handleSubmit = async (values: any) => {
+  const { isSubmitting, handleSubmit } = useAsyncSubmit(async (values: any) => {
     try {
       const payload = {
         code: (values.code as string).toUpperCase(),
@@ -161,7 +162,7 @@ export const CategoriesPage: React.FC = () => {
     } catch {
       message.error('Lỗi khi lưu thông tin danh mục.');
     }
-  };
+  });
 
   // ── table columns ─────────────────────────────────────────────────────────────
   const columns = [
@@ -236,13 +237,9 @@ export const CategoriesPage: React.FC = () => {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 130,
-      render: (date: string) => {
-        try {
-          return new Date(date).toLocaleDateString('vi-VN');
-        } catch {
-          return '--';
-        }
-      },
+      render: (date: string) => (
+        <span className="text-xs text-slate-500">{formatDate(date)}</span>
+      ),
     },
     {
       title: 'Thao Tác',
@@ -554,15 +551,17 @@ export const CategoriesPage: React.FC = () => {
           {/* Footer */}
           <Form.Item className="mb-0">
             <div className="flex justify-end gap-3">
-              <Button onClick={() => { setIsModalOpen(false); form.resetFields(); setEditingCategory(null); }}>
+              <Button disabled={isSubmitting} onClick={() => { setIsModalOpen(false); form.resetFields(); setEditingCategory(null); }}>
                 Hủy
               </Button>
               <Button
                 type="primary"
                 htmlType="submit"
+                loading={isSubmitting}
+                disabled={isSubmitting}
                 icon={editingCategory ? <EditOutlined /> : <PlusOutlined />}
               >
-                {editingCategory ? 'Cập nhật' : 'Thêm danh mục'}
+                {isSubmitting ? 'Đang lưu...' : (editingCategory ? 'Cập nhật' : 'Thêm danh mục')}
               </Button>
             </div>
           </Form.Item>

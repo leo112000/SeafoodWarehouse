@@ -61,7 +61,7 @@ public class AuditLogsController : BaseApiController
             .Select(l => new AuditLogDto
             {
                 Id = l.Id.ToString(),
-                Timestamp = l.Timestamp,
+                Timestamp = l.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 UserName = l.UserName,
                 UserRole = l.UserRole,
                 Action = l.Action,
@@ -83,7 +83,7 @@ public class AuditLogsController : BaseApiController
             {
                 new AuditLog
                 {
-                    Timestamp = DateTime.Now.ToString("yyyy-MM-DD HH:mm:ss"),
+                    Timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     UserName = "Đặng Lâm Cường (Admin)",
                     UserRole = "Quản trị viên",
                     Action = "LOGIN",
@@ -96,7 +96,7 @@ public class AuditLogsController : BaseApiController
                 },
                 new AuditLog
                 {
-                    Timestamp = DateTime.Now.AddMinutes(-25).ToString("yyyy-MM-DD HH:mm:ss"),
+                    Timestamp = DateTime.UtcNow.AddMinutes(-25).ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     UserName = "Nguyễn Văn Thủ Kho",
                     UserRole = "Thủ kho",
                     Action = "CREATE",
@@ -109,7 +109,7 @@ public class AuditLogsController : BaseApiController
                 },
                 new AuditLog
                 {
-                    Timestamp = DateTime.Now.AddHours(-2).ToString("yyyy-MM-DD HH:mm:ss"),
+                    Timestamp = DateTime.UtcNow.AddHours(-2).ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     UserName = "Trần Thị Kế Toán",
                     UserRole = "Quản lý",
                     Action = "EXPORT",
@@ -152,7 +152,7 @@ public class AuditLogsController : BaseApiController
     {
         var log = new AuditLog
         {
-            Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+            Timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             UserName = request.UserName,
             UserRole = request.UserRole,
             Action = request.Action,

@@ -14,7 +14,7 @@ interface CategoryState {
 
 export const useCategoryStore = create<CategoryState>()(
   devtools(
-    (set) => ({
+    (set, get) => ({
       categories: [],
       loading: false,
 
@@ -34,6 +34,8 @@ export const useCategoryStore = create<CategoryState>()(
         try {
           const newCategory = await categoryService.create(categoryData);
           set((state) => ({ categories: [newCategory, ...state.categories] }));
+          // Tự động đồng bộ lại từ server
+          get().fetchCategories();
           return newCategory;
         } catch {
           const newCategory: Category = {
@@ -58,6 +60,8 @@ export const useCategoryStore = create<CategoryState>()(
             c.id === id ? { ...c, ...categoryData, id } : c
           ),
         }));
+        // Tự động đồng bộ lại từ server
+        get().fetchCategories();
       },
 
       deleteCategory: async (id) => {
@@ -69,6 +73,8 @@ export const useCategoryStore = create<CategoryState>()(
         set((state) => ({
           categories: state.categories.filter((c) => c.id !== id),
         }));
+        // Tự động đồng bộ lại từ server
+        get().fetchCategories();
       },
     }),
     { name: 'CategoryStore' }

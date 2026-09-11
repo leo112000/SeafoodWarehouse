@@ -54,15 +54,15 @@ public class DashboardController : BaseApiController
 
         // 2. Nhập / Xuất kho hôm nay
         var todayInboundList = await _context.InventoryTransactions
-            .Where(t => !t.IsDeleted && t.Type == TransactionType.Import && t.TransactionDate >= today && t.TransactionDate < todayEnd)
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Import && t.TransactionDate >= today && t.TransactionDate < todayEnd)
             .ToListAsync(cancellationToken);
 
         var todayOutboundList = await _context.InventoryTransactions
-            .Where(t => !t.IsDeleted && t.Type == TransactionType.Export && t.TransactionDate >= today && t.TransactionDate < todayEnd)
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Export && t.TransactionDate >= today && t.TransactionDate < todayEnd)
             .ToListAsync(cancellationToken);
 
         var todayReceipts = await _context.OutboundReceipts
-            .Where(r => !r.IsDeleted && r.TransactionDate >= today && r.TransactionDate < todayEnd)
+            .Where(r => !r.IsDeleted && r.Status != "CANCELLED" && r.TransactionDate >= today && r.TransactionDate < todayEnd)
             .ToListAsync(cancellationToken);
 
         double todayInboundKg = (double)todayInboundList.Sum(t => t.Quantity);
@@ -103,11 +103,11 @@ public class DashboardController : BaseApiController
 
         // 4. Tỷ lệ hao hụt / hủy hàng trong 30 ngày qua
         var monthlyDisposalKg = await _context.InventoryTransactions
-            .Where(t => !t.IsDeleted && t.Type == TransactionType.Disposal && t.TransactionDate >= thirtyDaysAgo)
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Disposal && t.TransactionDate >= thirtyDaysAgo)
             .SumAsync(t => (double?)t.Quantity, cancellationToken) ?? 0.0;
 
         var monthlyInboundKg = await _context.InventoryTransactions
-            .Where(t => !t.IsDeleted && t.Type == TransactionType.Import && t.TransactionDate >= thirtyDaysAgo)
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Import && t.TransactionDate >= thirtyDaysAgo)
             .SumAsync(t => (double?)t.Quantity, cancellationToken) ?? 0.0;
 
         double monthlyLossRate = (monthlyInboundKg + totalStockKg) > 0
@@ -122,15 +122,15 @@ public class DashboardController : BaseApiController
             var dayNext = dayStart.AddDays(1);
 
             var inTxs = await _context.InventoryTransactions
-                .Where(t => !t.IsDeleted && t.Type == TransactionType.Import && t.TransactionDate >= dayStart && t.TransactionDate < dayNext)
+                .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Import && t.TransactionDate >= dayStart && t.TransactionDate < dayNext)
                 .ToListAsync(cancellationToken);
 
             var outTxs = await _context.InventoryTransactions
-                .Where(t => !t.IsDeleted && t.Type == TransactionType.Export && t.TransactionDate >= dayStart && t.TransactionDate < dayNext)
+                .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Export && t.TransactionDate >= dayStart && t.TransactionDate < dayNext)
                 .ToListAsync(cancellationToken);
 
             var dayReceipts = await _context.OutboundReceipts
-                .Where(r => !r.IsDeleted && r.TransactionDate >= dayStart && r.TransactionDate < dayNext)
+                .Where(r => !r.IsDeleted && r.Status != "CANCELLED" && r.TransactionDate >= dayStart && r.TransactionDate < dayNext)
                 .ToListAsync(cancellationToken);
 
             var inKg = inTxs.Sum(t => (double)t.Quantity);
@@ -176,16 +176,16 @@ public class DashboardController : BaseApiController
             color = colors[idx % colors.Length]
         }).ToList();
 
-        // 7. Giao dịch gần nhất (Gom nhóm theo Phiếu Giao Dịch / Lô Hàng)
+        // 7. Giao dịch gần nhất (Gom nhóm theo Phiếu Giao Dịch / Lô Hàng) - Lọc bỏ hoàn toàn các phiếu đã hủy
         var recentTxData = await _context.InventoryTransactions
-            .Where(t => !t.IsDeleted)
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED")
             .Include(t => t.LotBatch).ThenInclude(l => l.Product)
             .OrderByDescending(t => t.TransactionDate)
             .Take(50)
             .ToListAsync(cancellationToken);
 
         var recentReceipts = await _context.OutboundReceipts
-            .Where(r => !r.IsDeleted)
+            .Where(r => !r.IsDeleted && r.Status != "CANCELLED")
             .Include(r => r.Supplies.Where(s => !s.IsDeleted))
             .ToDictionaryAsync(r => r.ReferenceNumber, r => r, cancellationToken);
 
@@ -257,7 +257,8 @@ public class DashboardController : BaseApiController
                 {
                     id = g.Key,
                     type = first.Type == TransactionType.Import ? "INBOUND" : "OUTBOUND",
-                    time = first.TransactionDate.ToString("yyyy-MM-dd HH:mm"),
+                    status = first.Status ?? "ACTIVE",
+                    time = first.TransactionDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     partnerName = string.IsNullOrWhiteSpace(first.Note) ? (first.Type == TransactionType.Import ? "Nhà cung cấp" : "Khách hàng") : first.Note,
                     batchCode = batchCodes.Count > 0 ? string.Join(", ", batchCodes) : "N/A",
                     productName = productNames.Count > 0 ? string.Join(", ", productNames) : "Hải sản",

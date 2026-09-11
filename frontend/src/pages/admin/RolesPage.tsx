@@ -5,6 +5,7 @@ import type { Role } from '../../types/seafood';
 import { PERMISSION_CATEGORIES, PERMISSIONS } from '../../stores/useRoleStore';
 import { roleService } from '../../services/roleService';
 import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
+import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 
 type RoleFormValues = Pick<Role, 'name' | 'description' | 'permissions'>;
 
@@ -51,7 +52,7 @@ export const RolesPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const submit = async (values: RoleFormValues) => {
+  const { isSubmitting, handleSubmit: submit } = useAsyncSubmit(async (values: RoleFormValues) => {
     const normalizedName = values.name.trim();
     if (roles.some((role) => role.name.toLocaleLowerCase() === normalizedName.toLocaleLowerCase() && role.id !== editingRole?.id)) {
       form.setFields([{ name: 'name', errors: ['Tên vai trò đã tồn tại.'] }]);
@@ -72,7 +73,7 @@ export const RolesPage: React.FC = () => {
     } catch {
       message.error('Lỗi khi lưu thông tin vai trò.');
     }
-  };
+  });
 
   const handleDelete = async (id: string) => {
     try {
@@ -158,6 +159,8 @@ export const RolesPage: React.FC = () => {
         open={isModalOpen}
         onOk={() => form.submit()}
         onCancel={() => setIsModalOpen(false)}
+        confirmLoading={isSubmitting}
+        cancelButtonProps={{ disabled: isSubmitting }}
         okText={editingRole ? 'Lưu thay đổi' : 'Tạo mới'}
         cancelText="Hủy bỏ"
         width={700}

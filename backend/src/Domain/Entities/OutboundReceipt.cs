@@ -18,6 +18,13 @@ public class OutboundReceipt : BaseEntity, IMustHaveTenant
     public decimal TotalAmount { get; set; } = 0;               // Tổng thanh toán thực tế = SubTotal + SuppliesTotal - DiscountAmount
 
     public string? Note { get; set; }
+
+    // Thông tin trạng thái hủy / rollback phiếu
+    public string Status { get; set; } = "ACTIVE"; // ACTIVE | CANCELLED
+    public DateTime? CancelledAt { get; set; }
+    public string? CancelledBy { get; set; }
+    public string? CancelReason { get; set; }
+
     public int? TenantId { get; set; }
 
     public ICollection<OutboundSupply> Supplies { get; set; } = new List<OutboundSupply>();

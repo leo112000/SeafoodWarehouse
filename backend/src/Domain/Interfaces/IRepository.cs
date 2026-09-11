@@ -10,7 +10,15 @@ public interface IRepository<T> where T : BaseEntity
     Task<IReadOnlyList<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
     Task<T?> GetByIdWithIncludesAsync(int id, params Expression<Func<T, object>>[] includes);
     Task<IReadOnlyList<T>> GetAllWithIncludesAsync(params Expression<Func<T, object>>[] includes);
+    Task<(IReadOnlyList<T> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        Expression<Func<T, bool>>? predicate = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        CancellationToken cancellationToken = default,
+        params Expression<Func<T, object>>[] includes);
     Task<T> AddAsync(T entity, CancellationToken cancellationToken = default);
     void Update(T entity);
     void Delete(T entity);
 }
+

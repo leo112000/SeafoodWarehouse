@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { WarehouseZoneStatus, StorageType } from '../constants';
 
 export interface WarehouseItem {
   id: string;
@@ -8,8 +9,8 @@ export interface WarehouseItem {
   capacityKg: number;
   currentStockKg: number;
   temperatureCelsius: number;
-  status: 'OPERATIONAL' | 'MAINTENANCE' | 'FULL';
-  storageType: 'FROZEN' | 'FRESH' | 'ALIVE' | 'DRY';
+  status: WarehouseZoneStatus;
+  storageType: StorageType;
   description?: string;
   totalZones?: number;
   totalSlots?: number;

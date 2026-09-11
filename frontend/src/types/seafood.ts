@@ -1,3 +1,12 @@
+import type {
+  TransactionType,
+  PackagingCategory,
+  StorageType,
+  ProductStatus,
+  AuditAction,
+  AuditStatus,
+} from '../constants/enums';
+
 export interface InvoiceItem {
   batchCode: string;
   productName: string; // Tên hải sản
@@ -22,7 +31,7 @@ export interface SupplyItem {
 }
 
 export interface InvoicePrintData {
-  type: 'INBOUND' | 'OUTBOUND';
+  type: TransactionType;
   invoiceNo: string;        // Mã phiếu (PNK-... hoặc PXK-...)
   date: string;             // Ngày lập phiếu
   partnerName: string;      // Tên Nhà cung cấp (nếu Nhập) hoặc Khách hàng (nếu Xuất)
@@ -44,7 +53,7 @@ export interface PackagingType {
   id: string;
   code: string;           // Mã vật tư (VD: SOT-RED, THUNG-30KG)
   name: string;           // Tên (VD: Sọt nhựa đỏ, Thùng xốp lớn 30kg)
-  category: 'CONTAINER' | 'CONSUMABLE'; // Vật chứa tái sử dụng OR Vật tư dùng 1 lần
+  category: PackagingCategory; // Vật chứa tái sử dụng OR Vật tư dùng 1 lần
   defaultTareWeight: number; // Trọng lượng bì chuẩn (Kg)
   unit: string;           // Cái / Chiếc / Thùng
   stockQuantity: number;  // Tồn kho hiện tại của vật tư này
@@ -58,13 +67,13 @@ export interface Product {
   categoryId: string;         // ID Danh mục (Cá, Tôm, Cua, Mực...)
   categoryName?: string;
   unit: string;               // Đơn vị tính (Kg, Con, Thùng...)
-  storageType: 'ALIVE' | 'FRESH' | 'FROZEN' | 'DRY'; // Sống / Ướp đá / Cấp đông / Khô
+  storageType: StorageType; // Sống / Ướp đá / Cấp đông / Khô
   targetTemperature: number;  // Nhiệt độ bảo quản chuẩn (°C)
   warningDaysBeforeExpiry: number; // Cảnh báo cận date trước X ngày
   minStock: number;           // Mức tồn kho tối thiểu
   maxStock: number;           // Mức tồn kho tối đa
   referencePrice: number;     // Đơn giá tham chiếu (VNĐ)
-  status: 'ACTIVE' | 'INACTIVE';
+  status: ProductStatus;
   note?: string;
 }
 
@@ -88,12 +97,12 @@ export interface AuditLog {
   timestamp: string;
   userName: string;
   userRole: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'PRINT';
+  action: AuditAction;
   module: string;
   description: string;
   ipAddress: string;
   browser: string;
-  status: 'SUCCESS' | 'FAILED';
+  status: AuditStatus;
   executionDurationMs?: number;
   oldValues?: string;
   newValues?: string;

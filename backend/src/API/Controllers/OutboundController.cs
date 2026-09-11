@@ -2,49 +2,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SeafoodWarehouseManagement.Application.Common.Interfaces;
 using SeafoodWarehouseManagement.Application.Common.Models;
+using SeafoodWarehouseManagement.Application.DTOs.Inbound;
+using SeafoodWarehouseManagement.Application.DTOs.Outbound;
 using SeafoodWarehouseManagement.Domain.Entities;
 using SeafoodWarehouseManagement.Domain.Enums;
 
 namespace SeafoodWarehouseManagement.API.Controllers;
-
-public class CreateOutboundSupplyDto
-{
-    public string Name { get; set; } = string.Empty;
-    public string? PackagingCode { get; set; }
-    public string Unit { get; set; } = "Cái";
-    public int Quantity { get; set; } = 1;
-    public decimal UnitPrice { get; set; } = 0;
-    public decimal TotalAmount { get; set; } = 0;
-}
-
-public class CreateOutboundRequestDto
-{
-    public string CustomerName { get; set; } = string.Empty;
-    public string Reason { get; set; } = "Bán hàng";
-    public string Date { get; set; } = string.Empty;
-    public decimal TotalWeightKg { get; set; }
-    public decimal SubTotal { get; set; }
-    public decimal TotalAmount { get; set; }
-    public decimal DiscountAmount { get; set; } = 0;
-    public string? DiscountReason { get; set; }
-    public string CreatedBy { get; set; } = "Thủ kho";
-    public List<CreateOutboundBatchDto> Batches { get; set; } = new();
-    public List<CreateOutboundSupplyDto> Supplies { get; set; } = new();
-}
-
-public class CreateOutboundBatchDto
-{
-    public string BatchCode { get; set; } = string.Empty;
-    public string Species { get; set; } = string.Empty;
-    public decimal QuantityKg { get; set; }
-    public decimal GrossWeight { get; set; }
-    public decimal TareWeight { get; set; }
-    public string? PackagingCode { get; set; }
-    public int PackagingQty { get; set; }
-    public string ExpiryDate { get; set; } = string.Empty;
-    public decimal UnitPrice { get; set; }
-    public decimal Amount { get; set; }
-}
 
 /// <summary>
 /// API Quản lý Phiếu Xuất Kho - Xử lý trực tiếp CSDL
@@ -53,10 +16,17 @@ public class CreateOutboundBatchDto
 public class OutboundController : BaseApiController
 {
     private readonly IApplicationDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly ICurrentTenant _currentTenant;
 
-    public OutboundController(IApplicationDbContext context)
+    public OutboundController(
+        IApplicationDbContext context,
+        INotificationService notificationService,
+        ICurrentTenant currentTenant)
     {
         _context = context;
+        _notificationService = notificationService;
+        _currentTenant = currentTenant;
     }
 
     /// <summary>
@@ -132,7 +102,11 @@ public class OutboundController : BaseApiController
             return new
             {
                 id = r.ReferenceNumber,
-                date = r.TransactionDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                status = r.Status ?? "ACTIVE",
+                cancelledAt = r.CancelledAt?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                cancelledBy = r.CancelledBy,
+                cancelReason = r.CancelReason,
+                date = r.TransactionDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 customerName = r.CustomerName,
                 reason = r.Reason,
                 totalWeightKg = (double)r.TotalWeightKg,
@@ -160,7 +134,11 @@ public class OutboundController : BaseApiController
                 result.Add(new
                 {
                     id = kv.Key,
-                    date = first.TransactionDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                    status = first.Status ?? "ACTIVE",
+                    cancelledAt = first.CancelledAt?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    cancelledBy = first.CancelledBy,
+                    cancelReason = first.CancelReason,
+                    date = first.TransactionDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     customerName = first.Note?.Split('-').FirstOrDefault()?.Replace("Khách hàng:", "").Trim() ?? "Khách hàng lẻ",
                     reason = first.Note?.Split('-').Skip(1).FirstOrDefault()?.Replace("Lý do:", "").Trim() ?? "Bán hàng",
                     totalWeightKg = (double)g.Sum(x => x.Quantity),
@@ -328,5 +306,147 @@ public class OutboundController : BaseApiController
         await _context.SaveChangesAsync(cancellationToken);
 
         return Ok(Result<object>.Success(new { referenceNumber = refNo }));
+    }
+
+    /// <summary>
+    /// Hủy phiếu xuất kho và hoàn nguyên tồn kho
+    /// </summary>
+    [HttpPost("cancel/{refNo}")]
+    public async Task<ActionResult<Result<object>>> CancelOutbound(string refNo, [FromBody] CancelTransactionRequestDto request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Reason))
+        {
+            return BadRequest(Result<object>.Failure("Vui lòng cung cấp lý do hủy phiếu."));
+        }
+
+        var receipt = await _context.OutboundReceipts
+            .Include(r => r.Supplies)
+            .FirstOrDefaultAsync(r => r.ReferenceNumber == refNo && !r.IsDeleted, cancellationToken);
+
+        var transactions = await _context.InventoryTransactions
+            .Where(t => t.ReferenceNumber == refNo && t.Type == TransactionType.Export && !t.IsDeleted)
+            .Include(t => t.LotBatch)
+            .ToListAsync(cancellationToken);
+
+        if (receipt == null && transactions.Count == 0)
+        {
+            return NotFound(Result<object>.Failure($"Không tìm thấy phiếu xuất kho '{refNo}'."));
+        }
+
+        if ((receipt != null && receipt.Status == "CANCELLED") || (receipt == null && transactions.All(t => t.Status == "CANCELLED")))
+        {
+            return BadRequest(Result<object>.Failure($"Phiếu xuất '{refNo}' đã bị hủy trước đó rồi."));
+        }
+
+        using var dbTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var nowUtc = DateTime.UtcNow;
+            var userName = User.Identity?.Name ?? "Thủ kho";
+
+            // 1. Hoàn nguyên số lượng hải sản vào LotBatch và InventoryItem
+            foreach (var tx in transactions)
+            {
+                tx.Status = "CANCELLED";
+                tx.CancelledAt = nowUtc;
+                tx.CancelledBy = userName;
+                tx.CancelReason = request.Reason;
+
+                if (tx.LotBatch != null)
+                {
+                    tx.LotBatch.CurrentQuantity += tx.Quantity;
+                    if (tx.LotBatch.Status == "CANCELLED")
+                    {
+                        tx.LotBatch.Status = "IN_STOCK";
+                    }
+
+                    var invItem = await _context.InventoryItems
+                        .FirstOrDefaultAsync(i => i.LotBatchId == tx.LotBatch.Id && !i.IsDeleted, cancellationToken);
+                    if (invItem != null)
+                    {
+                        invItem.Quantity += tx.Quantity;
+                    }
+                    else
+                    {
+                        invItem = new InventoryItem
+                        {
+                            WarehouseId = tx.SourceWarehouseId,
+                            LotBatchId = tx.LotBatch.Id,
+                            Quantity = tx.Quantity,
+                            StorageBin = "Khu A"
+                        };
+                        _context.InventoryItems.Add(invItem);
+                    }
+                }
+            }
+
+            // 2. Hoàn trả số lượng vật tư kèm (Thùng xốp, đá gel...)
+            if (receipt != null)
+            {
+                receipt.Status = "CANCELLED";
+                receipt.CancelledAt = nowUtc;
+                receipt.CancelledBy = userName;
+                receipt.CancelReason = request.Reason;
+
+                foreach (var sup in receipt.Supplies)
+                {
+                    if (!string.IsNullOrWhiteSpace(sup.PackagingCode))
+                    {
+                        var pkg = await _context.Packagings
+                            .FirstOrDefaultAsync(p => p.Code == sup.PackagingCode && !p.IsDeleted, cancellationToken);
+                        if (pkg != null)
+                        {
+                            pkg.StockQuantity += sup.Quantity;
+                        }
+                    }
+                }
+            }
+
+            // 3. Ghi nhận AuditLog
+            var auditLog = new AuditLog
+            {
+                UserName = userName,
+                UserRole = "Thủ kho",
+                Action = "CANCEL",
+                TargetModule = "Xuất kho",
+                Details = $"Hủy phiếu xuất {refNo}. Lý do: {request.Reason}",
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
+                Timestamp = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                TenantId = _currentTenant.Id
+            };
+            _context.AuditLogs.Add(auditLog);
+
+            await _context.SaveChangesAsync(cancellationToken);
+            await dbTransaction.CommitAsync(cancellationToken);
+
+            // 4. Bắn thông báo Real-time
+            var tenantId = _currentTenant.Id;
+            var notif = new NotificationMessage
+            {
+                Type = "OUTBOUND_CANCELLED",
+                Title = "Hủy phiếu xuất kho",
+                Message = $"Phiếu xuất {refNo} đã được hủy và hoàn nguyên tồn kho thành công.",
+                Severity = "warning",
+                Link = "/inventory/history"
+            };
+
+            if (tenantId.HasValue && tenantId.Value > 0)
+            {
+                await _notificationService.SendNotificationToTenantAsync(tenantId.Value, notif, cancellationToken);
+                await _notificationService.SendStockUpdateEventAsync(tenantId.Value, "STOCK_CHANGED", cancellationToken);
+            }
+            else
+            {
+                await _notificationService.SendNotificationToAllAsync(notif, cancellationToken);
+                await _notificationService.SendStockUpdateEventAsync(null, "STOCK_CHANGED", cancellationToken);
+            }
+
+            return Ok(Result<object>.Success(new { referenceNumber = refNo, status = "CANCELLED" }));
+        }
+        catch (Exception ex)
+        {
+            await dbTransaction.RollbackAsync(cancellationToken);
+            return StatusCode(500, Result<object>.Failure($"Lỗi khi hủy phiếu xuất: {ex.Message}"));
+        }
     }
 }

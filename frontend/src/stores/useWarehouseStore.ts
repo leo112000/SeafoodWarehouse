@@ -14,48 +14,7 @@ interface WarehouseState {
 }
 
 export const useWarehouseStore = create<WarehouseState>((set) => ({
-  products: [
-    {
-      id: '1',
-      name: 'Tôm Hùm Bông',
-      category: 'Giáp xác',
-      quantity: 120,
-      price: 1500000,
-      storageLocation: 'Kho đông lạnh A1',
-      status: 'InStock',
-      lastUpdated: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      name: 'Cua Hoàng Đế',
-      category: 'Giáp xác',
-      quantity: 15,
-      price: 2200000,
-      storageLocation: 'Kho đông lạnh A2',
-      status: 'LowStock',
-      lastUpdated: new Date().toISOString(),
-    },
-    {
-      id: '3',
-      name: 'Cá Hồi Na Uy',
-      category: 'Cá tươi',
-      quantity: 350,
-      price: 3500000,
-      storageLocation: 'Kho làm mát B1',
-      status: 'InStock',
-      lastUpdated: new Date().toISOString(),
-    },
-    {
-      id: '4',
-      name: 'Mực Lá Đại',
-      category: 'Thân mềm',
-      quantity: 0,
-      price: 450000,
-      storageLocation: 'Kho đông lạnh A1',
-      status: 'OutofStock',
-      lastUpdated: new Date().toISOString(),
-    },
-  ],
+  products: [],
   warehouses: [],
   loading: false,
   isLoading: false,
@@ -63,7 +22,7 @@ export const useWarehouseStore = create<WarehouseState>((set) => ({
     set({ loading: true, isLoading: true });
     try {
       const data = await warehouseService.getAll();
-      if (data && data.length > 0) {
+      if (Array.isArray(data)) {
         set({ warehouses: data });
       }
     } catch {

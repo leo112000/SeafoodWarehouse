@@ -1,10 +1,11 @@
 import { api } from './api';
+import type { PartnerType } from '../constants';
 
 export interface PartnerItem {
   id: number;
   code: string;
   name: string;
-  type: 'SUPPLIER' | 'CUSTOMER';
+  type: PartnerType;
   phone?: string;
   email?: string;
   address?: string;
@@ -19,7 +20,7 @@ export interface PartnerItem {
 export interface CreatePartnerDto {
   code: string;
   name: string;
-  type: 'SUPPLIER' | 'CUSTOMER';
+  type: PartnerType;
   phone?: string;
   email?: string;
   address?: string;
@@ -30,7 +31,7 @@ export interface CreatePartnerDto {
 }
 
 export const partnerService = {
-  getAll: async (type?: 'SUPPLIER' | 'CUSTOMER', search?: string): Promise<PartnerItem[]> => {
+  getAll: async (type?: PartnerType, search?: string): Promise<PartnerItem[]> => {
     const params: any = {};
     if (type) params.type = type;
     if (search) params.search = search;

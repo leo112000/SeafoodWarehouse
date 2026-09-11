@@ -26,7 +26,8 @@ import {
 } from 'recharts';
 import { EMPTY_DASHBOARD_DATA, type DashboardData, type RecentTransaction } from '../../services/mockDashboardData';
 import { dashboardService } from '../../services/dashboardService';
-import { formatCurrency, formatWeight } from '../../utils/format';
+import { TRANSACTION_STATUS, TRANSACTION_TYPE, type TransactionType } from '../../constants';
+import { formatCurrency, formatWeight, formatDateTime } from '../../utils/format';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 const { Text } = Typography;
@@ -61,7 +62,10 @@ export const DashboardPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const { alerts, kpis, dailyFlow, categoryStock, recentTransactions } = data;
+  const { alerts, kpis, dailyFlow, categoryStock } = data;
+  const recentTransactions = React.useMemo(() => {
+    return (data.recentTransactions || []).filter((tx) => tx.status !== TRANSACTION_STATUS.CANCELLED);
+  }, [data.recentTransactions]);
 
   const transactionColumns = [
     {
@@ -92,34 +96,101 @@ export const DashboardPage: React.FC = () => {
       title: 'Loại Giao Dịch',
       dataIndex: 'type',
       key: 'type',
-      render: (type: 'INBOUND' | 'OUTBOUND') => (
-        <Tag color={type === 'INBOUND' ? 'blue' : 'green'} className="font-semibold">
-          {type === 'INBOUND' ? 'NHẬP KHO' : 'XUẤT KHO'}
-        </Tag>
+      render: (type: TransactionType, record: any) => (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Tag color={type === TRANSACTION_TYPE.INBOUND ? 'blue' : 'green'} className="font-semibold">
+            {type === TRANSACTION_TYPE.INBOUND ? 'NHẬP KHO' : 'XUẤT KHO'}
+          </Tag>
+          {record.status === TRANSACTION_STATUS.CANCELLED && (
+            <Tag color="error" className="font-bold text-xs px-1.5 py-0.5 m-0 border-0">
+              ĐÃ HỦY
+            </Tag>
+          )}
+        </div>
       ),
     },
     {
       title: 'Mã Lô Sản Phẩm',
       dataIndex: 'batchCode',
       key: 'batchCode',
-      render: (code: string) => (
-        <Tag color="cyan" className="font-mono font-medium">
-          {code || 'N/A'}
-        </Tag>
-      ),
+      render: (code: string) => {
+        if (!code || code === 'N/A') {
+          return <span className="text-gray-400 font-mono text-xs">N/A</span>;
+        }
+        const codes = code.split(',').map((c) => c.trim()).filter(Boolean);
+        if (codes.length <= 1) {
+          return (
+            <Tag color="cyan" className="font-mono font-medium text-xs">
+              {codes[0]}
+            </Tag>
+          );
+        }
+        const firstCode = codes[0];
+        const remainingCount = codes.length - 1;
+        return (
+          <Tooltip
+            title={
+              <div className="space-y-1 py-0.5 max-w-[280px]">
+                <div className="font-bold text-xs border-b border-slate-600 pb-1 text-slate-200">
+                  Danh sách {codes.length} mã lô hàng:
+                </div>
+                {codes.map((c, idx) => (
+                  <div key={idx} className="font-mono text-xs text-sky-300 truncate">
+                    • {c}
+                  </div>
+                ))}
+              </div>
+            }
+          >
+            <span className="inline-flex items-center gap-1 cursor-pointer">
+              <Tag color="cyan" className="font-mono font-medium text-xs m-0">
+                {firstCode}
+              </Tag>
+              <Tag color="blue" className="font-semibold text-[11px] m-0 px-1.5">
+                +{remainingCount}
+              </Tag>
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: 'Hải Sản / Mặt Hàng',
       dataIndex: 'productName',
       key: 'productName',
-      render: (name: string, record: any) => (
-        <div>
-          <Text strong>{name || 'Hải sản'}</Text>
-          {record.itemCount && record.itemCount > 1 ? (
-            <Tag color="purple" className="ml-1.5 text-xs">+{record.itemCount} món</Tag>
-          ) : null}
-        </div>
-      ),
+      render: (name: string, record: any) => {
+        const names = (name || 'Hải sản').split(',').map((n) => n.trim()).filter(Boolean);
+        const firstName = names[0] || 'Hải sản';
+        const count = names.length > 1 ? names.length - 1 : (record.itemCount && record.itemCount > 1 ? record.itemCount - 1 : 0);
+
+        if (count === 0) {
+          return <Text strong className="text-slate-800 dark:text-slate-100">{firstName}</Text>;
+        }
+
+        return (
+          <Tooltip
+            title={
+              <div className="space-y-1 py-0.5 max-w-[280px]">
+                <div className="font-bold text-xs border-b border-slate-600 pb-1 text-slate-200">
+                  Danh sách mặt hàng ({names.length} món):
+                </div>
+                {names.map((n, idx) => (
+                  <div key={idx} className="text-xs text-slate-100 truncate">
+                    • {n}
+                  </div>
+                ))}
+              </div>
+            }
+          >
+            <span className="inline-flex items-center gap-1.5 cursor-pointer">
+              <Text strong className="text-slate-800 dark:text-slate-100">{firstName}</Text>
+              <Tag color="purple" className="font-semibold text-[11px] m-0 px-1.5">
+                +{count} món
+              </Tag>
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: 'Đối Tác',
@@ -145,7 +216,7 @@ export const DashboardPage: React.FC = () => {
       title: 'Thời Gian',
       dataIndex: 'time',
       key: 'time',
-      render: (time: string) => <Text type="secondary">{time}</Text>,
+      render: (time: string) => <Text type="secondary">{formatDateTime(time)}</Text>,
       responsive: ['sm'] as any,
     },
   ];
@@ -479,19 +550,19 @@ export const DashboardPage: React.FC = () => {
                   </Tag>
                   <span className="font-bold text-xs text-sky-600 tracking-tight">{tx.id}</span>
                 </div>
-                <span className="text-[11px] text-gray-400">{tx.time}</span>
+                <span className="text-[11px] text-gray-400">{formatDateTime(tx.time)}</span>
               </div>
 
               <div className="flex items-center justify-between text-xs">
                 <div className="min-w-0 pr-2">
                   <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
-                    {tx.productName || 'Hải sản'}
+                    {tx.productName?.split(',')?.[0]?.trim() || 'Hải sản'}
                     {tx.itemCount && tx.itemCount > 1 ? (
-                      <span className="text-violet-600 font-medium ml-1">+{tx.itemCount} món</span>
+                      <span className="text-violet-600 font-medium ml-1">+{tx.itemCount - 1} món</span>
                     ) : null}
                   </div>
                   <div className="text-[11px] text-gray-500 truncate mt-0.5">
-                    {tx.partnerName || (tx.batchCode ? `Lô: ${tx.batchCode}` : 'Nội bộ')}
+                    {tx.partnerName || (tx.batchCode ? `Lô: ${tx.batchCode.split(',')?.[0]?.trim()}${tx.batchCode.includes(',') ? ` (+${tx.batchCode.split(',').length - 1})` : ''}` : 'Nội bộ')}
                   </div>
                 </div>
 
@@ -561,7 +632,7 @@ export const DashboardPage: React.FC = () => {
             <div className="bg-slate-50 dark:bg-slate-800/70 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">Thời gian tạo:</span>
-                <span className="font-semibold text-gray-800 dark:text-gray-200">{drawerTx.time}</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200">{formatDateTime(drawerTx.time)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">
@@ -699,15 +770,15 @@ export const DashboardPage: React.FC = () => {
           zoomTarget === 'flowChart'
             ? 'Sản Lượng Nhập – Xuất 7 Ngày Gần Nhất'
             : zoomTarget === 'categoryPie'
-            ? 'Cơ Cấu Tồn Kho Hải Sản'
-            : 'Lịch Sử Giao Dịch Chi Tiết'
+              ? 'Cơ Cấu Tồn Kho Hải Sản'
+              : 'Lịch Sử Giao Dịch Chi Tiết'
         }
         subtitle={
           zoomTarget === 'flowChart'
             ? 'Tương quan khối lượng nhập/xuất và dòng tiền giao dịch'
             : zoomTarget === 'categoryPie'
-            ? 'Tỷ lệ phân bố tồn kho theo từng ngành hàng'
-            : 'Bảng dữ liệu mở rộng các phiếu nhập và xuất kho mới nhất'
+              ? 'Tỷ lệ phân bố tồn kho theo từng ngành hàng'
+              : 'Bảng dữ liệu mở rộng các phiếu nhập và xuất kho mới nhất'
         }
       >
         {({ isRotated }) => (

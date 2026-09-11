@@ -29,5 +29,12 @@ public class InventoryTransaction : BaseEntity, IMustHaveTenant
     public DateTime TransactionDate { get; set; } = DateTime.UtcNow;
     public string CreatedBy { get; set; } = "System";
     public string? Note { get; set; }
+
+    // Thông tin trạng thái hủy / rollback phiếu
+    public string Status { get; set; } = "ACTIVE"; // ACTIVE | CANCELLED
+    public DateTime? CancelledAt { get; set; }
+    public string? CancelledBy { get; set; }
+    public string? CancelReason { get; set; }
+
     public int? TenantId { get; set; }
 }

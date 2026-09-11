@@ -135,4 +135,35 @@ test.describe('Kiểm thử Quản lý Dữ liệu nền (Master Data)', () => {
     // Xác nhận lưu thành công và nhà cung cấp mới xuất hiện trong bảng
     await expect(activeTab.locator('table').locator(`text=${partnerName}`).first()).toBeVisible({ timeout: 20000 });
   });
+
+  test('5. Thêm mới Kho lạnh / Kho bãi (/master-data/warehouses)', async ({ page }) => {
+    const timestamp = Date.now().toString().slice(-6);
+    const warehouseName = `Kho Lạnh Test ${timestamp}`;
+    const activeTab = page.locator('.keep-alive-tab-pane:visible');
+
+    await page.goto('/master-data/warehouses');
+    await expect(activeTab.locator('h1:has-text("Danh Mục Kho Bãi")')).toBeVisible({ timeout: 10000 });
+
+    // Mở modal Thêm kho mới
+    const addBtn = activeTab.locator('button:has-text("Thêm Kho Mới")');
+    await addBtn.click();
+
+    const modal = page.locator('.ant-modal:visible');
+    await expect(modal).toBeVisible({ timeout: 5000 });
+
+    // Điền thông tin kho
+    await modal.locator('#name').fill(warehouseName);
+    await modal.locator('#code').fill(`KHO_${timestamp}`);
+    await modal.locator('#location').fill('Khu cảng cá Cát Lở');
+    await modal.locator('#capacityKg').fill('50000');
+    await modal.locator('#temperatureCelcius').fill('-20');
+    await modal.locator('#description').fill('Kho lạnh cấp đông kiểm thử tự động');
+
+    // Nhấn Lưu
+    await modal.locator('button:has-text("Lưu")').click();
+
+    // Xác nhận thông báo thành công và kho mới xuất hiện trong bảng
+    await expect(page.locator('.ant-message-success').first()).toBeVisible({ timeout: 10000 });
+    await expect(activeTab.locator('table').locator(`text=${warehouseName}`).first()).toBeVisible({ timeout: 20000 });
+  });
 });

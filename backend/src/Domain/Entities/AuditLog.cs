@@ -4,7 +4,7 @@ namespace SeafoodWarehouseManagement.Domain.Entities;
 
 public class AuditLog : BaseEntity, IMustHaveTenant
 {
-    public string Timestamp { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+    public string Timestamp { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
     public string UserName { get; set; } = string.Empty;
     public string UserRole { get; set; } = "Nhân viên";
     public string Action { get; set; } = "UPDATE"; // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT, PRINT

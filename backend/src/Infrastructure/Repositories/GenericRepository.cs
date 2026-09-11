@@ -54,7 +54,47 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
         return await query.ToListAsync();
     }
 
+    public async Task<(IReadOnlyList<T> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        Expression<Func<T, bool>>? predicate = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        CancellationToken cancellationToken = default,
+        params Expression<Func<T, object>>[] includes)
+    {
+        IQueryable<T> query = _dbContext.Set<T>().AsNoTracking();
+
+        if (predicate != null)
+        {
+            query = query.Where(predicate);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        foreach (var include in includes)
+        {
+            query = query.Include(include);
+        }
+
+        if (orderBy != null)
+        {
+            query = orderBy(query);
+        }
+        else
+        {
+            query = query.OrderByDescending(e => e.Id);
+        }
+
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
+
     {
         await _dbContext.Set<T>().AddAsync(entity, cancellationToken);
         return entity;

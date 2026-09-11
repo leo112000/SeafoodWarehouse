@@ -14,6 +14,7 @@ import dayjs from 'dayjs';
 import type { InvoicePrintData } from '../../types';
 import { useOutboundStore } from '../../stores/useOutboundStore';
 import { batchService, type FefoBatch } from '../../services/batchService';
+import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 
 const { Text } = Typography;
 
@@ -128,7 +129,7 @@ export const OutboundPage: React.FC = () => {
 
   const addTransaction = useOutboundStore((state) => state.addTransaction);
 
-  const onFinish = async (values: any) => {
+  const { isSubmitting, handleSubmit: onFinish } = useAsyncSubmit(async (values: any) => {
     const items = values.items || [];
     if (items.length === 0) {
       message.error('Vui lòng thêm ít nhất một mặt hàng xuất kho!');
@@ -243,10 +244,8 @@ export const OutboundPage: React.FC = () => {
     form.resetFields();
     setSelectedSeafoods({});
     setSelectedBatches({});
-
-    // Tải lại lô hàng để cập nhật tồn kho mới
     loadFefoBatches();
-  };
+  });
 
   return (
     <div className="print-constrained">
@@ -580,32 +579,9 @@ export const OutboundPage: React.FC = () => {
                             label="Tên vật phẩm / Dịch vụ kèm"
                             rules={[{ required: true, message: 'Nhập tên vật phẩm!' }]}
                           >
-                            <Select
-                              placeholder="Chọn vật phẩm hoặc tự gõ..."
-                              showSearch
-                              optionFilterProp="label"
-                              popupMatchSelectWidth={false}
+                            <Input
+                              placeholder="Nhập tên vật phẩm / dịch vụ kèm (VD: Thùng xốp, đá gel, phí ship...)"
                               allowClear
-                              onChange={(val) => {
-                                const pkg = packagings.find((p) => p.name === val || p.code === val);
-                                const supplies = form.getFieldValue('supplies') || [];
-                                if (supplies[name] && pkg) {
-                                  supplies[name].name = pkg.name;
-                                  supplies[name].packagingCode = pkg.code;
-                                  supplies[name].unit = pkg.unit || 'Cái';
-                                  form.setFieldsValue({ supplies });
-                                }
-                              }}
-                              options={[
-                                ...packagings.map((p) => ({ label: `[${p.code}] ${p.name}`, value: p.name })),
-                                { label: 'Thùng xốp nhỏ (10kg)', value: 'Thùng xốp nhỏ (10kg)' },
-                                { label: 'Thùng xốp trung (20kg)', value: 'Thùng xốp trung (20kg)' },
-                                { label: 'Thùng xốp lớn (30kg)', value: 'Thùng xốp lớn (30kg)' },
-                                { label: 'Túi hút chân không', value: 'Túi hút chân không' },
-                                { label: 'Đá gel bảo quản', value: 'Đá gel bảo quản' },
-                                { label: 'Công sơ chế / Cắt lát', value: 'Công sơ chế / Cắt lát' },
-                                { label: 'Phí vận chuyển giao hàng', value: 'Phí vận chuyển giao hàng' },
-                              ]}
                             />
                           </Form.Item>
                         </Col>
@@ -678,7 +654,7 @@ export const OutboundPage: React.FC = () => {
                     block
                     icon={<PlusOutlined />}
                   >
-                    + Thêm thùng xốp / đá gel / vật phẩm kèm
+                    Thêm thùng xốp / đá gel / vật phẩm kèm
                   </Button>
                 </div>
               )}
@@ -761,16 +737,17 @@ export const OutboundPage: React.FC = () => {
           </Card>
 
           <div className="flex justify-end gap-4">
-            <Button size="large" onClick={() => navigate('/')}>Quay lại</Button>
+            <Button size="large" disabled={isSubmitting} onClick={() => navigate('/')}>Quay lại</Button>
             <Button
               type="primary"
               htmlType="submit"
               icon={<SaveOutlined />}
               size="large"
-              disabled={fefoBatches.length === 0}
+              loading={isSubmitting}
+              disabled={isSubmitting || fefoBatches.length === 0}
               style={{ background: '#0ea5e9', borderColor: '#0ea5e9' }}
             >
-              Xác nhận xuất kho &amp; In hóa đơn
+              {isSubmitting ? 'Đang xuất kho...' : 'Xác nhận xuất kho & In hóa đơn'}
             </Button>
           </div>
         </Form>

@@ -45,7 +45,7 @@ public class WastageController : BaseApiController
         var result = transactions.Select(t => new
         {
             id = $"WST-{t.Id}",
-            date = t.TransactionDate.ToString("yyyy-MM-dd"),
+            date = t.TransactionDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             type = t.Note?.Contains("Chuyển phân loại") == true ? "Chuyển phân loại" : "Hao hụt",
             seafoodName = t.LotBatch?.Product?.Name ?? "Hải sản",
             batchCode = t.LotBatch?.BatchCode ?? "LOT-001",

@@ -88,4 +88,14 @@ export const transactionService = {
     const res = await api.post('/outbound', data);
     return res.data;
   },
+
+  async cancelInbound(refNo: string, reason: string): Promise<any> {
+    const res = await api.post(`/inbound/cancel/${refNo}`, { reason });
+    return res.data;
+  },
+
+  async cancelOutbound(refNo: string, reason: string): Promise<any> {
+    const res = await api.post(`/outbound/cancel/${refNo}`, { reason });
+    return res.data;
+  },
 };

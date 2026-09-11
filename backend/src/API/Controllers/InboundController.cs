@@ -2,36 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SeafoodWarehouseManagement.Application.Common.Interfaces;
 using SeafoodWarehouseManagement.Application.Common.Models;
+using SeafoodWarehouseManagement.Application.DTOs.Inbound;
 using SeafoodWarehouseManagement.Domain.Entities;
 using SeafoodWarehouseManagement.Domain.Enums;
 
 namespace SeafoodWarehouseManagement.API.Controllers;
-
-public class CreateInboundRequestDto
-{
-    public string Supplier { get; set; } = string.Empty;
-    public string InboundDate { get; set; } = string.Empty;
-    public string StorageLocation { get; set; } = string.Empty;
-    public decimal TotalAmount { get; set; }
-    public List<CreateInboundItemDto> Items { get; set; } = new();
-}
-
-public class CreateInboundItemDto
-{
-    public string SeafoodCode { get; set; } = string.Empty;
-    public string SeafoodName { get; set; } = string.Empty;
-    public decimal TotalWeight { get; set; } // Cân thô (Gross weight)
-    public decimal TareWeight { get; set; } // Số cân bì/khay (Tare weight)
-    public decimal NetWeight { get; set; } // Khối lượng thực (Net weight)
-    public string? PackagingCode { get; set; }
-    public int PackagingQty { get; set; }
-    public string StorageCondition { get; set; } = "Cấp đông";
-    public string CatchDate { get; set; } = string.Empty;
-    public string ExpiryDate { get; set; } = string.Empty;
-    public decimal UnitPrice { get; set; }
-    public decimal TotalPrice { get; set; }
-    public string BatchCode { get; set; } = string.Empty;
-}
 
 /// <summary>
 /// API Quản lý Phiếu Nhập Kho - Xử lý trực tiếp CSDL
@@ -66,50 +41,82 @@ public class InboundController : BaseApiController
             .OrderByDescending(t => t.TransactionDate)
             .ToListAsync(cancellationToken);
 
+        var batchIds = transactions.Where(t => t.LotBatchId > 0).Select(t => t.LotBatchId).Distinct().ToList();
+        var exportTxs = await _context.InventoryTransactions
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Export && batchIds.Contains(t.LotBatchId))
+            .Select(t => new { t.LotBatchId, t.ReferenceNumber })
+            .ToListAsync(cancellationToken);
+
+        var exportsByBatch = exportTxs
+            .GroupBy(e => e.LotBatchId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.ReferenceNumber).Distinct().ToList());
+
         var grouped = transactions
             .GroupBy(t => t.ReferenceNumber)
-            .Select(g => new
+            .Select(g =>
             {
-                id = g.Key,
-                supplier = g.First().Note?.Split('-').FirstOrDefault()?.Replace("Nhà cung cấp:", "").Trim() ?? "Nhà cung cấp",
-                inboundDate = g.First().TransactionDate.ToString("yyyy-MM-dd HH:mm:ss"),
-                storageLocation = g.First().SourceWarehouse?.Name ?? "Kho chính",
-                totalAmount = (double)g.Sum(x => x.TotalAmount > 0 ? x.TotalAmount : (x.Quantity * (x.UnitPrice > 0 ? x.UnitPrice : (x.LotBatch != null && x.LotBatch.UnitPrice > 0 ? x.LotBatch.UnitPrice : 250000m)))),
-                items = g.Select(i =>
+                var receiptBatchIds = g.Where(x => x.LotBatchId > 0).Select(x => x.LotBatchId).Distinct();
+                var relatedExportRefs = receiptBatchIds
+                    .Where(bId => exportsByBatch.ContainsKey(bId))
+                    .SelectMany(bId => exportsByBatch[bId])
+                    .Distinct()
+                    .ToList();
+
+                bool hasExports = relatedExportRefs.Count > 0 || g.Any(x => x.LotBatch != null && x.LotBatch.CurrentQuantity < x.LotBatch.InitialQuantity);
+                bool canCancel = (g.First().Status != "CANCELLED") && !hasExports;
+
+                return new
                 {
-                    var price = i.UnitPrice > 0 ? i.UnitPrice : (i.LotBatch != null && i.LotBatch.UnitPrice > 0 ? i.LotBatch.UnitPrice : 250000m);
-                    var amt = i.TotalAmount > 0 ? i.TotalAmount : (i.Quantity * price);
-                    var tareW = (double)i.TareWeight;
-                    var netW = (double)i.Quantity;
-                    var grossW = i.GrossWeight > 0 ? (double)i.GrossWeight : (netW + tareW);
-
-                    var storageType = i.LotBatch?.Product?.StorageType;
-                    var conditionStr = storageType switch
+                    id = g.Key,
+                    status = g.First().Status ?? "ACTIVE",
+                    cancelledAt = g.First().CancelledAt?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    cancelledBy = g.First().CancelledBy,
+                    cancelReason = g.First().CancelReason,
+                    hasExports,
+                    canCancel,
+                    exportRefNos = relatedExportRefs,
+                    supplier = g.First().Note?.Split('-').FirstOrDefault()?.Replace("Nhà cung cấp:", "").Trim() ?? "Nhà cung cấp",
+                    inboundDate = g.First().TransactionDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    storageLocation = g.First().SourceWarehouse?.Name ?? "Kho chính",
+                    totalAmount = (double)g.Sum(x => x.TotalAmount > 0 ? x.TotalAmount : (x.Quantity * (x.UnitPrice > 0 ? x.UnitPrice : (x.LotBatch != null && x.LotBatch.UnitPrice > 0 ? x.LotBatch.UnitPrice : 250000m)))),
+                    items = g.Select(i =>
                     {
-                        "ALIVE" => "Tươi sống",
-                        "FRESH" => "Ướp đá",
-                        "DRY"   => "Khô",
-                        _       => "Cấp đông"
-                    };
+                        var price = i.UnitPrice > 0 ? i.UnitPrice : (i.LotBatch != null && i.LotBatch.UnitPrice > 0 ? i.LotBatch.UnitPrice : 250000m);
+                        var amt = i.TotalAmount > 0 ? i.TotalAmount : (i.Quantity * price);
+                        var tareW = (double)i.TareWeight;
+                        var netW = (double)i.Quantity;
+                        var grossW = i.GrossWeight > 0 ? (double)i.GrossWeight : (netW + tareW);
 
-                    return new
-                    {
-                        seafoodName = i.LotBatch?.Product?.Name ?? "Hải sản",
-                        seafoodCode = i.LotBatch?.Product?.Code ?? "HS-001",
-                        totalWeight = grossW,
-                        tareWeight = tareW,
-                        netWeight = netW,
-                        grossWeight = grossW,
-                        packagingCode = i.PackagingCode,
-                        packagingQty = i.PackagingQty,
-                        storageCondition = conditionStr,
-                        catchDate = i.LotBatch?.ProductionDate.ToString("yyyy-MM-dd"),
-                        expiryDate = i.LotBatch?.ExpirationDate.ToString("yyyy-MM-dd"),
-                        unitPrice = (double)price,
-                        totalPrice = (double)amt,
-                        batchCode = i.LotBatch?.BatchCode ?? "LOT-001"
-                    };
-                }).ToList()
+                        var storageType = i.LotBatch?.Product?.StorageType;
+                        var conditionStr = storageType switch
+                        {
+                            "ALIVE" => "Tươi sống",
+                            "FRESH" => "Ướp đá",
+                            "DRY"   => "Khô",
+                            _       => "Cấp đông"
+                        };
+
+                        return new
+                        {
+                            seafoodName = i.LotBatch?.Product?.Name ?? "Hải sản",
+                            seafoodCode = i.LotBatch?.Product?.Code ?? "HS-001",
+                            totalWeight = grossW,
+                            tareWeight = tareW,
+                            netWeight = netW,
+                            grossWeight = grossW,
+                            packagingCode = i.PackagingCode,
+                            packagingQty = i.PackagingQty,
+                            storageCondition = conditionStr,
+                            catchDate = i.LotBatch?.ProductionDate.ToString("yyyy-MM-dd"),
+                            expiryDate = i.LotBatch?.ExpirationDate.ToString("yyyy-MM-dd"),
+                            unitPrice = (double)price,
+                            totalPrice = (double)amt,
+                            batchCode = i.LotBatch?.BatchCode ?? "LOT-001",
+                            initialQuantity = (double)(i.LotBatch?.InitialQuantity ?? 0),
+                            currentQuantity = (double)(i.LotBatch?.CurrentQuantity ?? 0)
+                        };
+                    }).ToList()
+                };
             }).ToList();
 
         return Ok(Result<object>.Success(grouped));
@@ -278,5 +285,145 @@ public class InboundController : BaseApiController
         }
 
         return Ok(Result<object>.Success(new { referenceNumber = refNo }));
+    }
+
+    /// <summary>
+    /// Hủy phiếu nhập kho và hoàn nguyên tồn kho
+    /// </summary>
+    [HttpPost("cancel/{refNo}")]
+    public async Task<ActionResult<Result<object>>> CancelInbound(string refNo, [FromBody] CancelTransactionRequestDto request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Reason))
+        {
+            return BadRequest(Result<object>.Failure("Vui lòng cung cấp lý do hủy phiếu."));
+        }
+
+        var transactions = await _context.InventoryTransactions
+            .Where(t => !t.IsDeleted && t.ReferenceNumber == refNo && t.Type == TransactionType.Import)
+            .Include(t => t.LotBatch)
+            .ToListAsync(cancellationToken);
+
+        if (transactions.Count == 0)
+        {
+            return NotFound(Result<object>.Failure($"Không tìm thấy phiếu nhập kho '{refNo}'."));
+        }
+
+        if (transactions.All(t => t.Status == "CANCELLED"))
+        {
+            return BadRequest(Result<object>.Failure($"Phiếu nhập '{refNo}' đã bị hủy trước đó rồi."));
+        }
+
+        // Kiểm tra an toàn: Có lô hàng nào đã bị xuất bán chưa?
+        var batchIds = transactions.Where(t => t.LotBatchId > 0).Select(t => t.LotBatchId).Distinct().ToList();
+
+        // 1. Kiểm tra các phiếu xuất kho đang hoạt động liên quan trực tiếp đến các lô hàng này
+        var activeExportTxs = await _context.InventoryTransactions
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Export && batchIds.Contains(t.LotBatchId))
+            .Include(t => t.LotBatch)
+            .ToListAsync(cancellationToken);
+
+        if (activeExportTxs.Count > 0)
+        {
+            var exportRefNos = activeExportTxs.Select(e => e.ReferenceNumber).Distinct().ToList();
+            var batchCodes = activeExportTxs.Select(e => e.LotBatch?.BatchCode).Where(b => !string.IsNullOrEmpty(b)).Distinct().ToList();
+            var totalExportKg = activeExportTxs.Sum(e => e.Quantity);
+
+            return BadRequest(Result<object>.Failure(
+                $"Không thể hủy phiếu nhập '{refNo}' vì lô [{string.Join(", ", batchCodes)}] đã phát sinh xuất bán ({totalExportKg:N1} kg) trong các phiếu xuất: {string.Join(", ", exportRefNos)}. Vui lòng hủy các phiếu xuất liên quan trước để hoàn nguyên tồn kho."));
+        }
+
+        // 2. Kiểm tra bổ sung số lượng tồn kho của lô
+        foreach (var tx in transactions)
+        {
+            if (tx.LotBatch != null)
+            {
+                // Nếu CurrentQuantity < InitialQuantity nghĩa là đã phát sinh xuất bán hoặc hao hụt
+                if (tx.LotBatch.CurrentQuantity < tx.LotBatch.InitialQuantity)
+                {
+                    var sold = tx.LotBatch.InitialQuantity - tx.LotBatch.CurrentQuantity;
+                    return BadRequest(Result<object>.Failure(
+                        $"Không thể hủy phiếu nhập '{refNo}' vì lô '{tx.LotBatch.BatchCode}' không còn nguyên vẹn tồn kho (đã xuất {sold:N1} kg, hiện chỉ còn {tx.LotBatch.CurrentQuantity:N1} kg / ban đầu {tx.LotBatch.InitialQuantity:N1} kg). Vui lòng hủy các phiếu xuất liên quan trước."));
+                }
+            }
+        }
+
+        // Thực hiện rollback trong transaction DB
+        using var dbTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var nowUtc = DateTime.UtcNow;
+            var userName = User.Identity?.Name ?? "Thủ kho";
+
+            foreach (var tx in transactions)
+            {
+                tx.Status = "CANCELLED";
+                tx.CancelledAt = nowUtc;
+                tx.CancelledBy = userName;
+                tx.CancelReason = request.Reason;
+
+                if (tx.LotBatch != null)
+                {
+                    tx.LotBatch.CurrentQuantity = 0;
+                    tx.LotBatch.Status = "CANCELLED";
+
+                    // Trừ số lượng tồn trong InventoryItems tương ứng
+                    var invItems = await _context.InventoryItems
+                        .Where(i => !i.IsDeleted && i.LotBatchId == tx.LotBatch.Id)
+                        .ToListAsync(cancellationToken);
+
+                    foreach (var invItem in invItems)
+                    {
+                        invItem.Quantity = 0;
+                        invItem.IsDeleted = true;
+                    }
+                }
+            }
+
+            // Ghi AuditLog
+            var auditLog = new AuditLog
+            {
+                UserName = userName,
+                UserRole = "Thủ kho",
+                Action = "CANCEL",
+                TargetModule = "Nhập kho",
+                Details = $"Hủy phiếu nhập {refNo}. Lý do: {request.Reason}",
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
+                Timestamp = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                TenantId = _currentTenant.Id
+            };
+            _context.AuditLogs.Add(auditLog);
+
+            await _context.SaveChangesAsync(cancellationToken);
+            await dbTransaction.CommitAsync(cancellationToken);
+
+            // Bắn thông báo Real-time
+            var tenantId = _currentTenant.Id;
+            var notif = new NotificationMessage
+            {
+                Type = "INBOUND_CANCELLED",
+                Title = "Hủy phiếu nhập kho",
+                Message = $"Phiếu nhập {refNo} đã được hủy và hoàn nguyên tồn kho thành công.",
+                Severity = "warning",
+                Link = "/inventory/history"
+            };
+
+            if (tenantId.HasValue && tenantId.Value > 0)
+            {
+                await _notificationService.SendNotificationToTenantAsync(tenantId.Value, notif, cancellationToken);
+                await _notificationService.SendStockUpdateEventAsync(tenantId.Value, "STOCK_CHANGED", cancellationToken);
+            }
+            else
+            {
+                await _notificationService.SendNotificationToAllAsync(notif, cancellationToken);
+                await _notificationService.SendStockUpdateEventAsync(null, "STOCK_CHANGED", cancellationToken);
+            }
+
+            return Ok(Result<object>.Success(new { referenceNumber = refNo, status = "CANCELLED" }));
+        }
+        catch (Exception ex)
+        {
+            await dbTransaction.RollbackAsync(cancellationToken);
+            return StatusCode(500, Result<object>.Failure($"Lỗi khi hủy phiếu nhập: {ex.Message}"));
+        }
     }
 }

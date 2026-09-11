@@ -8,6 +8,9 @@ import { usePackagingStore } from '../../stores/usePackagingStore';
 import { useCategoryStore } from '../../stores/useCategoryStore';
 import { QRScannerModal } from '../../components/common/QRScannerModal';
 import { partnerService, type PartnerItem } from '../../services/partnerService';
+import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
+import { computeTareWeight, computeNetWeight, computeTotalPrice, generateBatchCode } from '../../utils/weightCalculator';
+import { parseBarcodeText, findMatchingProduct } from '../../utils/barcodeParser';
 import dayjs from 'dayjs';
 
 export const InboundPage: React.FC = () => {
@@ -43,48 +46,14 @@ export const InboundPage: React.FC = () => {
 
   const handleScanSuccess = (scannedText: string) => {
     try {
-      let codeToMatch = scannedText.trim();
-      let parsedWeight: number | undefined;
-      let parsedLot: string | undefined;
-      let parsedExp: string | undefined;
-
-      // Hỗ trợ nếu mã QR là JSON chứa chi tiết lô hàng (tem in nhiệt)
-      if (scannedText.startsWith('{') && scannedText.endsWith('}')) {
-        try {
-          const parsed = JSON.parse(scannedText);
-          codeToMatch = parsed.pCode || parsed.code || parsed.lot || codeToMatch;
-          parsedWeight = parsed.weight ? Number(parsed.weight) : undefined;
-          parsedLot = parsed.lot;
-          parsedExp = parsed.exp;
-        } catch {}
-      }
-
-      // 1. Tìm chính xác tuyệt đối theo Mã sản phẩm hoặc ID trước (Exact Match)
-      const inputTrimmed = codeToMatch.trim().toLowerCase();
-      let matchedProduct = activeProducts.find(
-        (p) => p.code.toLowerCase() === inputTrimmed || String(p.id).toLowerCase() === inputTrimmed
-      );
-
-      // 2. Nếu chưa thấy, tìm theo chuỗi chuẩn hóa mã không dấu phân cách
-      if (!matchedProduct) {
-        const cleanInput = inputTrimmed.replace(/[^a-z0-9]/g, '');
-        matchedProduct = activeProducts.find((p) => {
-          const pCodeClean = p.code.toLowerCase().replace(/[^a-z0-9]/g, '');
-          return pCodeClean === cleanInput;
-        });
-      }
-
-      // 3. Nếu vẫn chưa thấy, tìm theo tên hải sản
-      if (!matchedProduct) {
-        matchedProduct = activeProducts.find((p) =>
-          p.name.toLowerCase().includes(inputTrimmed)
-        );
-      }
+      const { codeToMatch, lot: parsedLot, weight: parsedWeight, exp: parsedExp } = parseBarcodeText(scannedText);
+      const matchedProduct = findMatchingProduct(codeToMatch, activeProducts);
 
       if (!matchedProduct) {
         message.warning(`Không tìm thấy hải sản có mã "${scannedText}". Hãy kiểm tra lại mã hoặc bấm [+ Thêm mặt hàng mới]!`);
         return;
       }
+
 
       const currentFormValues = form.getFieldsValue();
       const currentItems = Array.isArray(currentFormValues.items) ? [...currentFormValues.items] : [];
@@ -144,7 +113,7 @@ export const InboundPage: React.FC = () => {
     }
   };
 
-  const onFinish = async (values: any) => {
+  const { isSubmitting, handleSubmit: onFinish } = useAsyncSubmit(async (values: any) => {
     // Format dates before saving
     const formattedItems = (values.items || []).map((item: any) => {
       const selectedProduct = activeProducts.find((p) => p.code === item.seafoodCode);
@@ -170,7 +139,7 @@ export const InboundPage: React.FC = () => {
 
     message.success('Tạo phiếu nhập kho thành công!');
     navigate('/inventory/inbound-history');
-  };
+  });
 
   const handleValuesChange = (_changedValues: any, allValues: any) => {
     const items = allValues.items || [];
@@ -179,26 +148,14 @@ export const InboundPage: React.FC = () => {
     const updatedItems = items.map((item: any) => {
       if (!item) return item;
 
-      // Auto-compute tare from packaging type × quantity
       const pkg = packagings.find((p) => p.code === item.packagingCode);
-      const pkgQty = Number(item.packagingQty) || 0;
-      const computedTare = pkg ? pkgQty * pkg.defaultTareWeight : Number(item.tareWeight) || 0;
-
-      const total = Number(item.totalWeight) || 0;
-      const computedNet = Math.max(0, total - computedTare);
-
-      const price = Number(item.unitPrice) || 0;
-      const computedTotal = computedNet * price;
-
-      const code = item.seafoodCode || '';
-      const existingBatch = item.batchCode || '';
-      const computedBatch = code
-        ? (existingBatch && existingBatch.startsWith(`LOT-${code}`) ? existingBatch : `LOT-${code}-${dayjs().format('YYYYMMDDHHmmss')}`)
-        : '';
+      const computedTare = computeTareWeight(item.packagingCode, item.packagingQty, packagings, Number(item.tareWeight) || 0);
+      const computedNet = computeNetWeight(item.totalWeight, computedTare);
+      const computedTotal = computeTotalPrice(computedNet, item.unitPrice);
+      const computedBatch = generateBatchCode(item.seafoodCode || '', item.batchCode);
 
       let updatedItem = { ...item };
 
-      // Only push tare update when a packaging type is selected (don't stomp manual entry)
       if (pkg && item.tareWeight !== computedTare) {
         updatedItem.tareWeight = computedTare;
         isChanged = true;
@@ -224,8 +181,9 @@ export const InboundPage: React.FC = () => {
     }
   };
 
+
   // ── quick-add submit ──────────────────────────────────────────────────────────
-  const handleQuickAddSubmit = async (values: any) => {
+  const { isSubmitting: isQuickAdding, handleSubmit: handleQuickAddSubmit } = useAsyncSubmit(async (values: any) => {
     const cat = categories.find((c) => c.id === values.categoryId);
     const newProduct = await addProduct({
       code: (values.code as string).toUpperCase(),
@@ -254,7 +212,7 @@ export const InboundPage: React.FC = () => {
     setQuickAddOpen(false);
     quickAddForm.resetFields();
     setPendingItemIndex(null);
-  };
+  });
 
   return (
     <div className="print-constrained">
@@ -575,7 +533,7 @@ export const InboundPage: React.FC = () => {
                 ))}
                 <Button
                   type="dashed"
-                  onClick={() => add()}
+                  onClick={() => add({ storageCondition: 'Cấp đông', totalWeight: 0, tareWeight: 0, netWeight: 0, unitPrice: 0, totalPrice: 0 })}
                   block
                   icon={<PlusOutlined />}
                   className="py-4 hover:border-sky-400 hover:text-sky-500"
@@ -588,7 +546,7 @@ export const InboundPage: React.FC = () => {
         </Card>
 
         <div className="flex justify-end gap-4">
-          <Button size="large" onClick={() => navigate('/inventory/inbound-history')}>
+          <Button size="large" disabled={isSubmitting} onClick={() => navigate('/inventory/inbound-history')}>
             Hủy bỏ
           </Button>
           <Button
@@ -596,9 +554,11 @@ export const InboundPage: React.FC = () => {
             htmlType="submit"
             icon={<SaveOutlined />}
             size="large"
+            loading={isSubmitting}
+            disabled={isSubmitting}
             className="bg-sky-500 hover:bg-sky-600 border-none"
           >
-            Lưu phiếu nhập
+            {isSubmitting ? 'Đang lưu phiếu...' : 'Lưu phiếu nhập'}
           </Button>
         </div>
       </Form>
@@ -690,9 +650,9 @@ export const InboundPage: React.FC = () => {
           </Form.Item>
 
           <div className="flex justify-end gap-3">
-            <Button onClick={() => { setQuickAddOpen(false); quickAddForm.resetFields(); setPendingItemIndex(null); }}>Hủy</Button>
-            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} className="bg-sky-500 hover:bg-sky-600 border-none">
-              Lưu sản phẩm &amp; chọn ngay
+            <Button disabled={isQuickAdding} onClick={() => { setQuickAddOpen(false); quickAddForm.resetFields(); setPendingItemIndex(null); }}>Hủy</Button>
+            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={isQuickAdding} disabled={isQuickAdding} className="bg-sky-500 hover:bg-sky-600 border-none">
+              {isQuickAdding ? 'Đang lưu...' : 'Lưu sản phẩm & chọn ngay'}
             </Button>
           </div>
         </Form>

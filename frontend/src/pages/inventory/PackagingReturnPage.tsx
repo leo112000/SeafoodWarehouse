@@ -6,12 +6,15 @@ import {
 import {
   RollbackOutlined, PlusOutlined, WarningOutlined,
   CheckCircleOutlined, InboxOutlined, HistoryOutlined,
+  EyeOutlined, AppstoreOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { formatDateTime } from '../../utils/dateUtils';
 import { usePackagingReturnStore, type PackagingLoan } from '../../stores/usePackagingReturnStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { usePackagingStore } from '../../stores/usePackagingStore';
 import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
+import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +57,40 @@ const PackagingReturnPage: React.FC = () => {
   const totalDebt = totalLoaned - totalReturned;
   const pendingLoans = loans.filter((l) => l.loanedQty > l.returnedQty).length;
 
+  // ── tổng hợp theo từng loại sọt (Tồn kho vs Đang cho mượn) ────────────────────
+  const packagingSummary = useMemo(() => {
+    return packagings.map((pkg) => {
+      const relatedLoans = loans.filter(
+        (l) =>
+          l.packagingCode?.toLowerCase() === pkg.code?.toLowerCase() ||
+          l.packagingName?.toLowerCase() === pkg.name?.toLowerCase()
+      );
+      const totalLoaned = relatedLoans.reduce((s, l) => s + l.loanedQty, 0);
+      const totalReturned = relatedLoans.reduce((s, l) => s + l.returnedQty, 0);
+      const activeDebt = totalLoaned - totalReturned;
+      const inStock = pkg.stockQuantity ?? 0;
+      const totalAssets = inStock + activeDebt;
+      const loanPercent = totalAssets > 0 ? Math.round((activeDebt / totalAssets) * 100) : 0;
+      const activeBorrowersCount = relatedLoans.filter((l) => l.loanedQty > l.returnedQty).length;
+
+      return {
+        id: pkg.id,
+        code: pkg.code,
+        name: pkg.name,
+        category: pkg.category,
+        unit: pkg.unit || 'Cái',
+        defaultTareWeight: pkg.defaultTareWeight,
+        inStock,
+        activeDebt,
+        totalLoaned,
+        totalReturned,
+        totalAssets,
+        loanPercent,
+        activeBorrowersCount,
+      };
+    });
+  }, [packagings, loans]);
+
   // ── unique partner list for filter ───────────────────────────────────────────
   const partners = useMemo(() => {
     const set = new Set(loans.map((l) => l.partnerName));
@@ -78,42 +115,44 @@ const PackagingReturnPage: React.FC = () => {
     setReturnModalOpen(true);
   };
 
-  const handleReturnSubmit = (values: any) => {
+  const { isSubmitting: isSubmittingReturn, handleSubmit: handleReturnSubmit } = useAsyncSubmit(async (values: any) => {
     if (!selectedLoan) return;
     const debt = selectedLoan.loanedQty - selectedLoan.returnedQty;
     if (values.returnedQty > debt) {
       message.error(`Số lượng trả vượt quá số nợ (${debt} cái).`);
       return;
     }
-    addReturn({
+    await addReturn({
       loanId: selectedLoan.id,
       returnedQty: values.returnedQty,
-      returnDate: dayjs().format('YYYY-MM-DD'),
+      returnDate: dayjs().format('YYYY-MM-DD HH:mm'),
       recordedBy: user?.name ?? 'Thủ kho',
       note: values.note,
     });
+    fetchPackagings();
     message.success(`Đã ghi nhận ${values.returnedQty} cái trả về từ ${selectedLoan.partnerName}!`);
     setReturnModalOpen(false);
     returnForm.resetFields();
     setSelectedLoan(null);
-  };
+  });
 
-  const handleLoanSubmit = (values: any) => {
+  const { isSubmitting: isSubmittingLoan, handleSubmit: handleLoanSubmit } = useAsyncSubmit(async (values: any) => {
     const pkg = packagings.find((p) => p.code === values.packagingCode);
     if (!pkg) return;
-    addLoan({
+    await addLoan({
       partnerName: values.partnerName,
       partnerType: values.partnerType,
       packagingCode: pkg.code,
       packagingName: pkg.name,
       loanedQty: values.loanedQty,
-      date: dayjs().format('YYYY-MM-DD'),
+      date: dayjs().format('YYYY-MM-DD HH:mm'),
       note: values.note,
     });
+    fetchPackagings();
     message.success('Đã tạo phiếu cho mượn vỏ sọt thành công!');
     setLoanModalOpen(false);
     loanForm.resetFields();
-  };
+  });
 
   const [loanPagination, setLoanPagination] = useState({ current: 1, pageSize: 10 });
   const [returnPagination, setReturnPagination] = useState({ current: 1, pageSize: 10 });
@@ -168,7 +207,7 @@ const PackagingReturnPage: React.FC = () => {
       title: 'Ngày Giao',
       dataIndex: 'date',
       key: 'date',
-      render: (d: string) => <span className="text-slate-500 text-sm">{d}</span>,
+      render: (d: string) => <span className="text-slate-500 text-sm">{formatDateTime(d, 'YYYY-MM-DD')}</span>,
     },
     {
       title: 'Đã Giao',
@@ -251,9 +290,138 @@ const PackagingReturnPage: React.FC = () => {
     { title: 'Đối Tác', dataIndex: 'partnerName', key: 'partnerName', render: (n: string) => <strong>{n}</strong> },
     { title: 'Loại Khay', dataIndex: 'packagingName', key: 'packagingName' },
     { title: 'Số Lượng Trả', dataIndex: 'returnedQty', key: 'returnedQty', align: 'right' as const, render: (q: number) => <span className="font-semibold text-green-600">{q} cái</span> },
-    { title: 'Ngày Trả', dataIndex: 'returnDate', key: 'returnDate' },
+    { 
+      title: 'Ngày Trả', 
+      dataIndex: 'returnDate', 
+      key: 'returnDate', 
+      render: (d: string) => <span className="text-slate-600 font-medium text-xs">{formatDateTime(d)}</span> 
+    },
     { title: 'Người Ghi Nhận', dataIndex: 'recordedBy', key: 'recordedBy' },
-    { title: 'Ghi Chú', dataIndex: 'note', key: 'note', ellipsis: true, render: (n: string) => n || '—' },
+  ];
+
+  // ── columns tổng hợp theo loại sọt ──────────────────────────────────────────
+  const summaryColumns = [
+    {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
+    {
+      title: 'Mã & Loại Sọt',
+      key: 'pkgInfo',
+      render: (_: any, record: any) => (
+        <div>
+          <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 flex-wrap">
+            <Tag color={record.category === 'CONTAINER' ? 'blue' : 'default'} className="font-mono text-xs m-0">
+              {record.code}
+            </Tag>
+            <span>{record.name}</span>
+          </div>
+          <div className="text-xs text-slate-400 mt-0.5">
+            Bì chuẩn: {record.defaultTareWeight} kg • ĐVT: {record.unit}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Tồn Kho (Tại Chỗ)',
+      dataIndex: 'inStock',
+      key: 'inStock',
+      align: 'right' as const,
+      sorter: (a: any, b: any) => a.inStock - b.inStock,
+      render: (val: number, record: any) => (
+        <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+          {val.toLocaleString()} {record.unit}
+        </span>
+      ),
+    },
+    {
+      title: 'Đang Cho Mượn (Chưa Trả)',
+      dataIndex: 'activeDebt',
+      key: 'activeDebt',
+      align: 'right' as const,
+      sorter: (a: any, b: any) => a.activeDebt - b.activeDebt,
+      render: (val: number, record: any) => (
+        <div>
+          <span className={`font-bold text-sm ${val > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+            {val.toLocaleString()} {record.unit}
+          </span>
+          {record.activeBorrowersCount > 0 && (
+            <div className="text-[11px] text-slate-400">
+              ({record.activeBorrowersCount} đối tác còn nợ)
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Đã Thu Hồi',
+      dataIndex: 'totalReturned',
+      key: 'totalReturned',
+      align: 'right' as const,
+      render: (val: number, record: any) => (
+        <span className="text-slate-600 dark:text-slate-300 font-medium">
+          {val.toLocaleString()} {record.unit}
+        </span>
+      ),
+    },
+    {
+      title: 'Tổng Tài Sản Sọt',
+      dataIndex: 'totalAssets',
+      key: 'totalAssets',
+      align: 'right' as const,
+      render: (val: number, record: any) => (
+        <span className="font-extrabold text-slate-800 dark:text-slate-200">
+          {val.toLocaleString()} {record.unit}
+        </span>
+      ),
+    },
+    {
+      title: 'Tỷ Lệ Luân Chuyển',
+      key: 'ratio',
+      width: 190,
+      render: (_: any, record: any) => (
+        <div className="min-w-[150px]">
+          <div className="flex justify-between text-xs text-slate-500 mb-1 font-medium">
+            <span className="text-amber-600">{record.loanPercent}% ngoài kho</span>
+            <span className="text-emerald-600">{100 - record.loanPercent}% tại kho</span>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden flex">
+            <div
+              className="bg-amber-500 h-full transition-all"
+              style={{ width: `${Math.min(100, record.loanPercent)}%` }}
+              title={`Đang mượn: ${record.activeDebt} ${record.unit}`}
+            />
+            <div
+              className="bg-emerald-500 h-full transition-all"
+              style={{ width: `${Math.max(0, 100 - record.loanPercent)}%` }}
+              title={`Trong kho: ${record.inStock} ${record.unit}`}
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Thao Tác',
+      key: 'action',
+      align: 'center' as const,
+      width: 140,
+      render: (_: any, record: any) => (
+        <Button
+          size="small"
+          type="link"
+          icon={<EyeOutlined />}
+          disabled={record.activeDebt === 0}
+          onClick={() => {
+            setActiveTab('ledger');
+          }}
+        >
+          Xem đối tác nợ
+        </Button>
+      ),
+    },
   ];
 
   // ── render ────────────────────────────────────────────────────────────────────
@@ -459,7 +627,7 @@ const PackagingReturnPage: React.FC = () => {
                             </div>
 
                             <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-gray-400">
-                              <span>Ngày: {loan.date}</span>
+                              <span>Ngày: {formatDateTime(loan.date, 'YYYY-MM-DD')}</span>
                               {debt > 0 ? (
                                 <Button
                                   type="primary"
@@ -520,6 +688,27 @@ const PackagingReturnPage: React.FC = () => {
               ),
             },
             {
+              key: 'by-packaging',
+              label: (
+                <span>
+                  <AppstoreOutlined className="mr-1" />
+                  Tồn Kho & Luân Chuyển Theo Loại Sọt ({packagings.length})
+                </span>
+              ),
+              children: (
+                <div className="space-y-3">
+                  <Table
+                    columns={summaryColumns}
+                    dataSource={packagingSummary}
+                    rowKey="id"
+                    pagination={false}
+                    className="rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800"
+                    scroll={{ x: 850 }}
+                  />
+                </div>
+              ),
+            },
+            {
               key: 'history',
               label: (
                 <span>
@@ -549,7 +738,7 @@ const PackagingReturnPage: React.FC = () => {
                           </div>
                           <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
                             <span className="truncate">{ret.packagingName}</span>
-                            <span className="text-[10px] text-gray-400 shrink-0">{ret.returnDate}</span>
+                            <span className="text-[10px] text-gray-400 shrink-0">{formatDateTime(ret.returnDate)}</span>
                           </div>
                           <div className="text-[10px] text-gray-400 mt-1 pt-1 border-t border-slate-100 dark:border-slate-800 flex justify-between">
                             <span>NV: {ret.recordedBy}</span>
@@ -600,9 +789,15 @@ const PackagingReturnPage: React.FC = () => {
       <ZoomViewerModal
         open={isZoomOpen}
         onClose={() => setIsZoomOpen(false)}
-        title={activeTab === 'ledger' ? 'Bảng Công Nợ Vỏ Sọt' : 'Lịch Sử Trả Vỏ'}
+        title={
+          activeTab === 'ledger'
+            ? 'Bảng Công Nợ Vỏ Sọt'
+            : activeTab === 'by-packaging'
+              ? 'Tồn Kho & Luân Chuyển Theo Loại Sọt'
+              : 'Lịch Sử Trả Vỏ'
+        }
       >
-        {activeTab === 'ledger' ? (
+        {activeTab === 'ledger' && (
           <Table
             columns={loanColumns}
             dataSource={filteredLoans}
@@ -610,7 +805,17 @@ const PackagingReturnPage: React.FC = () => {
             pagination={false}
             scroll={{ x: 'max-content' }}
           />
-        ) : (
+        )}
+        {activeTab === 'by-packaging' && (
+          <Table
+            columns={summaryColumns}
+            dataSource={packagingSummary}
+            rowKey="id"
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+          />
+        )}
+        {activeTab === 'history' && (
           <Table
             columns={returnColumns}
             dataSource={returns}
@@ -686,10 +891,12 @@ const PackagingReturnPage: React.FC = () => {
 
           <Form.Item className="mb-0 flex justify-end">
             <div className="flex gap-3 justify-end">
-              <Button onClick={() => { setReturnModalOpen(false); returnForm.resetFields(); }}>Hủy</Button>
+              <Button disabled={isSubmittingReturn} onClick={() => { setReturnModalOpen(false); returnForm.resetFields(); }}>Hủy</Button>
               <Button type="primary" htmlType="submit" icon={<RollbackOutlined />}
+                loading={isSubmittingReturn}
+                disabled={isSubmittingReturn}
                 className="bg-orange-500 hover:bg-orange-400 border-none">
-                Xác nhận trả
+                {isSubmittingReturn ? 'Đang xác nhận...' : 'Xác nhận trả'}
               </Button>
             </div>
           </Form.Item>
@@ -748,7 +955,10 @@ const PackagingReturnPage: React.FC = () => {
                   showSearch
                   optionFilterProp="label"
                   options={
-                    packagings.map((p) => ({ value: p.code, label: `${p.name} (${p.defaultTareWeight} kg)` }))
+                    packagings.map((p) => ({
+                      value: p.code,
+                      label: `${p.name} (${p.code}) — [Tồn kho: ${p.stockQuantity ?? 0} ${p.unit || 'cái'}]`,
+                    }))
                   }
                 />
               </Form.Item>
@@ -770,9 +980,9 @@ const PackagingReturnPage: React.FC = () => {
 
           <Form.Item className="mb-0">
             <div className="flex gap-3 justify-end">
-              <Button onClick={() => { setLoanModalOpen(false); loanForm.resetFields(); }}>Hủy</Button>
-              <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
-                Tạo phiếu cho mượn
+              <Button disabled={isSubmittingLoan} onClick={() => { setLoanModalOpen(false); loanForm.resetFields(); }}>Hủy</Button>
+              <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={isSubmittingLoan} disabled={isSubmittingLoan}>
+                {isSubmittingLoan ? 'Đang tạo...' : 'Tạo phiếu cho mượn'}
               </Button>
             </div>
           </Form.Item>

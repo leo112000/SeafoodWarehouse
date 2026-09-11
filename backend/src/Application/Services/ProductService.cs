@@ -24,27 +24,19 @@ public class ProductService : IProductService
     public async Task<PagedResult<ProductDto>> GetAllAsync(PaginationParams pagination, int? categoryId = null, CancellationToken cancellationToken = default)
     {
         var repository = _unitOfWork.Repository<Product>();
-        var products = await repository.GetAllWithIncludesAsync(p => p.Category);
+        var (products, totalCount) = await repository.GetPagedAsync(
+            pagination.PageNumber,
+            pagination.PageSize,
+            predicate: p => (!categoryId.HasValue || p.CategoryId == categoryId.Value),
+            orderBy: q => q.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id),
+            cancellationToken: cancellationToken,
+            includes: p => p.Category
+        );
 
-        // Lọc theo danh mục nếu có
-        var filtered = products.Where(p => !p.IsDeleted);
-        if (categoryId.HasValue)
-        {
-            filtered = filtered.Where(p => p.CategoryId == categoryId.Value);
-        }
-
-        var productList = filtered.ToList();
-        var totalCount = productList.Count;
-        var items = productList
-            .OrderByDescending(p => p.CreatedAt)
-            .ThenByDescending(p => p.Id)
-            .Skip((pagination.PageNumber - 1) * pagination.PageSize)
-            .Take(pagination.PageSize)
-            .Select(MapToDto)
-            .ToList();
-
+        var items = products.Select(MapToDto).ToList();
         return PagedResult<ProductDto>.Create(items, totalCount, pagination.PageNumber, pagination.PageSize);
     }
+
 
     /// <summary>
     /// Lấy sản phẩm theo Id

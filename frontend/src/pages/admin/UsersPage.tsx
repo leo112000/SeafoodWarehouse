@@ -3,6 +3,7 @@ import { Card, Table, Tag, Button, Modal, Form, Input, Select, Switch, Space, Ap
 import { UserAddOutlined, EditOutlined, SafetyCertificateOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
 import { userService, type UserRecord } from '../../services/userService';
 import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
+import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 
 export const UsersPage: React.FC = () => {
   const { message, modal } = App.useApp();
@@ -54,7 +55,7 @@ export const UsersPage: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleFormSubmit = async (values: any) => {
+  const { isSubmitting, handleSubmit: handleFormSubmit } = useAsyncSubmit(async (values: any) => {
     const status: 'Active' | 'Blocked' = values.status ? 'Active' : 'Blocked';
     try {
       if (editingUser) {
@@ -83,10 +84,10 @@ export const UsersPage: React.FC = () => {
       }
       setIsModalOpen(false);
       fetchUsers();
-    } catch (err: any) {
-      message.error(err.message || 'Lỗi khi lưu thông tin nhân viên.');
+    } catch {
+      message.error('Lỗi khi lưu thông tin nhân viên.');
     }
-  };
+  });
 
   const handleToggleStatus = async (record: UserRecord) => {
     try {
@@ -289,6 +290,8 @@ export const UsersPage: React.FC = () => {
         open={isModalOpen}
         onOk={() => form.submit()}
         onCancel={handleModalCancel}
+        confirmLoading={isSubmitting}
+        cancelButtonProps={{ disabled: isSubmitting }}
         okText={editingUser ? 'Lưu thay đổi' : 'Tạo mới'}
         cancelText="Hủy bỏ"
         destroyOnClose

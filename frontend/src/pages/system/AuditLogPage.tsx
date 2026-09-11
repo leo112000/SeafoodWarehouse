@@ -6,6 +6,7 @@ import type { Dayjs } from 'dayjs';
 import type { AuditLog } from '../../types/seafood';
 import { auditLogService } from '../../services/auditLogService';
 import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
+import { formatDateTime, formatDate } from '../../utils/dateUtils';
 
 const { RangePicker } = DatePicker;
 
@@ -19,7 +20,7 @@ const actionMeta: Record<AuditLog['action'], { label: string; color: string }> =
   PRINT: { label: 'In', color: 'orange' },
 };
 
-const datePart = (timestamp: string) => timestamp.slice(0, 10);
+const datePart = (timestamp: string) => formatDate(timestamp, 'YYYY-MM-DD');
 
 export const AuditLogPage: React.FC = () => {
   const { message } = App.useApp();
@@ -88,7 +89,13 @@ export const AuditLogPage: React.FC = () => {
       align: 'center' as const,
       render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
     },
-    { title: 'Thời gian', dataIndex: 'timestamp', width: 165, sorter: (a, b) => a.timestamp.localeCompare(b.timestamp) },
+    { 
+      title: 'Thời gian', 
+      dataIndex: 'timestamp', 
+      width: 165, 
+      sorter: (a, b) => a.timestamp.localeCompare(b.timestamp),
+      render: (t: string) => formatDateTime(t)
+    },
     { title: 'Người thực hiện', width: 160, render: (_, log) => <Space direction="vertical" size={0}><strong>{log.userName}</strong><span className="text-xs text-gray-500">{log.userRole}</span></Space> },
     { title: 'Hành động', dataIndex: 'action', width: 115, render: (value: AuditLog['action']) => <Tag color={actionMeta[value]?.color || 'blue'}>{actionMeta[value]?.label || value}</Tag> },
     { title: 'Module', dataIndex: 'module', width: 130 },
@@ -198,7 +205,7 @@ export const AuditLogPage: React.FC = () => {
         {selected && (
           <Space orientation="vertical" size="large" className="w-full">
             <Descriptions column={1} bordered size="small" items={[
-              { key: 'time', label: 'Thời gian', children: selected.timestamp },
+              { key: 'time', label: 'Thời gian', children: formatDateTime(selected.timestamp) },
               { key: 'user', label: 'Người thực hiện', children: `${selected.userName} (${selected.userRole})` },
               { key: 'action', label: 'Hành động', children: <Tag color={actionMeta[selected.action]?.color || 'blue'}>{actionMeta[selected.action]?.label || selected.action}</Tag> },
               { key: 'module', label: 'Module', children: selected.module },

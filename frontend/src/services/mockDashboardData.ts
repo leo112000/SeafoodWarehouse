@@ -38,6 +38,7 @@ export interface CategoryStockPoint {
 export interface RecentTransaction {
   id: string;
   type: 'INBOUND' | 'OUTBOUND';
+  status?: string;
   time: string;
   partnerName: string;
   batchCode?: string;

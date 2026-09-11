@@ -70,23 +70,24 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // 2. Cấu hình Rate Limiting (Chống Brute-force và DDoS)
+var isDevOrTest = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("api-limiter", opt =>
     {
-        opt.PermitLimit = 120; // 120 requests / phút
+        opt.PermitLimit = isDevOrTest ? 20000 : 120; // Nới lỏng khi dev / chạy E2E tests
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 20;
+        opt.QueueLimit = isDevOrTest ? 1000 : 20;
     });
 
     options.AddFixedWindowLimiter("auth-limiter", opt =>
     {
-        opt.PermitLimit = 15; // 15 lần thử login / phút
+        opt.PermitLimit = isDevOrTest ? 5000 : 15; // Nới lỏng login khi dev / chạy E2E tests
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 2;
+        opt.QueueLimit = isDevOrTest ? 500 : 2;
     });
 });
 

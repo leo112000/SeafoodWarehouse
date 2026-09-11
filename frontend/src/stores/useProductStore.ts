@@ -15,7 +15,7 @@ interface ProductState {
 
 export const useProductStore = create<ProductState>()(
   devtools(
-    (set) => ({
+    (set, get) => ({
       products: INITIAL_PRODUCTS,
 
       fetchProducts: async () => {
@@ -33,6 +33,7 @@ export const useProductStore = create<ProductState>()(
         try {
           const newProduct = await productService.create(productData);
           set((state) => ({ products: [newProduct, ...state.products] }));
+          get().fetchProducts();
           return newProduct;
         } catch {
           const newProduct: Product = { ...productData, id: `p-${Date.now()}` };
@@ -52,6 +53,7 @@ export const useProductStore = create<ProductState>()(
             p.id === id ? { ...productData, id } : p
           ),
         }));
+        get().fetchProducts();
       },
 
       deleteProduct: async (id) => {
@@ -61,6 +63,7 @@ export const useProductStore = create<ProductState>()(
           // Continue local delete
         }
         set((state) => ({ products: state.products.filter((p) => p.id !== id) }));
+        get().fetchProducts();
       },
     }),
     { name: 'ProductStore' }

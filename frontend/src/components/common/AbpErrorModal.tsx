@@ -10,6 +10,7 @@ import {
   LockOutlined,
 } from '@ant-design/icons';
 import { useServerStatusStore } from '../../stores/useServerStatusStore';
+import { formatDateTime } from '../../utils/dateUtils';
 
 export const AbpErrorModal: React.FC = () => {
   const {
@@ -140,7 +141,7 @@ export const AbpErrorModal: React.FC = () => {
                 {errorDetails?.timestamp && (
                   <div>
                     <span className="font-bold text-slate-500">Thời gian: </span>
-                    <span>{errorDetails.timestamp}</span>
+                    <span>{formatDateTime(errorDetails.timestamp)}</span>
                   </div>
                 )}
                 {errorDetails?.serverMessage && (

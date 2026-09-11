@@ -37,17 +37,15 @@ public class CategoryService : ICategoryService
         return await _cacheService.GetOrCreateAsync(cacheKey, async ct =>
         {
             var repository = _unitOfWork.Repository<Category>();
-            var categories = await repository.GetAllWithIncludesAsync(c => c.Products);
+            var (categories, totalCount) = await repository.GetPagedAsync(
+                pagination.PageNumber,
+                pagination.PageSize,
+                orderBy: q => q.OrderByDescending(c => c.CreatedAt).ThenByDescending(c => c.Id),
+                cancellationToken: ct,
+                includes: c => c.Products
+            );
 
-            // Lọc bỏ danh mục đã xóa mềm
-            var activeCategories = categories.Where(c => !c.IsDeleted).ToList();
-
-            var totalCount = activeCategories.Count;
-            var items = activeCategories
-                .OrderByDescending(c => c.CreatedAt)
-                .ThenByDescending(c => c.Id)
-                .Skip((pagination.PageNumber - 1) * pagination.PageSize)
-                .Take(pagination.PageSize)
+            var items = categories
                 .Select(c => new CategoryDto
                 {
                     Id = c.Id,
@@ -61,6 +59,7 @@ public class CategoryService : ICategoryService
 
             return PagedResult<CategoryDto>.Create(items, totalCount, pagination.PageNumber, pagination.PageSize);
         }, TimeSpan.FromMinutes(15), cancellationToken);
+
     }
 
     /// <summary>

@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography, Tabs, Badge, Pagination } from 'antd';
-import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
+import { Card, Table, Tag, Button, Modal, DatePicker, Input, Row, Col, Typography, Tabs, Badge, Pagination, Tooltip, App } from 'antd';
+import { PrinterOutlined, SearchOutlined, ReloadOutlined, InboxOutlined, UploadOutlined, CloseCircleOutlined, ExclamationCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useInboundStore } from '../../stores/useInboundStore';
 import { useOutboundStore } from '../../stores/useOutboundStore';
 import { exportToExcel } from '../../utils/exportUtils';
-import { formatCurrency, formatWeight, formatDate } from '../../utils/format';
+import { formatCurrency, formatWeight, formatDate, formatDateTime } from '../../utils/format';
 import { InvoiceModal } from '../../components/invoice/InvoiceModal';
 import type { InvoicePrintData } from '../../types';
+import {
+  TRANSACTION_STATUS,
+  TRANSACTION_TYPE,
+  type TransactionStatus,
+  type TransactionType,
+  type PartnerType,
+} from '../../constants';
 import { useAuthStore } from '../../stores/useAuthStore';
 import dayjs from 'dayjs';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
@@ -17,10 +24,17 @@ const { RangePicker } = DatePicker;
 
 export interface UnifiedTransactionItem {
   id: string; // Reference / Invoice No
-  type: 'INBOUND' | 'OUTBOUND';
+  type: TransactionType;
+  status?: TransactionStatus;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelReason?: string;
+  hasExports?: boolean;
+  canCancel?: boolean;
+  exportRefNos?: string[];
   date: string;
   partnerName: string; // Supplier for Inbound, Customer for Outbound
-  partnerType: 'SUPPLIER' | 'CUSTOMER';
+  partnerType: PartnerType;
   storageLocation?: string;
   reason?: string;
   totalWeightKg: number;
@@ -56,11 +70,13 @@ export interface UnifiedTransactionItem {
 export const TransactionHistoryPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const { message } = App.useApp();
 
-  const { receipts, fetchReceipts } = useInboundStore();
-  const { transactions: outboundTxs, fetchTransactions: fetchOutboundTxs } = useOutboundStore();
+  const { receipts, fetchReceipts, cancelReceipt } = useInboundStore();
+  const { transactions: outboundTxs, fetchTransactions: fetchOutboundTxs, cancelTransaction } = useOutboundStore();
 
-  const [activeTab, setActiveTab] = useState<'ALL' | 'INBOUND' | 'OUTBOUND'>('ALL');
+  const [activeTab, setActiveTab] = useState<'ALL' | TransactionType>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | TransactionStatus>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [quickDatePreset, setQuickDatePreset] = useState<string>('ALL');
@@ -110,10 +126,46 @@ export const TransactionHistoryPage: React.FC = () => {
   const [invoiceData, setInvoiceData] = useState<InvoicePrintData | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 
+  // Cancel transaction modal state
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [canceling, setCanceling] = useState(false);
+  const isCancelingRef = React.useRef(false);
+
   useEffect(() => {
     fetchReceipts();
     fetchOutboundTxs();
   }, [fetchReceipts, fetchOutboundTxs]);
+
+  const handleConfirmCancel = async () => {
+    if (!selectedTx) return;
+    if (isCancelingRef.current) return;
+    if (!cancelReason.trim()) {
+      message.error('Vui lòng nhập lý do hủy phiếu.');
+      return;
+    }
+
+    isCancelingRef.current = true;
+    try {
+      setCanceling(true);
+      if (selectedTx.type === 'INBOUND') {
+        await cancelReceipt(selectedTx.id, cancelReason.trim());
+      } else {
+        await cancelTransaction(selectedTx.id, cancelReason.trim());
+      }
+
+      message.success(`Đã hủy phiếu ${selectedTx.id} và hoàn nguyên tồn kho thành công.`);
+      setCancelModalOpen(false);
+      setIsDetailModalOpen(false);
+      setCancelReason('');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi hủy phiếu.';
+      message.error(msg);
+    } finally {
+      isCancelingRef.current = false;
+      setCanceling(false);
+    }
+  };
 
   // Transform inbound & outbound into a unified list
   const unifiedTransactions = useMemo<UnifiedTransactionItem[]>(() => {
@@ -135,7 +187,14 @@ export const TransactionHistoryPage: React.FC = () => {
       return {
         id: r.id,
         type: 'INBOUND',
-        date: r.inboundDate,
+        status: r.status || 'ACTIVE',
+        cancelledAt: r.cancelledAt,
+        cancelledBy: r.cancelledBy,
+        cancelReason: r.cancelReason,
+        hasExports: r.hasExports,
+        canCancel: r.canCancel,
+        exportRefNos: r.exportRefNos,
+        date: formatDateTime(r.inboundDate),
         partnerName: r.supplier,
         partnerType: 'SUPPLIER',
         storageLocation: r.storageLocation,
@@ -160,7 +219,11 @@ export const TransactionHistoryPage: React.FC = () => {
       return {
         id: tx.id,
         type: 'OUTBOUND',
-        date: tx.date,
+        status: tx.status || 'ACTIVE',
+        cancelledAt: tx.cancelledAt,
+        cancelledBy: tx.cancelledBy,
+        cancelReason: tx.cancelReason,
+        date: formatDateTime(tx.date),
         partnerName: tx.customerName,
         partnerType: 'CUSTOMER',
         reason: tx.reason,
@@ -216,15 +279,20 @@ export const TransactionHistoryPage: React.FC = () => {
         }
       }
 
+      // 4. Status filter
+      if (statusFilter === TRANSACTION_STATUS.ACTIVE && tx.status === TRANSACTION_STATUS.CANCELLED) return false;
+      if (statusFilter === TRANSACTION_STATUS.CANCELLED && tx.status !== TRANSACTION_STATUS.CANCELLED) return false;
+
       return true;
     });
-  }, [unifiedTransactions, activeTab, searchQuery, dateRange]);
+  }, [unifiedTransactions, activeTab, searchQuery, dateRange, statusFilter]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
     setDateRange(null);
     setQuickDatePreset('ALL');
     setActiveTab('ALL');
+    setStatusFilter('ALL');
   };
 
   const handleOpenDetail = (tx: UnifiedTransactionItem) => {
@@ -283,6 +351,7 @@ export const TransactionHistoryPage: React.FC = () => {
         date: formatDate(tx.date),
         partner: tx.partnerName,
         partnerRole: tx.partnerType === 'SUPPLIER' ? 'Nhà cung cấp' : 'Khách hàng',
+        itemCount: tx.items.length,
         reason: tx.reason || (tx.type === 'INBOUND' ? 'Nhập kho hải sản' : 'Bán hàng'),
         createdBy: tx.createdBy,
         batchCode: item.batchCode,
@@ -301,6 +370,7 @@ export const TransactionHistoryPage: React.FC = () => {
         { header: 'Ngày Thực Hiện', key: 'date', width: 15 },
         { header: 'Đối Tác', key: 'partner', width: 25 },
         { header: 'Vai Trò', key: 'partnerRole', width: 15 },
+        { header: 'Số Mặt Hàng', key: 'itemCount', width: 15 },
         { header: 'Lý Do / Ghi Chú', key: 'reason', width: 20 },
         { header: 'Người Lập Phiếu', key: 'createdBy', width: 18 },
         { header: 'Mã Lô', key: 'batchCode', width: 18 },
@@ -329,7 +399,9 @@ export const TransactionHistoryPage: React.FC = () => {
       key: 'id',
       render: (id: string, record: UnifiedTransactionItem) => (
         <span
-          className="font-bold text-sky-600 dark:text-sky-400 cursor-pointer hover:underline"
+          className={`font-bold cursor-pointer hover:underline ${
+            record.status === TRANSACTION_STATUS.CANCELLED ? 'line-through text-gray-400' : 'text-sky-600 dark:text-sky-400'
+          }`}
           onClick={() => handleOpenDetail(record)}
         >
           {id}
@@ -340,17 +412,31 @@ export const TransactionHistoryPage: React.FC = () => {
       title: 'Loại giao dịch',
       dataIndex: 'type',
       key: 'type',
-      render: (type: 'INBOUND' | 'OUTBOUND') => (
-        <Tag color={type === 'INBOUND' ? 'blue' : 'green'} className="font-semibold px-2 py-0.5">
-          {type === 'INBOUND' ? '📥 NHẬP KHO' : '📤 XUẤT KHO'}
-        </Tag>
+      render: (type: TransactionType, record: UnifiedTransactionItem) => (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Tag color={type === TRANSACTION_TYPE.INBOUND ? 'blue' : 'green'} className="font-semibold px-2 py-0.5 m-0">
+            {type === TRANSACTION_TYPE.INBOUND ? '📥 NHẬP KHO' : '📤 XUẤT KHO'}
+          </Tag>
+          {record.status === TRANSACTION_STATUS.CANCELLED && (
+            <Tag color="error" className="font-bold text-xs px-1.5 py-0.5 m-0 border-0">
+              ĐÃ HỦY
+            </Tag>
+          )}
+          {record.type === TRANSACTION_TYPE.INBOUND && record.status !== TRANSACTION_STATUS.CANCELLED && record.hasExports && (
+            <Tooltip title={`Lô hàng đã phát sinh xuất bán trong: ${record.exportRefNos?.join(', ') || 'các phiếu xuất'}`}>
+              <Tag color="warning" className="font-bold text-[11px] px-1.5 py-0.5 m-0 border-0 cursor-help">
+                ĐÃ XUẤT HÀNG
+              </Tag>
+            </Tooltip>
+          )}
+        </div>
       ),
     },
     {
       title: 'Ngày thực hiện',
       dataIndex: 'date',
       key: 'date',
-      render: (dateStr: string) => formatDate(dateStr).split(' ')[0],
+      render: (dateStr: string) => <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">{formatDateTime(dateStr)}</span>,
       responsive: ['sm'] as any,
     },
     {
@@ -367,17 +453,72 @@ export const TransactionHistoryPage: React.FC = () => {
       ),
     },
     {
+      title: 'Số mặt hàng',
+      key: 'itemCount',
+      align: 'center' as const,
+      width: 135,
+      render: (_: unknown, record: UnifiedTransactionItem) => {
+        const count = record.items?.length || 1;
+        return (
+          <Tooltip
+            title={
+              <div className="space-y-1.5 py-1 max-w-[280px]">
+                <div className="font-bold text-xs border-b border-slate-600 pb-1 text-slate-200 flex justify-between">
+                  <span>Chi tiết danh sách hàng:</span>
+                  <span className="text-sky-300 font-mono">{count} món</span>
+                </div>
+                {record.items && record.items.length > 0 ? (
+                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                    {record.items.map((item, idx) => (
+                      <div key={idx} className="text-xs text-slate-100 flex justify-between gap-3 items-center">
+                        <span className="truncate">• {item.seafoodName || 'Hải sản'}</span>
+                        <span className="text-sky-300 font-mono shrink-0 font-medium">
+                          {formatWeight(item.netWeight)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-300">Không có dữ liệu chi tiết</div>
+                )}
+                {record.supplies && record.supplies.length > 0 && (
+                  <div className="pt-1 border-t border-slate-700 text-[11px] text-amber-300 flex justify-between">
+                    <span>Vật tư / phụ phẩm kèm:</span>
+                    <span className="font-mono">+{record.supplies.length} loại</span>
+                  </div>
+                )}
+              </div>
+            }
+          >
+            <Tag
+              color={count > 1 ? 'purple' : 'cyan'}
+              className="font-semibold text-xs cursor-pointer m-0 px-2.5 py-0.5 inline-flex items-center gap-1"
+            >
+              <span>📦</span>
+              <span>{count} mặt hàng</span>
+            </Tag>
+          </Tooltip>
+        );
+      },
+    },
+    {
       title: 'Khối lượng (Kg)',
       dataIndex: 'totalWeightKg',
       key: 'totalWeightKg',
-      render: (weight: number) => formatWeight(weight),
+      render: (weight: number, record: UnifiedTransactionItem) => (
+        <span className={record.status === TRANSACTION_STATUS.CANCELLED ? 'line-through text-gray-400' : ''}>
+          {formatWeight(weight)}
+        </span>
+      ),
     },
     {
       title: 'Tổng thành tiền',
       dataIndex: 'totalAmount',
       key: 'totalAmount',
-      render: (amount: number) => (
-        <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(amount)}</span>
+      render: (amount: number, record: UnifiedTransactionItem) => (
+        <span className={record.status === TRANSACTION_STATUS.CANCELLED ? 'line-through text-gray-400' : 'font-semibold text-green-600 dark:text-green-400'}>
+          {formatCurrency(amount)}
+        </span>
       ),
     },
     {
@@ -389,24 +530,20 @@ export const TransactionHistoryPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
+      width: 110,
+      align: 'center' as const,
       render: (_: unknown, record: UnifiedTransactionItem) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EyeOutlined />}
-            onClick={() => handleOpenDetail(record)}
-          >
-            Chi tiết
-          </Button>
-          <Button
-            type="text"
-            icon={<PrinterOutlined />}
-            onClick={() => handleOpenInvoice(record)}
-            style={{ color: '#0ea5e9' }}
-          >
-            In phiếu
-          </Button>
-        </Space>
+        <Button
+          type="text"
+          icon={<PrinterOutlined />}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenInvoice(record);
+          }}
+          className="text-sky-600 dark:text-sky-400 hover:text-sky-500 font-medium"
+        >
+          In phiếu
+        </Button>
       ),
     },
   ];
@@ -538,26 +675,53 @@ export const TransactionHistoryPage: React.FC = () => {
           ]}
         />
 
-        <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mr-1">Lọc nhanh thời gian:</span>
-          {[
-            { key: 'ALL', label: 'Tất cả' },
-            { key: 'TODAY', label: 'Hôm nay' },
-            { key: 'YESTERDAY', label: 'Hôm qua' },
-            { key: 'LAST_7_DAYS', label: '7 ngày qua' },
-            { key: 'THIS_MONTH', label: 'Tháng này' },
-            { key: 'LAST_MONTH', label: 'Tháng trước' },
-            { key: 'THIS_YEAR', label: 'Năm nay' },
-          ].map((preset) => (
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mr-1">Lọc nhanh thời gian:</span>
+            {[
+              { key: 'ALL', label: 'Tất cả' },
+              { key: 'TODAY', label: 'Hôm nay' },
+              { key: 'YESTERDAY', label: 'Hôm qua' },
+              { key: 'LAST_7_DAYS', label: '7 ngày qua' },
+              { key: 'THIS_MONTH', label: 'Tháng này' },
+              { key: 'LAST_MONTH', label: 'Tháng trước' },
+              { key: 'THIS_YEAR', label: 'Năm nay' },
+            ].map((preset) => (
+              <Tag.CheckableTag
+                key={preset.key}
+                checked={quickDatePreset === preset.key}
+                onChange={() => applyQuickDate(preset.key)}
+                className="px-2.5 py-0.5 text-xs rounded-full border border-gray-200 dark:border-gray-700 cursor-pointer"
+              >
+                {preset.label}
+              </Tag.CheckableTag>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mr-1">Trạng thái:</span>
             <Tag.CheckableTag
-              key={preset.key}
-              checked={quickDatePreset === preset.key}
-              onChange={() => applyQuickDate(preset.key)}
-              className="px-3 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 cursor-pointer"
+              checked={statusFilter === 'ALL'}
+              onChange={() => setStatusFilter('ALL')}
+              className="px-2.5 py-0.5 text-xs rounded-full cursor-pointer"
             >
-              {preset.label}
+              Tất cả
             </Tag.CheckableTag>
-          ))}
+            <Tag.CheckableTag
+              checked={statusFilter === TRANSACTION_STATUS.ACTIVE}
+              onChange={() => setStatusFilter(TRANSACTION_STATUS.ACTIVE)}
+              className="px-2.5 py-0.5 text-xs rounded-full cursor-pointer text-emerald-700 dark:text-emerald-400"
+            >
+              Hiệu lực
+            </Tag.CheckableTag>
+            <Tag.CheckableTag
+              checked={statusFilter === TRANSACTION_STATUS.CANCELLED}
+              onChange={() => setStatusFilter(TRANSACTION_STATUS.CANCELLED)}
+              className="px-2.5 py-0.5 text-xs rounded-full cursor-pointer text-red-600 dark:text-red-400"
+            >
+              Đã hủy
+            </Tag.CheckableTag>
+          </div>
         </div>
 
         <Row gutter={[8, 8]} align="middle">
@@ -587,7 +751,7 @@ export const TransactionHistoryPage: React.FC = () => {
           </Col>
           <Col xs={24} sm={10} md={6}>
             <div className="flex items-center justify-end gap-1.5 w-full">
-              {(searchQuery || dateRange || activeTab !== 'ALL') && (
+              {(searchQuery || dateRange || activeTab !== 'ALL' || statusFilter !== 'ALL') && (
                 <Button icon={<ReloadOutlined />} onClick={handleResetFilters} size="middle">
                   Đặt lại bộ lọc
                 </Button>
@@ -601,7 +765,10 @@ export const TransactionHistoryPage: React.FC = () => {
       <Card
         title="📋 Danh Sách Giao Dịch Chi Tiết"
         extra={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800/60 px-2.5 py-1 rounded-lg hidden md:inline-flex items-center gap-1.5 font-medium">
+              💡 <span>Nhấp vào dòng để xem chi tiết phiếu</span>
+            </span>
             <span className="text-xs text-gray-400 hidden sm:inline">Tổng {filteredTransactions.length} giao dịch</span>
             <Button
               size="small"
@@ -633,32 +800,43 @@ export const TransactionHistoryPage: React.FC = () => {
               >
                 {/* Header card: Tag loại phiếu + Mã số + Thời gian */}
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <Tag
-                      color={tx.type === 'INBOUND' ? 'blue' : 'green'}
+                      color={tx.type === TRANSACTION_TYPE.INBOUND ? 'blue' : 'green'}
                       className="font-bold text-[11px] m-0 px-1.5 py-0.5 border-0"
                     >
-                      {tx.type === 'INBOUND' ? '📥 NHẬP KHO' : '📤 XUẤT KHO'}
+                      {tx.type === TRANSACTION_TYPE.INBOUND ? '📥 NHẬP KHO' : '📤 XUẤT KHO'}
                     </Tag>
-                    <span className="font-bold text-xs font-mono text-sky-600 dark:text-sky-400 tracking-tight">
+                    {tx.status === TRANSACTION_STATUS.CANCELLED && (
+                      <Tag color="error" className="font-bold text-[10px] m-0 px-1.5 py-0.5 border-0">
+                        ĐÃ HỦY
+                      </Tag>
+                    )}
+                    {tx.type === TRANSACTION_TYPE.INBOUND && tx.status !== TRANSACTION_STATUS.CANCELLED && tx.hasExports && (
+                      <Tag color="warning" className="font-bold text-[10px] m-0 px-1.5 py-0.5 border-0">
+                        ĐÃ XUẤT
+                      </Tag>
+                    )}
+                    <span className={`font-bold text-xs font-mono tracking-tight ${tx.status === TRANSACTION_STATUS.CANCELLED ? 'line-through text-gray-400' : 'text-sky-600 dark:text-sky-400'}`}>
                       {tx.id}
                     </span>
                   </div>
                   <span className="text-[11px] text-gray-400">
-                    {formatDate(tx.date).split(' ')[0]}
+                    {formatDateTime(tx.date)}
                   </span>
                 </div>
 
                 {/* Body card: Tên sản phẩm + Đối tác */}
                 <div className="flex items-start justify-between gap-2 text-xs mb-2">
                   <div className="min-w-0 pr-2">
-                    <div className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                      {tx.items?.[0]?.seafoodName || 'Hải sản'}
-                      {tx.items && tx.items.length > 1 ? (
-                        <span className="text-violet-600 dark:text-violet-400 font-medium ml-1 text-[11px]">
-                          +{tx.items.length - 1} món
-                        </span>
-                      ) : null}
+                    <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 flex-wrap">
+                      <span className="truncate">{tx.items?.[0]?.seafoodName || 'Hải sản'}</span>
+                      <Tag
+                        color={(tx.items?.length || 1) > 1 ? 'purple' : 'cyan'}
+                        className="text-[10px] font-semibold m-0 px-1.5 py-0"
+                      >
+                        📦 {tx.items?.length || 1} món
+                      </Tag>
                     </div>
                     <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
                       👤 {tx.partnerName || 'Khách vãng lai'}
@@ -666,10 +844,10 @@ export const TransactionHistoryPage: React.FC = () => {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    <div className={`font-bold text-xs ${tx.status === TRANSACTION_STATUS.CANCELLED ? 'line-through text-gray-400' : 'text-slate-800 dark:text-slate-200'}`}>
                       {formatWeight(tx.totalWeightKg)}
                     </div>
-                    <div className="font-black text-emerald-600 dark:text-emerald-400 text-xs">
+                    <div className={`font-black text-xs ${tx.status === TRANSACTION_STATUS.CANCELLED ? 'line-through text-gray-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                       {formatCurrency(tx.totalAmount)}
                     </div>
                   </div>
@@ -722,6 +900,14 @@ export const TransactionHistoryPage: React.FC = () => {
             dataSource={filteredTransactions}
             columns={columns}
             rowKey="id"
+            onRow={(record: UnifiedTransactionItem) => ({
+              onClick: () => handleOpenDetail(record),
+              className: `cursor-pointer transition-colors ${
+                record.status === TRANSACTION_STATUS.CANCELLED
+                  ? 'opacity-70 bg-red-50/20 dark:bg-red-950/15 hover:bg-red-50/40 dark:hover:bg-red-950/30'
+                  : 'hover:bg-sky-50/60 dark:hover:bg-slate-800/60'
+              }`,
+            })}
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,
@@ -736,7 +922,17 @@ export const TransactionHistoryPage: React.FC = () => {
 
       {/* Detail Modal */}
       <Modal
-        title={`Chi tiết phiếu giao dịch: ${selectedTx?.id}`}
+        title={
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>Chi tiết phiếu giao dịch:</span>
+            <span className="font-mono text-sky-600 dark:text-sky-400">{selectedTx?.id}</span>
+            {selectedTx?.status === TRANSACTION_STATUS.CANCELLED && (
+              <Tag color="error" className="font-bold text-xs m-0 px-2 py-0.5">
+                ĐÃ HỦY
+              </Tag>
+            )}
+          </div>
+        }
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         width={850}
@@ -744,6 +940,27 @@ export const TransactionHistoryPage: React.FC = () => {
           <Button key="close" onClick={() => setIsDetailModalOpen(false)}>
             Đóng
           </Button>,
+          selectedTx && selectedTx.status !== TRANSACTION_STATUS.CANCELLED && (
+            <Tooltip
+              title={
+                selectedTx.type === TRANSACTION_TYPE.INBOUND && selectedTx.hasExports
+                  ? `Không thể hủy phiếu nhập do đã phát sinh xuất bán (${selectedTx.exportRefNos?.join(', ') || 'đã xuất kho'}). Cần hủy phiếu xuất trước.`
+                  : undefined
+              }
+            >
+              <span>
+                <Button
+                  key="cancel"
+                  danger
+                  disabled={selectedTx.type === 'INBOUND' && selectedTx.hasExports}
+                  icon={<CloseCircleOutlined />}
+                  onClick={() => setCancelModalOpen(true)}
+                >
+                  Hủy phiếu này
+                </Button>
+              </span>
+            </Tooltip>
+          ),
           <Button
             key="print"
             type="primary"
@@ -762,6 +979,43 @@ export const TransactionHistoryPage: React.FC = () => {
       >
         {selectedTx && (
           <div className="mt-4 space-y-4">
+            {/* Banner cảnh báo nếu phiếu nhập đã có hàng xuất bán ra ngoài */}
+            {selectedTx.type === TRANSACTION_TYPE.INBOUND && selectedTx.status !== TRANSACTION_STATUS.CANCELLED && selectedTx.hasExports && (
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-xl text-xs text-amber-800 dark:text-amber-300 space-y-1.5">
+                <div className="font-bold text-sm flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                  <WarningOutlined className="text-base" />
+                  <span>KHÔNG THỂ HỦY PHIẾU NHẬP - ĐÃ CÓ XUẤT KHO PHÁT SINH</span>
+                </div>
+                <div>
+                  Lô hàng thuộc phiếu nhập này đã được xuất bán ra ngoài
+                  {selectedTx.exportRefNos && selectedTx.exportRefNos.length > 0 ? (
+                    <span> trong các phiếu xuất: <strong className="text-amber-900 dark:text-amber-200 font-mono font-bold">{selectedTx.exportRefNos.join(', ')}</strong></span>
+                  ) : ''}.
+                </div>
+                <div className="text-amber-700 dark:text-amber-400 font-medium pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
+                  💡 <strong>Quy tắc an toàn:</strong> Bạn phải hủy các phiếu xuất liên quan trước để hoàn nguyên đủ số lượng tồn kho về lô, sau đó mới có thể hủy phiếu nhập này.
+                </div>
+              </div>
+            )}
+
+            {/* Banner cảnh báo nếu phiếu đã hủy */}
+            {selectedTx.status === TRANSACTION_STATUS.CANCELLED && (
+              <div className="p-3.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-xl text-xs text-red-700 dark:text-red-300 space-y-1.5">
+                <div className="font-bold text-sm flex items-center gap-1.5 text-red-600 dark:text-red-400">
+                  <CloseCircleOutlined className="text-base" />
+                  <span>PHIẾU GIAO DỊCH ĐÃ BỊ HỦY &amp; HOÀN NGUYÊN TỒN KHO</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
+                  <span><strong>Người thực hiện:</strong> {selectedTx.cancelledBy || 'Thủ kho'}</span>
+                  <span><strong>Thời gian:</strong> {selectedTx.cancelledAt ? formatDateTime(selectedTx.cancelledAt) : 'N/A'}</span>
+                </div>
+                {selectedTx.cancelReason && (
+                  <div className="text-xs pt-1.5 border-t border-red-200 dark:border-red-900/50 text-red-800 dark:text-red-300">
+                    <strong>Lý do hủy:</strong> {selectedTx.cancelReason}
+                  </div>
+                )}
+              </div>
+            )}
             <Card type="inner" size="small" className="bg-gray-50 dark:bg-slate-900 border-none">
               <Row gutter={[16, 16]}>
                 <Col xs={12} sm={6}>
@@ -776,7 +1030,7 @@ export const TransactionHistoryPage: React.FC = () => {
                 </Col>
                 <Col xs={12} sm={6}>
                   <div className="text-xs text-gray-400">NGÀY THỰC HIỆN</div>
-                  <div className="font-semibold text-gray-800 dark:text-gray-100">{selectedTx.date}</div>
+                  <div className="font-semibold text-gray-800 dark:text-gray-100">{formatDateTime(selectedTx.date)}</div>
                 </Col>
                 <Col xs={12} sm={6}>
                   <div className="text-xs text-gray-400">TỔNG THÀNH TIỀN</div>
@@ -840,6 +1094,59 @@ export const TransactionHistoryPage: React.FC = () => {
         )}
       </Modal>
 
+      {/* Modal Xác Nhận Hủy Phiếu & Hoàn Nguyên Tồn Kho */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <CloseCircleOutlined className="text-lg" />
+            <span className="font-bold text-sm sm:text-base">Xác Nhận Hủy Phiếu {selectedTx?.id}</span>
+          </div>
+        }
+        open={cancelModalOpen}
+        onCancel={() => {
+          if (!canceling) {
+            setCancelModalOpen(false);
+            setCancelReason('');
+          }
+        }}
+        onOk={handleConfirmCancel}
+        okText="Xác Nhận Hủy & Hoàn Nguyên"
+        cancelText="Quay lại"
+        okButtonProps={{ danger: true, loading: canceling, disabled: !cancelReason.trim() }}
+        cancelButtonProps={{ disabled: canceling }}
+        destroyOnClose
+        centered
+        width="100%"
+        style={{ maxWidth: 480 }}
+      >
+        <div className="space-y-3 py-2 text-xs sm:text-sm">
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-xl text-amber-800 dark:text-amber-300 space-y-1">
+            <div className="font-bold text-xs sm:text-sm flex items-center gap-1">
+              <ExclamationCircleOutlined /> Lưu ý quan trọng:
+            </div>
+            <div className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+              Thao tác này sẽ chuyển trạng thái phiếu sang <strong>ĐÃ HỦY</strong> và <strong>tự động hoàn nguyên toàn bộ số lượng hải sản ({formatWeight(selectedTx?.totalWeightKg || 0)}) và vật tư</strong> về kho. Dữ liệu sau khi hủy không thể hoàn tác.
+            </div>
+          </div>
+
+          <div>
+            <label className="font-semibold text-slate-800 dark:text-slate-200 block mb-1.5 text-xs">
+              Lý do hủy phiếu <span className="text-red-500">*</span>:
+            </label>
+            <Input.TextArea
+              rows={3}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Nhập lý do hủy (ví dụ: Cân nhầm số kg, khách đổi ý hủy đơn, nhập sai nhà cung cấp...)"
+              maxLength={300}
+              showCount
+              disabled={canceling}
+              className="rounded-lg text-xs"
+            />
+          </div>
+        </div>
+      </Modal>
+
       {/* Invoice Print Modal */}
       <InvoiceModal
         open={isInvoiceModalOpen}
@@ -860,6 +1167,14 @@ export const TransactionHistoryPage: React.FC = () => {
               dataSource={filteredTransactions}
               columns={columns}
               rowKey="id"
+              onRow={(record: UnifiedTransactionItem) => ({
+                onClick: () => handleOpenDetail(record),
+                className: `cursor-pointer transition-colors ${
+                  record.status === TRANSACTION_STATUS.CANCELLED
+                    ? 'opacity-70 bg-red-50/20 dark:bg-red-950/15 hover:bg-red-50/40 dark:hover:bg-red-950/30'
+                    : 'hover:bg-sky-50/60 dark:hover:bg-slate-800/60'
+                }`,
+              })}
               pagination={{
                 current: pagination.current,
                 pageSize: pagination.pageSize,

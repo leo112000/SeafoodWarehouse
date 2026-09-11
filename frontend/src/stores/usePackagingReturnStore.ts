@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { packagingReturnService } from '../services/packagingReturnService';
+import type { PartnerType } from '../constants';
 
 // ---------- types ----------
 
 export interface PackagingLoan {
   id: string;
   partnerName: string;           // Khách hàng / Nhà cung cấp
-  partnerType: 'CUSTOMER' | 'SUPPLIER';
+  partnerType: PartnerType;
   packagingCode: string;         // VD: SOT-RED
   packagingName: string;         // Tên hiển thị
   loanedQty: number;             // Tổng số đã giao/mượn
@@ -84,9 +85,8 @@ export const usePackagingReturnStore = create<PackagingReturnState>()(
       const loan = state.loans.find((l) => l.id === loanId);
       if (!loan) return;
 
-      let createdReturn: PackagingReturn | null = null;
       try {
-        createdReturn = await packagingReturnService.createReturn({
+        await packagingReturnService.createReturn({
           loanId,
           returnedQty,
           returnDate,
@@ -97,30 +97,29 @@ export const usePackagingReturnStore = create<PackagingReturnState>()(
         // fallback offline/mock
       }
 
-      set((currState) => {
-        const updatedLoans = currState.loans.map((l) =>
+      const newReturn: PackagingReturn = {
+        id: `RET-${Date.now()}`,
+        loanId,
+        partnerName: loan.partnerName,
+        packagingCode: loan.packagingCode,
+        packagingName: loan.packagingName,
+        returnedQty,
+        returnDate: returnDate || new Date().toISOString().slice(0, 16).replace('T', ' '),
+        recordedBy: recordedBy || 'Thủ kho',
+        note: note || '',
+      };
+
+      set((currState) => ({
+        loans: currState.loans.map((l) =>
           l.id === loanId
             ? { ...l, returnedQty: Math.min(l.loanedQty, l.returnedQty + returnedQty) }
             : l
-        );
+        ),
+        returns: [newReturn, ...currState.returns],
+      }));
 
-        const newReturn: PackagingReturn = createdReturn || {
-          id: `RET-${Date.now()}`,
-          loanId,
-          partnerName: loan.partnerName,
-          packagingCode: loan.packagingCode,
-          packagingName: loan.packagingName,
-          returnedQty,
-          returnDate,
-          recordedBy,
-          note,
-        };
-
-        return {
-          loans: updatedLoans,
-          returns: [newReturn, ...currState.returns],
-        };
-      });
+      // Tự động đồng bộ chuẩn lại từ server
+      get().fetchLoansAndReturns();
     },
 
     addLoan: async (loanData) => {
@@ -133,10 +132,15 @@ export const usePackagingReturnStore = create<PackagingReturnState>()(
 
       set((state) => ({
         loans: [
-          createdLoan || { ...loanData, id: `LOAN-${Date.now()}`, returnedQty: 0 },
+          (typeof createdLoan === 'object' && createdLoan && createdLoan.id)
+            ? createdLoan
+            : { ...loanData, id: `LOAN-${Date.now()}`, returnedQty: 0 },
           ...state.loans,
         ],
       }));
+
+      // Tự động đồng bộ chuẩn lại từ server
+      get().fetchLoansAndReturns();
     },
   }))
 );

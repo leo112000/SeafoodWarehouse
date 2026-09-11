@@ -3,8 +3,9 @@ import { Card, Form, Button, Select, InputNumber, Row, Col, Space, Table, Tag, D
 import { SaveOutlined, ReloadOutlined, SwapOutlined, WarningOutlined } from '@ant-design/icons';
 import { api } from '../../services/api';
 import { useBatchStore } from '../../stores/useBatchStore';
-import { formatCurrency, formatWeight } from '../../utils/format';
+import { formatCurrency, formatWeight, formatDateTime } from '../../utils/format';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
+import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 
 interface WastageLog {
   id: string;
@@ -51,7 +52,7 @@ export const WastagePage: React.FC = () => {
     }
   };
 
-  const handleFormSubmit = async (values: any) => {
+  const { isSubmitting, handleSubmit: handleFormSubmit } = useAsyncSubmit(async (values: any) => {
     try {
       await api.post('/wastage', {
         mode,
@@ -71,7 +72,7 @@ export const WastagePage: React.FC = () => {
     } catch {
       message.error('Lỗi khi ghi nhận hao hụt vào CSDL!');
     }
-  };
+  });
 
   // Dynamic monthly stats report from backend DB
   const [monthlyStats, setMonthlyStats] = useState<Array<{ month: string; totalInbound: number; totalWastage: number; rate: number }>>([]);
@@ -108,7 +109,7 @@ export const WastagePage: React.FC = () => {
       render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
     },
     { title: 'Mã số', dataIndex: 'id', key: 'id' },
-    { title: 'Ngày ghi nhận', dataIndex: 'date', key: 'date' },
+    { title: 'Ngày ghi nhận', dataIndex: 'date', key: 'date', render: (d: string) => <span className="text-xs text-slate-600">{formatDateTime(d)}</span> },
     { title: 'Loại hình', dataIndex: 'type', key: 'type', render: (t: string) => <Tag color={t === 'Hao hụt' ? 'red' : 'blue'}>{t}</Tag> },
     { title: 'Mặt hàng hải sản', dataIndex: 'seafoodName', key: 'seafoodName' },
     { title: 'Mã lô nguồn', dataIndex: 'batchCode', key: 'batchCode' },
@@ -237,16 +238,18 @@ export const WastagePage: React.FC = () => {
               )}
 
               <div className="flex justify-end gap-2 mt-4">
-                <Button icon={<ReloadOutlined />} onClick={() => { form.resetFields(); setSelectedBatchCode(null); }}>
+                <Button disabled={isSubmitting} icon={<ReloadOutlined />} onClick={() => { form.resetFields(); setSelectedBatchCode(null); }}>
                   Làm mới
                 </Button>
                 <Button
                   type="primary"
                   htmlType="submit"
                   icon={<SaveOutlined />}
+                  loading={isSubmitting}
+                  disabled={isSubmitting}
                   className="bg-sky-500 hover:bg-sky-600 border-none"
                 >
-                  {mode === 'wastage' ? 'Ghi nhận hao hụt' : 'Xác nhận chuyển đổi'}
+                  {isSubmitting ? 'Đang lưu...' : (mode === 'wastage' ? 'Ghi nhận hao hụt' : 'Xác nhận chuyển đổi')}
                 </Button>
               </div>
             </Form>
@@ -344,7 +347,7 @@ export const WastagePage: React.FC = () => {
                       {item.id}
                     </span>
                   </div>
-                  <span className="text-[11px] text-gray-400">{item.date}</span>
+                  <span className="text-[11px] text-gray-400">{formatDateTime(item.date)}</span>
                 </div>
 
                 <div className="flex items-start justify-between gap-2 text-xs mb-1">

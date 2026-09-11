@@ -27,5 +27,7 @@ public interface IApplicationDbContext
     DbSet<OutboundReceipt> OutboundReceipts { get; }
     DbSet<OutboundSupply> OutboundSupplies { get; }
 
+    Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

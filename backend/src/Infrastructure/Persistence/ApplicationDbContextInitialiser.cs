@@ -277,11 +277,31 @@ public class ApplicationDbContextInitialiser
                     ""TransactionDate"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""CreatedBy"" VARCHAR(100) NOT NULL DEFAULT 'System',
                     ""Note"" VARCHAR(500) NULL,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+                    ""CancelledAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""CancelledBy"" VARCHAR(100) NULL,
+                    ""CancelReason"" VARCHAR(500) NULL,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InventoryTransactions' AND column_name = 'Status') THEN 
+                        ALTER TABLE ""InventoryTransactions"" ADD COLUMN ""Status"" VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InventoryTransactions' AND column_name = 'CancelledAt') THEN 
+                        ALTER TABLE ""InventoryTransactions"" ADD COLUMN ""CancelledAt"" TIMESTAMP WITH TIME ZONE NULL; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InventoryTransactions' AND column_name = 'CancelledBy') THEN 
+                        ALTER TABLE ""InventoryTransactions"" ADD COLUMN ""CancelledBy"" VARCHAR(100) NULL; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InventoryTransactions' AND column_name = 'CancelReason') THEN 
+                        ALTER TABLE ""InventoryTransactions"" ADD COLUMN ""CancelReason"" VARCHAR(500) NULL; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""OutboundReceipts"" (
                     ""Id"" SERIAL PRIMARY KEY,
@@ -297,11 +317,31 @@ public class ApplicationDbContextInitialiser
                     ""DiscountReason"" VARCHAR(200) NULL,
                     ""TotalAmount"" NUMERIC(18,2) NOT NULL DEFAULT 0,
                     ""Note"" TEXT NULL,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+                    ""CancelledAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""CancelledBy"" VARCHAR(100) NULL,
+                    ""CancelReason"" VARCHAR(500) NULL,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'OutboundReceipts' AND column_name = 'Status') THEN 
+                        ALTER TABLE ""OutboundReceipts"" ADD COLUMN ""Status"" VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'OutboundReceipts' AND column_name = 'CancelledAt') THEN 
+                        ALTER TABLE ""OutboundReceipts"" ADD COLUMN ""CancelledAt"" TIMESTAMP WITH TIME ZONE NULL; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'OutboundReceipts' AND column_name = 'CancelledBy') THEN 
+                        ALTER TABLE ""OutboundReceipts"" ADD COLUMN ""CancelledBy"" VARCHAR(100) NULL; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'OutboundReceipts' AND column_name = 'CancelReason') THEN 
+                        ALTER TABLE ""OutboundReceipts"" ADD COLUMN ""CancelReason"" VARCHAR(500) NULL; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""OutboundSupplies"" (
                     ""Id"" SERIAL PRIMARY KEY,
@@ -718,6 +758,20 @@ public class ApplicationDbContextInitialiser
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LotBatches') AND name = 'TareWeight') ALTER TABLE [LotBatches] ADD [TareWeight] DECIMAL(18,2) NOT NULL DEFAULT 0;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LotBatches') AND name = 'PackagingCode') ALTER TABLE [LotBatches] ADD [PackagingCode] NVARCHAR(50) NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LotBatches') AND name = 'PackagingQty') ALTER TABLE [LotBatches] ADD [PackagingQty] INT NOT NULL DEFAULT 0;",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LotBatches') AND name = 'Status') ALTER TABLE [LotBatches] ADD [Status] NVARCHAR(50) NOT NULL DEFAULT 'IN_STOCK';",
+
+            // Cancellation metadata for InventoryTransactions
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('InventoryTransactions') AND name = 'Status') ALTER TABLE [InventoryTransactions] ADD [Status] NVARCHAR(50) NOT NULL DEFAULT 'ACTIVE';",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('InventoryTransactions') AND name = 'CancelledAt') ALTER TABLE [InventoryTransactions] ADD [CancelledAt] DATETIME2 NULL;",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('InventoryTransactions') AND name = 'CancelledBy') ALTER TABLE [InventoryTransactions] ADD [CancelledBy] NVARCHAR(100) NULL;",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('InventoryTransactions') AND name = 'CancelReason') ALTER TABLE [InventoryTransactions] ADD [CancelReason] NVARCHAR(500) NULL;",
+
+            // Cancellation metadata for OutboundReceipts
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('OutboundReceipts') AND name = 'Status') ALTER TABLE [OutboundReceipts] ADD [Status] NVARCHAR(50) NOT NULL DEFAULT 'ACTIVE';",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('OutboundReceipts') AND name = 'CancelledAt') ALTER TABLE [OutboundReceipts] ADD [CancelledAt] DATETIME2 NULL;",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('OutboundReceipts') AND name = 'CancelledBy') ALTER TABLE [OutboundReceipts] ADD [CancelledBy] NVARCHAR(100) NULL;",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('OutboundReceipts') AND name = 'CancelReason') ALTER TABLE [OutboundReceipts] ADD [CancelReason] NVARCHAR(500) NULL;",
+
             @"IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PackagingLoans') AND name = 'PartnerName' AND max_length = -1) ALTER TABLE [PackagingLoans] ALTER COLUMN [PartnerName] NVARCHAR(200) NOT NULL;",
             @"IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PackagingLoans') AND name = 'PartnerType' AND max_length = -1) ALTER TABLE [PackagingLoans] ALTER COLUMN [PartnerType] NVARCHAR(50) NOT NULL;",
 
@@ -797,6 +851,157 @@ public class ApplicationDbContextInitialiser
             await _context.SaveChangesAsync();
         }
 
+        // 3.5. Seed Kho bãi / Kho lạnh (Warehouses)
+        if (!await _context.Warehouses.AnyAsync())
+        {
+            var warehouses = new List<Warehouse>
+            {
+                new()
+                {
+                    Code = "KHO-TONG-01",
+                    Name = "Kho Lạnh Tổng Cảng Cá A1",
+                    Location = "Khu Bến Cảng Cá, Vũng Tàu",
+                    Type = StorageType.FrozenStorage,
+                    TargetTemperature = -18,
+                    MaxCapacityTon = 500,
+                    IsActive = true,
+                    Description = "Kho bảo quản đông lạnh hải sản tiêu chuẩn"
+                },
+                new()
+                {
+                    Code = "KHO-DONG-02",
+                    Name = "Kho Cấp Đông Sâu B2",
+                    Location = "Khu Chế Biến Thủy Sản",
+                    Type = StorageType.DeepFreeze,
+                    TargetTemperature = -25,
+                    MaxCapacityTon = 300,
+                    IsActive = true,
+                    Description = "Kho cấp đông sâu nhiệt độ âm cao"
+                }
+            };
+            _context.Warehouses.AddRange(warehouses);
+            await _context.SaveChangesAsync();
+        }
+
+        // 4. Seed Vai trò (Roles)
+        if (!await _context.Roles.AnyAsync())
+        {
+            var adminRole = new Role { Name = "Admin", Description = "Quản trị viên toàn quyền hệ thống kho", IsSystemDefault = true };
+            var thukhoRole = new Role { Name = "Thukho", Description = "Thủ kho quản lý nhập xuất kho & tồn kho", IsSystemDefault = true };
+            var nhanvienRole = new Role { Name = "Nhanvien", Description = "Nhân viên vận hành", IsSystemDefault = true };
+
+            _context.Roles.AddRange(adminRole, thukhoRole, nhanvienRole);
+            await _context.SaveChangesAsync();
+        }
+
+        // 5. Seed Phân quyền chi tiết (RolePermissions)
+        if (!await _context.RolePermissions.AnyAsync())
+        {
+            var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
+            var thukhoRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Thukho");
+            var nhanvienRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Nhanvien");
+
+            if (adminRole != null && thukhoRole != null && nhanvienRole != null)
+            {
+                var adminPerms = new List<string>
+                {
+                    "Pages.Dashboard.View", "Pages.Products.View", "Pages.Products.Create", "Pages.Products.Edit", "Pages.Products.Delete",
+                    "Pages.Packaging.View", "Pages.Packaging.Create", "Pages.Packaging.Edit", "Pages.Packaging.Delete",
+                    "Pages.Categories.View", "Pages.Categories.Create", "Pages.Categories.Edit", "Pages.Categories.Delete",
+                    "Pages.Warehouses.View", "Pages.Warehouses.Create", "Pages.Warehouses.Edit", "Pages.Warehouses.Delete",
+                    "Pages.Inbound.Create", "Pages.Inbound.View", "Pages.Outbound.Create", "Pages.Outbound.View",
+                    "Pages.Wastage.Create", "Pages.Wastage.View", "Pages.PackagingReturn.Create", "Pages.PackagingReturn.View",
+                    "Pages.Reports.View", "Pages.Alerts.View", "Pages.Users.Manage", "Pages.Roles.Manage", "Pages.Settings.Manage", "Pages.Tenants.Manage", "Pages.AuditLogs.View"
+                };
+
+                var thukhoPerms = new List<string>
+                {
+                    "Pages.Dashboard.View", "Pages.Products.View", "Pages.Packaging.View", "Pages.Categories.View", "Pages.Warehouses.View",
+                    "Pages.Inbound.Create", "Pages.Inbound.View", "Pages.Outbound.Create", "Pages.Outbound.View",
+                    "Pages.Wastage.Create", "Pages.Wastage.View", "Pages.PackagingReturn.Create", "Pages.PackagingReturn.View",
+                    "Pages.Reports.View", "Pages.Alerts.View"
+                };
+
+                var nhanvienPerms = new List<string> { "Pages.Dashboard.View", "Pages.Inbound.View", "Pages.Outbound.View" };
+
+                var rolePermissions = new List<RolePermission>();
+
+                foreach (var perm in adminPerms)
+                {
+                    rolePermissions.Add(new RolePermission { RoleId = adminRole.Id, PermissionCode = perm });
+                }
+                foreach (var perm in thukhoPerms)
+                {
+                    rolePermissions.Add(new RolePermission { RoleId = thukhoRole.Id, PermissionCode = perm });
+                }
+                foreach (var perm in nhanvienPerms)
+                {
+                    rolePermissions.Add(new RolePermission { RoleId = nhanvienRole.Id, PermissionCode = perm });
+                }
+
+                _context.RolePermissions.AddRange(rolePermissions);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        // 5.1. Seed Tài khoản Quản trị viên tối cao (Host Super Admin - TenantId = null)
+        var hostAdmin = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Email == "admin@gmail.com");
+
+        var adminRoleEntity = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
+
+        if (hostAdmin == null)
+        {
+            hostAdmin = new User
+            {
+                FullName = "Host Admin",
+                Email = "admin@gmail.com",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("qazwsxedc@123A"),
+                Phone = "0900000000",
+                Status = "ACTIVE",
+                TenantId = null,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(hostAdmin);
+            await _context.SaveChangesAsync();
+
+            if (adminRoleEntity != null)
+            {
+                _context.UserRoles.Add(new UserRole
+                {
+                    UserId = hostAdmin.Id,
+                    RoleId = adminRoleEntity.Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            // Cập nhật lại mật khẩu chuẩn và TenantId = null nếu tài khoản đã tồn tại
+            hostAdmin.TenantId = null;
+            hostAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("qazwsxedc@123A");
+            hostAdmin.Status = "ACTIVE";
+            await _context.SaveChangesAsync();
+
+            if (adminRoleEntity != null)
+            {
+                var hasAdminRole = await _context.UserRoles
+                    .AnyAsync(ur => ur.UserId == hostAdmin.Id && ur.RoleId == adminRoleEntity.Id);
+                if (!hasAdminRole)
+                {
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        UserId = hostAdmin.Id,
+                        RoleId = adminRoleEntity.Id,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+    /*
         // 1. Seed Danh mục Hải sản (Categories)
         if (!await _context.Categories.AnyAsync())
         {
@@ -938,125 +1143,6 @@ public class ApplicationDbContextInitialiser
             await _context.SaveChangesAsync();
         }
 
-        // 4. Seed Vai trò (Roles)
-        if (!await _context.Roles.AnyAsync())
-        {
-            var adminRole = new Role { Name = "Admin", Description = "Quản trị viên toàn quyền hệ thống kho", IsSystemDefault = true };
-            var thukhoRole = new Role { Name = "Thukho", Description = "Thủ kho quản lý nhập xuất kho & tồn kho", IsSystemDefault = true };
-            var nhanvienRole = new Role { Name = "Nhanvien", Description = "Nhân viên vận hành", IsSystemDefault = true };
-
-            _context.Roles.AddRange(adminRole, thukhoRole, nhanvienRole);
-            await _context.SaveChangesAsync();
-        }
-
-        // 5. Seed Phân quyền chi tiết (RolePermissions)
-        if (!await _context.RolePermissions.AnyAsync())
-        {
-            var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
-            var thukhoRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Thukho");
-            var nhanvienRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Nhanvien");
-
-            if (adminRole != null && thukhoRole != null && nhanvienRole != null)
-            {
-                var adminPerms = new List<string>
-                {
-                    "Pages.Dashboard.View", "Pages.Products.View", "Pages.Products.Create", "Pages.Products.Edit", "Pages.Products.Delete",
-                    "Pages.Packaging.View", "Pages.Packaging.Create", "Pages.Packaging.Edit", "Pages.Packaging.Delete",
-                    "Pages.Categories.View", "Pages.Categories.Create", "Pages.Categories.Edit", "Pages.Categories.Delete",
-                    "Pages.Warehouses.View", "Pages.Warehouses.Create", "Pages.Warehouses.Edit", "Pages.Warehouses.Delete",
-                    "Pages.Inbound.Create", "Pages.Inbound.View", "Pages.Outbound.Create", "Pages.Outbound.View",
-                    "Pages.Wastage.Create", "Pages.Wastage.View", "Pages.PackagingReturn.Create", "Pages.PackagingReturn.View",
-                    "Pages.Reports.View", "Pages.Alerts.View", "Pages.Users.Manage", "Pages.Roles.Manage", "Pages.Settings.Manage", "Pages.Tenants.Manage", "Pages.AuditLogs.View"
-                };
-
-                var thukhoPerms = new List<string>
-                {
-                    "Pages.Dashboard.View", "Pages.Products.View", "Pages.Packaging.View", "Pages.Categories.View", "Pages.Warehouses.View",
-                    "Pages.Inbound.Create", "Pages.Inbound.View", "Pages.Outbound.Create", "Pages.Outbound.View",
-                    "Pages.Wastage.Create", "Pages.Wastage.View", "Pages.PackagingReturn.Create", "Pages.PackagingReturn.View",
-                    "Pages.Reports.View", "Pages.Alerts.View"
-                };
-
-                var nhanvienPerms = new List<string> { "Pages.Dashboard.View", "Pages.Inbound.View", "Pages.Outbound.View" };
-
-                var rolePermissions = new List<RolePermission>();
-
-                foreach (var perm in adminPerms)
-                {
-                    rolePermissions.Add(new RolePermission { RoleId = adminRole.Id, PermissionCode = perm });
-                }
-                foreach (var perm in thukhoPerms)
-                {
-                    rolePermissions.Add(new RolePermission { RoleId = thukhoRole.Id, PermissionCode = perm });
-                }
-                foreach (var perm in nhanvienPerms)
-                {
-                    rolePermissions.Add(new RolePermission { RoleId = nhanvienRole.Id, PermissionCode = perm });
-                }
-
-                _context.RolePermissions.AddRange(rolePermissions);
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        // 5.1. Seed Tài khoản Quản trị viên tối cao (Host Super Admin - TenantId = null)
-        var hostAdmin = await _context.Users
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Email == "admin@gmail.com");
-
-        var adminRoleEntity = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
-
-        if (hostAdmin == null)
-        {
-            hostAdmin = new User
-            {
-                FullName = "Quản trị viên Hệ thống (Host Admin)",
-                Email = "admin@gmail.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("qazwsxedc@123A"),
-                Phone = "0900000000",
-                Status = "ACTIVE",
-                TenantId = null,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.Users.Add(hostAdmin);
-            await _context.SaveChangesAsync();
-
-            if (adminRoleEntity != null)
-            {
-                _context.UserRoles.Add(new UserRole
-                {
-                    UserId = hostAdmin.Id,
-                    RoleId = adminRoleEntity.Id,
-                    CreatedAt = DateTime.UtcNow
-                });
-                await _context.SaveChangesAsync();
-            }
-        }
-        else
-        {
-            // Cập nhật lại mật khẩu chuẩn và TenantId = null nếu tài khoản đã tồn tại
-            hostAdmin.TenantId = null;
-            hostAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("qazwsxedc@123A");
-            hostAdmin.Status = "ACTIVE";
-            await _context.SaveChangesAsync();
-
-            if (adminRoleEntity != null)
-            {
-                var hasAdminRole = await _context.UserRoles
-                    .AnyAsync(ur => ur.UserId == hostAdmin.Id && ur.RoleId == adminRoleEntity.Id);
-                if (!hasAdminRole)
-                {
-                    _context.UserRoles.Add(new UserRole
-                    {
-                        UserId = hostAdmin.Id,
-                        RoleId = adminRoleEntity.Id,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                    await _context.SaveChangesAsync();
-                }
-            }
-        }
-
         // 6. Seed Mượn / Trả Bao bì (PackagingLoans & PackagingReturns)
         if (!await _context.PackagingLoans.AnyAsync())
         {
@@ -1108,7 +1194,7 @@ public class ApplicationDbContextInitialiser
             {
                 new()
                 {
-                    Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    Timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     UserName = "Đặng Lâm Cường (Admin)",
                     UserRole = "Quản trị viên",
                     Action = "LOGIN",
@@ -1121,7 +1207,7 @@ public class ApplicationDbContextInitialiser
                 },
                 new()
                 {
-                    Timestamp = DateTime.Now.AddMinutes(-25).ToString("yyyy-MM-dd HH:mm:ss"),
+                    Timestamp = DateTime.UtcNow.AddMinutes(-25).ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     UserName = "Nguyễn Văn Thủ Kho",
                     UserRole = "Thủ kho",
                     Action = "CREATE",
@@ -1196,5 +1282,6 @@ public class ApplicationDbContextInitialiser
             _context.Partners.AddRange(partners);
             await _context.SaveChangesAsync();
         }
+    */
     }
 }

@@ -16,6 +16,7 @@ import { useProductStore } from '../../stores/useProductStore';
 import { useCategoryStore } from '../../stores/useCategoryStore';
 import { QRCodeSVG } from 'qrcode.react';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
+import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 
 
 
@@ -141,7 +142,7 @@ export const ProductsPage: React.FC = () => {
     });
   };
 
-  const handleSubmit = (values: any) => {
+  const { isSubmitting, handleSubmit } = useAsyncSubmit(async (values: any) => {
     const cat = categories.find(c => c.id === values.categoryId || c.code === values.categoryId);
     const productData: Omit<Product, 'id'> = {
       code: (values.code as string).toUpperCase(),
@@ -160,15 +161,15 @@ export const ProductsPage: React.FC = () => {
     };
 
     if (editingProduct) {
-      updateProduct(editingProduct.id, productData);
+      await updateProduct(editingProduct.id, productData);
       message.success('Cập nhật sản phẩm thành công!');
     } else {
-      addProduct(productData);
+      await addProduct(productData);
       setPagination((prev) => ({ ...prev, current: 1 }));
       message.success('Thêm sản phẩm mới thành công!');
     }
     setIsModalOpen(false);
-  };
+  });
 
   // ── table columns ─────────────────────────────────────────────────────────────
   const columns = [
@@ -619,11 +620,11 @@ export const ProductsPage: React.FC = () => {
           {/* Footer */}
           <Form.Item className="mb-0">
             <div className="flex justify-end gap-3">
-              <Button onClick={() => { setIsModalOpen(false); form.resetFields(); setEditingProduct(null); }}>
+              <Button disabled={isSubmitting} onClick={() => { setIsModalOpen(false); form.resetFields(); setEditingProduct(null); }}>
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" icon={editingProduct ? <EditOutlined /> : <PlusOutlined />}>
-                {editingProduct ? 'Cập nhật' : 'Thêm sản phẩm'}
+              <Button type="primary" htmlType="submit" loading={isSubmitting} disabled={isSubmitting} icon={editingProduct ? <EditOutlined /> : <PlusOutlined />}>
+                {isSubmitting ? 'Đang lưu...' : (editingProduct ? 'Cập nhật' : 'Thêm sản phẩm')}
               </Button>
             </div>
           </Form.Item>

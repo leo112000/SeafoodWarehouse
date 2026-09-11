@@ -22,6 +22,7 @@ public class LotBatch : BaseEntity, IMustHaveTenant
     public decimal TareWeight { get; set; } = 0; // Trọng lượng sọt / bì nhập kho (kg)
     public string? PackagingCode { get; set; } // Mã loại sọt / thùng đựng (SOT-RED, SOT-BLUE, THUNG-30KG...)
     public int PackagingQty { get; set; } = 0; // Số lượng sọt / thùng đựng khi nhập
+    public string Status { get; set; } = "IN_STOCK"; // IN_STOCK | DEPLETED | CANCELLED
     public int? TenantId { get; set; }
 
     public ICollection<InventoryItem> InventoryItems { get; set; } = new List<InventoryItem>();

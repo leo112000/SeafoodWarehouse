@@ -422,7 +422,7 @@ export const InventoryStockPage: React.FC = () => {
         footer={[
           <Button key="close" type="primary" onClick={() => setDetailItem(null)}>Đóng</Button>
         ]}
-        width={600}
+        width={700}
         centered
       >
         {detailItem && (

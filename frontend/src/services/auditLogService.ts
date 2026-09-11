@@ -1,16 +1,17 @@
 import { api } from './api';
+import type { AuditAction, AuditStatus } from '../constants';
 
 export interface AuditLogItem {
   id: string;
   timestamp: string;
   userName: string;
   userRole: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'PRINT';
+  action: AuditAction;
   module: string;
   description: string;
   ipAddress: string;
   browser: string;
-  status: 'SUCCESS' | 'FAILED';
+  status: AuditStatus;
   executionDurationMs?: number;
   oldValues?: string;
   newValues?: string;

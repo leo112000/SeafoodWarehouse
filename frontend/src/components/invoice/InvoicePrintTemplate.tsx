@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatDateTime } from '../../utils/format';
 import type { InvoicePrintData } from '../../types';
 import { useTenantStore } from '../../stores/useTenantStore';
 
@@ -287,7 +287,7 @@ export const InvoicePrintTemplate = React.forwardRef<HTMLDivElement, { data: Inv
         <div className="inv-info">
           <div className="inv-info-row">
             <span className="inv-info-label">Ngày lập:</span>
-            <span className="inv-info-value">{data.date}</span>
+            <span className="inv-info-value">{formatDateTime(data.date)}</span>
           </div>
           <div className="inv-info-row">
             <span className="inv-info-label">Thủ kho thực hiện:</span>

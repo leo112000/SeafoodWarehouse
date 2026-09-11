@@ -10,7 +10,7 @@ public class DistributedCacheService : ICacheService
 {
     private readonly IDistributedCache _cache;
     private readonly ILogger<DistributedCacheService> _logger;
-    private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _prefixKeyMap = new();
+    private static readonly ConcurrentDictionary<string, byte> _trackedKeys = new();
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -97,24 +97,24 @@ public class DistributedCacheService : ICacheService
     {
         try
         {
-            // Find all matching prefixes
-            var matchingPrefixes = _prefixKeyMap.Keys.Where(k => k.StartsWith(prefixKey, StringComparison.OrdinalIgnoreCase)).ToList();
+            // Find all matching keys that start with the specified prefix
+            var matchingKeys = _trackedKeys.Keys
+                .Where(k => k.StartsWith(prefixKey, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-            foreach (var p in matchingPrefixes)
+            foreach (var key in matchingKeys)
             {
-                if (_prefixKeyMap.TryRemove(p, out var keys))
+                try
                 {
-                    foreach (var key in keys.Keys)
-                    {
-                        try
-                        {
-                            await _cache.RemoveAsync(key, cancellationToken);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to remove key {Key} by prefix {Prefix}", key, prefixKey);
-                        }
-                    }
+                    await _cache.RemoveAsync(key, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to remove key {Key} by prefix {Prefix}", key, prefixKey);
+                }
+                finally
+                {
+                    UntrackKey(key);
                 }
             }
         }
@@ -126,21 +126,11 @@ public class DistributedCacheService : ICacheService
 
     private void TrackKeyPrefix(string key)
     {
-        var colonIndex = key.IndexOf(':');
-        var prefix = colonIndex > 0 ? key[..(colonIndex + 1)] : key;
-
-        var keys = _prefixKeyMap.GetOrAdd(prefix, _ => new ConcurrentDictionary<string, byte>());
-        keys.TryAdd(key, 0);
+        _trackedKeys.TryAdd(key, 0);
     }
 
     private void UntrackKey(string key)
     {
-        var colonIndex = key.IndexOf(':');
-        var prefix = colonIndex > 0 ? key[..(colonIndex + 1)] : key;
-
-        if (_prefixKeyMap.TryGetValue(prefix, out var keys))
-        {
-            keys.TryRemove(key, out _);
-        }
+        _trackedKeys.TryRemove(key, out _);
     }
 }

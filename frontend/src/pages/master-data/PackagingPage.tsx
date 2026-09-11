@@ -5,6 +5,7 @@ import type { PackagingType } from '../../types/seafood';
 import { packagingService } from '../../services/packagingService';
 import { generateCodeFromName } from '../../utils/codeGenerator';
 import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
+import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 
 export const PackagingPage: React.FC = () => {
   const { message, modal } = App.useApp();
@@ -95,7 +96,7 @@ export const PackagingPage: React.FC = () => {
     setIsAdjustModalOpen(true);
   };
 
-  const handleAdjustSubmit = async (values: any) => {
+  const { isSubmitting: isSubmittingAdjust, handleSubmit: handleAdjustSubmit } = useAsyncSubmit(async (values: any) => {
     try {
       const pkgId = Number(values.packagingId || selectedPkgForAdjust?.id);
       const qty = Math.abs(Number(values.quantity || 0));
@@ -113,9 +114,9 @@ export const PackagingPage: React.FC = () => {
     } catch {
       message.error('Không thể cập nhật số lượng sọt.');
     }
-  };
+  });
 
-  const handleFormSubmit = async (values: any) => {
+  const { isSubmitting: isSubmittingForm, handleSubmit: handleFormSubmit } = useAsyncSubmit(async (values: any) => {
     try {
       const payload = {
         code: values.code.toUpperCase(),
@@ -140,7 +141,7 @@ export const PackagingPage: React.FC = () => {
     } catch {
       message.error('Lỗi khi lưu thông tin bao bì.');
     }
-  };
+  });
 
   const filteredPackagings = packagings.filter((p) => {
     const matchesSearch =
@@ -446,6 +447,8 @@ export const PackagingPage: React.FC = () => {
         open={isModalOpen}
         onOk={() => form.submit()}
         onCancel={() => setIsModalOpen(false)}
+        confirmLoading={isSubmittingForm}
+        cancelButtonProps={{ disabled: isSubmittingForm }}
         okText={editingPkg ? 'Lưu thay đổi' : 'Tạo mới'}
         cancelText="Hủy bỏ"
         destroyOnHidden
@@ -551,6 +554,8 @@ export const PackagingPage: React.FC = () => {
         open={isAdjustModalOpen}
         onCancel={() => setIsAdjustModalOpen(false)}
         onOk={() => adjustForm.submit()}
+        confirmLoading={isSubmittingAdjust}
+        cancelButtonProps={{ disabled: isSubmittingAdjust }}
         okText={adjustMode === 'ADD' ? 'Cập nhật tăng tồn kho' : 'Cập nhật trừ tồn kho'}
         okButtonProps={{ danger: adjustMode === 'LOSS' }}
       >

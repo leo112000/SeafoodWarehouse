@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { transactionService, type InboundReceiptPayload } from '../services/transactionService';
+import type { TransactionStatus } from '../constants';
 
 export interface InboundItem {
   seafoodName: string;
@@ -13,10 +14,19 @@ export interface InboundItem {
   unitPrice: number;
   totalPrice: number;
   batchCode: string;
+  initialQuantity?: number;
+  currentQuantity?: number;
 }
 
 export interface InboundReceipt {
   id: string;
+  status?: TransactionStatus;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelReason?: string;
+  hasExports?: boolean;
+  canCancel?: boolean;
+  exportRefNos?: string[];
   supplier: string;
   inboundDate: string;
   storageLocation: string;
@@ -28,6 +38,7 @@ interface InboundState {
   receipts: InboundReceipt[];
   fetchReceipts: () => Promise<void>;
   addReceipt: (receipt: Omit<InboundReceipt, 'id'>) => Promise<void>;
+  cancelReceipt: (id: string, reason: string) => Promise<any>;
 }
 
 export const useInboundStore = create<InboundState>((set, get) => ({
@@ -51,5 +62,10 @@ export const useInboundStore = create<InboundState>((set, get) => ({
         receipts: [{ ...receipt, id: `PNK-${Date.now()}` }, ...state.receipts],
       }));
     }
+  },
+  cancelReceipt: async (id, reason) => {
+    const res = await transactionService.cancelInbound(id, reason);
+    await get().fetchReceipts();
+    return res;
   },
 }));

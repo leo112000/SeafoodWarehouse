@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import './utils/dateUtils'
 import App from './App.tsx'
 
 // Lọc các thông báo Warning deprecation của Ant Design v6 để console sạch sẽ và dễ nhìn

@@ -250,7 +250,7 @@ public class PackagingController : BaseApiController
             PackagingName = l.Packaging.Name,
             LoanedQty = l.LoanedQty,
             ReturnedQty = l.ReturnedQty,
-            Date = l.LoanDate.ToString("yyyy-MM-dd"),
+            Date = l.LoanDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             Note = l.Note
         }).ToList();
 
@@ -293,7 +293,7 @@ public class PackagingController : BaseApiController
             PackagingName = pkg.Name,
             LoanedQty = loan.LoanedQty,
             ReturnedQty = 0,
-            Date = loan.LoanDate.ToString("yyyy-MM-dd"),
+            Date = loan.LoanDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             Note = loan.Note
         };
 
@@ -323,7 +323,7 @@ public class PackagingController : BaseApiController
             PackagingCode = r.PackagingLoan?.Packaging?.Code ?? "",
             PackagingName = r.PackagingLoan?.Packaging?.Name ?? "",
             ReturnedQty = r.ReturnedQty,
-            ReturnDate = r.ReturnDate.ToString("yyyy-MM-dd HH:mm"),
+            ReturnDate = r.ReturnDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
             RecordedBy = r.RecordedBy,
             Note = r.Note
         }).ToList();

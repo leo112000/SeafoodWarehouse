@@ -4,7 +4,7 @@ import { PrinterOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 import type { OutboundTransaction } from '../../stores/useOutboundStore';
 import InvoiceModal from '../../components/invoice/InvoiceModal';
-import { formatCurrency, formatWeight, formatDate } from '../../utils/format';
+import { formatCurrency, formatWeight, formatDate, formatDateTime } from '../../utils/format';
 import { useOutboundStore } from '../../stores/useOutboundStore';
 import { exportToExcel } from '../../utils/exportUtils';
 import type { InvoicePrintData } from '../../types';
@@ -34,7 +34,7 @@ const toInvoiceData = (tx: OutboundTransaction): InvoicePrintData => {
   return {
     type: 'OUTBOUND',
     invoiceNo: tx.id,
-    date: tx.date,
+    date: formatDateTime(tx.date),
     partnerName: pName,
     partnerPhone: pPhone,
     warehouseStaff: tx.createdBy,
@@ -138,7 +138,7 @@ const OutboundHistoryPage: React.FC = () => {
       render: (_: any, __: any, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
     },
     { title: 'Mã phiếu xuất', dataIndex: 'id', key: 'id', render: (id: string) => <span className="font-bold text-sky-600">{id}</span> },
-    { title: 'Ngày xuất kho', dataIndex: 'date', key: 'date', render: (d: string) => formatDate(d), responsive: ['sm'] as any },
+    { title: 'Ngày xuất kho', dataIndex: 'date', key: 'date', render: (d: string) => <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">{formatDateTime(d)}</span>, responsive: ['sm'] as any },
     {
       title: 'Khách hàng / Người nhận',
       dataIndex: 'customerName',
@@ -339,7 +339,7 @@ const OutboundHistoryPage: React.FC = () => {
           <div>
             <span style={{ fontWeight: 'bold' }}>Chi tiết phiếu xuất: {selectedTx?.id}</span>
             <div style={{ fontSize: 13, color: '#666', fontWeight: 'normal', marginTop: 4 }}>
-              Khách hàng: <strong>{selectedTx?.customerName}</strong> &nbsp;·&nbsp; Ngày xuất: {selectedTx?.date}
+              Khách hàng: <strong>{selectedTx?.customerName}</strong> &nbsp;·&nbsp; Ngày xuất: {formatDateTime(selectedTx?.date)}
             </div>
           </div>
         }

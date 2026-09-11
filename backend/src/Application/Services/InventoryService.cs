@@ -25,28 +25,22 @@ public class InventoryService : IInventoryService
     public async Task<PagedResult<InventoryItemDto>> GetInventoryAsync(PaginationParams pagination, int? warehouseId = null, int? productId = null, CancellationToken cancellationToken = default)
     {
         var repository = _unitOfWork.Repository<InventoryItem>();
-        var items = await repository.GetAllWithIncludesAsync(
-            i => i.Warehouse,
-            i => i.LotBatch,
-            i => i.LotBatch.Product);
+        var (items, totalCount) = await repository.GetPagedAsync(
+            pagination.PageNumber,
+            pagination.PageSize,
+            predicate: i => (!warehouseId.HasValue || i.WarehouseId == warehouseId.Value) &&
+                            (!productId.HasValue || i.LotBatch.ProductId == productId.Value),
+            orderBy: q => q.OrderByDescending(i => i.Id),
+            cancellationToken: cancellationToken,
+            includes: new System.Linq.Expressions.Expression<Func<InventoryItem, object>>[]
+            {
+                i => i.Warehouse,
+                i => i.LotBatch,
+                i => i.LotBatch.Product
+            }
+        );
 
-        // Lọc theo kho hoặc sản phẩm nếu có
-        var filtered = items.Where(i => !i.IsDeleted);
-        if (warehouseId.HasValue)
-        {
-            filtered = filtered.Where(i => i.WarehouseId == warehouseId.Value);
-        }
-        if (productId.HasValue)
-        {
-            filtered = filtered.Where(i => i.LotBatch.ProductId == productId.Value);
-        }
-
-        var itemList = filtered.ToList();
-        var totalCount = itemList.Count;
-        var result = itemList
-            .OrderByDescending(i => i.Id)
-            .Skip((pagination.PageNumber - 1) * pagination.PageSize)
-            .Take(pagination.PageSize)
+        var result = items
             .Select(i => new InventoryItemDto
             {
                 Id = i.Id,
@@ -62,6 +56,7 @@ public class InventoryService : IInventoryService
                 Grade = i.LotBatch?.Grade ?? QualityGrade.GradeA
             })
             .ToList();
+
 
         return PagedResult<InventoryItemDto>.Create(result, totalCount, pagination.PageNumber, pagination.PageSize);
     }
