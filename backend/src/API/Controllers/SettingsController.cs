@@ -8,6 +8,8 @@ namespace SeafoodWarehouseManagement.API.Controllers;
 
 public class UpdateSettingDto
 {
+    public string? WebsiteName { get; set; }
+    public string? LogoUrl { get; set; }
     public int? ExpiringAlertDays { get; set; }
     public double? TempDeviationThreshold { get; set; }
     public decimal? DefaultSeafoodPrice { get; set; }
@@ -51,6 +53,8 @@ public class SettingsController : BaseApiController
             {
                 setting = new SystemSetting
                 {
+                    WebsiteName = "KHO HẢI SẢN",
+                    LogoUrl = "",
                     ExpiringAlertDays = 15,
                     TempDeviationThreshold = 3.0,
                     DefaultSeafoodPrice = 250000,
@@ -87,6 +91,12 @@ public class SettingsController : BaseApiController
 
         if (dto != null)
         {
+            if (!string.IsNullOrWhiteSpace(dto.WebsiteName))
+                setting.WebsiteName = dto.WebsiteName.Trim();
+
+            if (dto.LogoUrl != null)
+                setting.LogoUrl = dto.LogoUrl.Trim();
+
             if (dto.ExpiringAlertDays.HasValue && dto.ExpiringAlertDays.Value > 0)
                 setting.ExpiringAlertDays = dto.ExpiringAlertDays.Value;
 

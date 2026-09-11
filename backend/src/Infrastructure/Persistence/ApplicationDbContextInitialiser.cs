@@ -54,11 +54,23 @@ public class ApplicationDbContextInitialiser
                     ""DefaultSeafoodPrice"" NUMERIC(18,2) NOT NULL DEFAULT 250000,
                     ""AutoRefreshIntervalSeconds"" INT NOT NULL DEFAULT 30,
                     ""LowStockWarningPercent"" DOUBLE PRECISION NOT NULL DEFAULT 100.0,
+                    ""WebsiteName"" VARCHAR(200) NOT NULL DEFAULT 'KHO HẢI SẢN',
+                    ""LogoUrl"" TEXT NULL,
                     ""TenantId"" INT NULL,
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
                     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                 );",
+
+                @"DO $$ 
+                  BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Settings' AND column_name = 'WebsiteName') THEN 
+                        ALTER TABLE ""Settings"" ADD COLUMN ""WebsiteName"" VARCHAR(200) NOT NULL DEFAULT 'KHO HẢI SẢN'; 
+                    END IF; 
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Settings' AND column_name = 'LogoUrl') THEN 
+                        ALTER TABLE ""Settings"" ADD COLUMN ""LogoUrl"" TEXT NULL; 
+                    END IF; 
+                  END $$;",
 
                 @"CREATE TABLE IF NOT EXISTS ""Users"" (
                     ""Id"" SERIAL PRIMARY KEY,
@@ -613,6 +625,8 @@ public class ApplicationDbContextInitialiser
                       [DefaultSeafoodPrice] DECIMAL(18,2) NOT NULL DEFAULT 250000,
                       [AutoRefreshIntervalSeconds] INT NOT NULL DEFAULT 30,
                       [LowStockWarningPercent] FLOAT NOT NULL DEFAULT 100.0,
+                      [WebsiteName] NVARCHAR(200) NOT NULL DEFAULT 'KHO HẢI SẢN',
+                      [LogoUrl] NVARCHAR(MAX) NULL,
                       [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
                       [UpdatedAt] DATETIME2 NULL,
                       [IsDeleted] BIT NOT NULL DEFAULT 0
@@ -749,6 +763,8 @@ public class ApplicationDbContextInitialiser
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('PackagingReturns') AND name = 'TenantId') ALTER TABLE [PackagingReturns] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('AuditLogs') AND name = 'TenantId') ALTER TABLE [AuditLogs] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Settings') AND name = 'TenantId') ALTER TABLE [Settings] ADD [TenantId] INT NULL;",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Settings') AND name = 'WebsiteName') ALTER TABLE [Settings] ADD [WebsiteName] NVARCHAR(200) NOT NULL DEFAULT 'KHO HẢI SẢN';",
+            @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Settings') AND name = 'LogoUrl') ALTER TABLE [Settings] ADD [LogoUrl] NVARCHAR(MAX) NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('InventoryTransactions') AND name = 'UnitPrice') ALTER TABLE [InventoryTransactions] ADD [UnitPrice] DECIMAL(18,2) NOT NULL DEFAULT 0;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('InventoryTransactions') AND name = 'TotalAmount') ALTER TABLE [InventoryTransactions] ADD [TotalAmount] DECIMAL(18,2) NOT NULL DEFAULT 0;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('InventoryTransactions') AND name = 'TareWeight') ALTER TABLE [InventoryTransactions] ADD [TareWeight] DECIMAL(18,2) NOT NULL DEFAULT 0;",
@@ -846,6 +862,8 @@ public class ApplicationDbContextInitialiser
                 DefaultSeafoodPrice = 250000,
                 AutoRefreshIntervalSeconds = 30,
                 LowStockWarningPercent = 100.0,
+                WebsiteName = "KHO HẢI SẢN",
+                LogoUrl = "",
                 TenantId = null
             });
             await _context.SaveChangesAsync();

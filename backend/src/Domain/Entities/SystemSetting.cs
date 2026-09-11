@@ -32,5 +32,15 @@ public class SystemSetting : BaseEntity, IMustHaveTenant
     /// </summary>
     public double LowStockWarningPercent { get; set; } = 100.0;
 
+    /// <summary>
+    /// Tên thương hiệu / Tên website hiển thị trên menu
+    /// </summary>
+    public string WebsiteName { get; set; } = "KHO HẢI SẢN";
+
+    /// <summary>
+    /// Đường dẫn logo / Icon emoji / Ảnh base64 của website
+    /// </summary>
+    public string? LogoUrl { get; set; }
+
     public int? TenantId { get; set; }
 }

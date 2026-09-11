@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { tenantService } from '../services/tenantService';
+import { settingService } from '../services/settingService';
 
 interface BrandState {
   websiteName: string;
@@ -28,7 +29,15 @@ export const useBrandStore = create<BrandState>((set, get) => ({
         localStorage.setItem('app_website_logo', logo);
         set({ websiteName: name, logoUrl: logo, tenantId: primary.id });
       } else {
-        set({ tenantId: undefined });
+        // Nếu không có tenant riêng (chế độ Host/Admin), lấy cấu hình thương hiệu trực tiếp từ DB
+        const settings = await settingService.getSettings();
+        const name = settings.websiteName || localStorage.getItem('app_website_name') || 'KHO HẢI SẢN';
+        const logo = settings.logoUrl !== undefined && settings.logoUrl !== null 
+          ? settings.logoUrl 
+          : (localStorage.getItem('app_website_logo') || '');
+        localStorage.setItem('app_website_name', name);
+        localStorage.setItem('app_website_logo', logo);
+        set({ websiteName: name, logoUrl: logo, tenantId: undefined });
       }
     } catch {
       // Bỏ qua lỗi kết nối
@@ -80,6 +89,17 @@ export const useBrandStore = create<BrandState>((set, get) => ({
           isActive: primary.isActive,
         });
         set({ tenantId: primary.id });
+      } else {
+        // Đồng bộ trực tiếp vào bảng Settings trong CSDL
+        await settingService.updateSettings({
+          websiteName: cleanName,
+          logoUrl: cleanLogo,
+          expiringAlertDays: 15,
+          tempDeviationThreshold: 3.0,
+          defaultSeafoodPrice: 250000,
+          autoRefreshIntervalSeconds: 30,
+          lowStockWarningPercent: 100,
+        });
       }
     } catch {
       // Backend update failure won't break UI since localStorage has it

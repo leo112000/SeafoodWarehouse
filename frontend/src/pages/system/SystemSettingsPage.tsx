@@ -67,8 +67,8 @@ export const SystemSettingsPage: React.FC = () => {
       const data = await settingService.getSettings();
 
       form.setFieldsValue({
-        websiteName: brandState.websiteName || 'KHO HẢI SẢN',
-        logoUrl: brandState.logoUrl || '',
+        websiteName: data.websiteName || brandState.websiteName || 'KHO HẢI SẢN',
+        logoUrl: data.logoUrl !== undefined && data.logoUrl !== null ? data.logoUrl : (brandState.logoUrl || ''),
         expiringAlertDays: Number(data.expiringAlertDays) || 15,
         tempDeviationThreshold: Number(data.tempDeviationThreshold) || 3.0,
         defaultSeafoodPrice: Number(data.defaultSeafoodPrice) || 250000,
@@ -89,14 +89,16 @@ export const SystemSettingsPage: React.FC = () => {
   const handleSave = async (values: SettingsFormValues) => {
     setSaving(true);
     try {
-      // 1. Cập nhật tên website và logo thương hiệu
+      // 1. Cập nhật tên website và logo thương hiệu vào store
       await updateBrand(values.websiteName, values.logoUrl);
 
-      // 2. Cập nhật thông số hệ thống
+      // 2. Cập nhật thông số hệ thống và tên/logo trực tiếp vào CSDL
       await settingService.updateSettings({
+        websiteName: values.websiteName,
+        logoUrl: values.logoUrl,
         expiringAlertDays: values.expiringAlertDays,
-        tempDeviationThreshold: values.tempDeviationThreshold,
-        defaultSeafoodPrice: 250000,
+        tempDeviationThreshold: values.tempDeviationThreshold || 3.0,
+        defaultSeafoodPrice: values.defaultSeafoodPrice || 250000,
         autoRefreshIntervalSeconds: values.autoRefreshIntervalSeconds,
         lowStockWarningPercent: values.lowStockWarningPercent,
       });

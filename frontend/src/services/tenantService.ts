@@ -40,18 +40,7 @@ export const tenantService = {
       return response.data;
     } catch {
       // Fallback default store if API not reachable
-      return [
-        {
-          id: 1,
-          code: 'BIENDONG',
-          name: 'KHO HẢI SẢN BIỂN ĐÔNG',
-          address: '123 Đường Cảng Cá, Phường Thọ Quang, Đà Nẵng',
-          phone: '0236 123 4567',
-          email: 'kho@biendongsea.vn',
-          taxCode: '0401 345 678',
-          isActive: true,
-        },
-      ];
+      return [];
     }
   },
 
