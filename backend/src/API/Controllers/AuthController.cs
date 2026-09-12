@@ -180,12 +180,18 @@ public class AuthController : BaseApiController
             .ThenInclude(ur => ur.Role)
             .Where(u => u.Email == request.Email && !u.IsDeleted);
 
-        if (request.TenantId.HasValue)
+        User? user = null;
+        if (request.TenantId.HasValue && request.TenantId.Value > 0)
         {
-            userQuery = userQuery.Where(u => u.TenantId == request.TenantId.Value || u.TenantId == null);
+            // Người dùng CÓ nhập Tenant: Chỉ tìm tài khoản thuộc đúng Tenant này (hoặc tài khoản Host Admin)
+            user = await userQuery.FirstOrDefaultAsync(u => u.TenantId == request.TenantId.Value, cancellationToken)
+                ?? await userQuery.FirstOrDefaultAsync(u => u.TenantId == null, cancellationToken);
         }
-
-        var user = await userQuery.FirstOrDefaultAsync(cancellationToken);
+        else
+        {
+            // Người dùng KHÔNG nhập Tenant (để trống ô Tenant): Chỉ tìm tài khoản cấp Host (TenantId == null)
+            user = await userQuery.FirstOrDefaultAsync(u => u.TenantId == null, cancellationToken);
+        }
 
         bool isPasswordValid = false;
         if (user != null)

@@ -92,6 +92,7 @@ export const clearAuthStorage = () => {
     localStorage.removeItem('tenantName');
     localStorage.removeItem('tenantId');
     localStorage.removeItem('loginTime');
+    localStorage.removeItem('rememberedTenant');
   }
 };
 
