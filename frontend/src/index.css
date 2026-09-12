@@ -84,30 +84,6 @@ html.dark .ocean-glass {
   animation: pulse-glow 2.5s infinite ease-in-out;
 }
 
-@keyframes scan-laser {
-  0% {
-    top: 5%;
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    top: 95%;
-    opacity: 0.2;
-  }
-}
-
-.laser-scan-line {
-  position: absolute;
-  left: 5%;
-  right: 5%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #38bdf8, #0ea5e9, #38bdf8, transparent);
-  box-shadow: 0 0 8px #0ea5e9, 0 0 16px #38bdf8;
-  animation: scan-laser 2s infinite ease-in-out alternate;
-}
-
 /* Giới hạn width chỉ khi in ấn — giữ layout cân đối cho khổ A4 */
 @media print {
   .print-constrained {

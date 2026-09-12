@@ -8,6 +8,7 @@ import {
   PlusOutlined, EditOutlined, DeleteOutlined,
   FolderOutlined, AppstoreOutlined, CalendarOutlined,
   ReloadOutlined, SearchOutlined, EyeOutlined, ArrowRightOutlined,
+  FileExcelOutlined, UploadOutlined,
 } from '@ant-design/icons';
 import type { Category, Product } from '../../types/seafood';
 import { useCategoryStore } from '../../stores/useCategoryStore';
@@ -16,6 +17,8 @@ import { formatCurrency, formatDate } from '../../utils/format';
 import { generateCodeFromName } from '../../utils/codeGenerator';
 import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
 import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
+import { exportToExcel } from '../../utils/exportUtils';
+import { CategoryImportModal } from './CategoryImportModal';
 
 // ─── component ─────────────────────────────────────────────────────────────────
 
@@ -26,11 +29,27 @@ export const CategoriesPage: React.FC = () => {
   const { products, fetchProducts } = useProductStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
+
+  const handleExportExcel = () => {
+    if (categories.length === 0) {
+      message.warning('Không có dữ liệu danh mục để xuất.');
+      return;
+    }
+    const cols = [
+      { header: 'Mã danh mục', key: 'code', width: 18 },
+      { header: 'Tên nhóm danh mục', key: 'name', width: 30 },
+      { header: 'Mô tả', key: 'description', width: 50 },
+      { header: 'Số lượng sản phẩm', key: 'productCount', width: 20 },
+    ];
+    exportToExcel(categories, cols, 'Danh_Muc_Hai_San_Nhom', 'Nhóm danh mục');
+    message.success('Đã xuất file Excel nhóm danh mục thành công!');
+  };
 
   // Modal xem danh sách sản phẩm theo danh mục
   const [isProductsModalOpen, setIsProductsModalOpen] = useState(false);
@@ -348,11 +367,29 @@ export const CategoriesPage: React.FC = () => {
     <div className="space-y-6">
 
       {/* ── Page Header ── */}
-      <div className="flex items-center justify-between gap-2 mb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
           Nhóm Danh Mục
         </h1>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0">
+          <Button
+            icon={<FileExcelOutlined className="text-emerald-600" />}
+            size="middle"
+            onClick={handleExportExcel}
+            className="font-medium hover:border-emerald-500 hover:text-emerald-600"
+          >
+            <span className="hidden sm:inline">Xuất Excel</span>
+            <span className="sm:hidden">Xuất</span>
+          </Button>
+          <Button
+            icon={<UploadOutlined className="text-emerald-600" />}
+            size="middle"
+            onClick={() => setIsImportModalOpen(true)}
+            className="font-medium border-emerald-500 text-emerald-600 hover:text-emerald-500 hover:border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20"
+          >
+            <span className="hidden sm:inline">Nhập Excel</span>
+            <span className="sm:hidden">Nhập</span>
+          </Button>
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading} size="middle">
             <span className="hidden sm:inline">Làm mới</span>
           </Button>
@@ -661,8 +698,16 @@ export const CategoriesPage: React.FC = () => {
           />
         </div>
       </Modal>
+
+      {/* Modal Import Excel */}
+      <CategoryImportModal
+        open={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={loadData}
+      />
     </div>
   );
 };
 
 export default CategoriesPage;
+

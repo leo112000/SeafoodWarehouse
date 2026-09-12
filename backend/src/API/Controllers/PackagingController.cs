@@ -14,7 +14,9 @@ public class PackagingDto
     public string Category { get; set; } = "CONTAINER";
     public decimal DefaultTareWeight { get; set; }
     public string Unit { get; set; } = "Cái";
-    public int StockQuantity { get; set; }
+    public int StockQuantity { get; set; } // Tồn kho tại chỗ
+    public int LoanedQuantity { get; set; } // Đang cho mượn ngoài kho
+    public int TotalQuantity { get; set; } // Tổng số lượng sở hữu thực tế (Tồn kho + Đang mượn)
     public string? Note { get; set; }
 }
 
@@ -93,20 +95,27 @@ public class PackagingController : BaseApiController
     {
         var packagings = await _context.Packagings
             .Where(p => !p.IsDeleted)
+            .Include(p => p.Loans.Where(l => !l.IsDeleted))
             .OrderByDescending(p => p.CreatedAt)
             .ThenByDescending(p => p.Id)
             .ToListAsync(cancellationToken);
 
-        var dtos = packagings.Select(p => new PackagingDto
+        var dtos = packagings.Select(p =>
         {
-            Id = p.Id.ToString(),
-            Code = p.Code,
-            Name = p.Name,
-            Category = p.Category,
-            DefaultTareWeight = p.DefaultTareWeight,
-            Unit = p.Unit,
-            StockQuantity = p.StockQuantity,
-            Note = p.Note
+            var activeLoaned = p.Loans.Sum(l => l.LoanedQty - l.ReturnedQty);
+            return new PackagingDto
+            {
+                Id = p.Id.ToString(),
+                Code = p.Code,
+                Name = p.Name,
+                Category = p.Category,
+                DefaultTareWeight = p.DefaultTareWeight,
+                Unit = p.Unit,
+                StockQuantity = p.StockQuantity,
+                LoanedQuantity = activeLoaned,
+                TotalQuantity = p.StockQuantity + activeLoaned,
+                Note = p.Note
+            };
         }).ToList();
 
         return Ok(Result<List<PackagingDto>>.Success(dtos));
@@ -164,6 +173,8 @@ public class PackagingController : BaseApiController
             DefaultTareWeight = packaging.DefaultTareWeight,
             Unit = packaging.Unit,
             StockQuantity = packaging.StockQuantity,
+            LoanedQuantity = 0,
+            TotalQuantity = packaging.StockQuantity,
             Note = packaging.Note
         };
 
@@ -192,6 +203,10 @@ public class PackagingController : BaseApiController
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        var activeLoaned = await _context.PackagingLoans
+            .Where(l => l.PackagingId == packaging.Id && !l.IsDeleted)
+            .SumAsync(l => l.LoanedQty - l.ReturnedQty, cancellationToken);
+
         var result = new PackagingDto
         {
             Id = packaging.Id.ToString(),
@@ -201,6 +216,8 @@ public class PackagingController : BaseApiController
             DefaultTareWeight = packaging.DefaultTareWeight,
             Unit = packaging.Unit,
             StockQuantity = packaging.StockQuantity,
+            LoanedQuantity = activeLoaned,
+            TotalQuantity = packaging.StockQuantity + activeLoaned,
             Note = packaging.Note
         };
 
@@ -264,11 +281,24 @@ public class PackagingController : BaseApiController
     [HttpPost("/api/packaging-loans")]
     public async Task<ActionResult<Result<PackagingLoanDto>>> CreateLoan([FromBody] CreateLoanDto dto, CancellationToken cancellationToken = default)
     {
+        if (dto.LoanedQty <= 0)
+        {
+            return BadRequest(Result<PackagingLoanDto>.Failure("Số lượng mượn phải lớn hơn 0."));
+        }
+
         var pkg = await _context.Packagings.FirstOrDefaultAsync(p => p.Code == dto.PackagingCode && !p.IsDeleted, cancellationToken);
         if (pkg == null)
         {
             return BadRequest(Result<PackagingLoanDto>.Failure("Mã bao bì không tồn tại."));
         }
+
+        if (pkg.StockQuantity < dto.LoanedQty)
+        {
+            return BadRequest(Result<PackagingLoanDto>.Failure($"Số lượng tồn kho không đủ để cho mượn (Hiện còn: {pkg.StockQuantity} {pkg.Unit}, yêu cầu: {dto.LoanedQty})."));
+        }
+
+        // Trừ số lượng tồn kho của bao bì khi cho mượn
+        pkg.StockQuantity -= dto.LoanedQty;
 
         var loan = new PackagingLoan
         {
@@ -338,13 +368,40 @@ public class PackagingController : BaseApiController
     [HttpPost("/api/packaging-returns")]
     public async Task<ActionResult<Result<bool>>> CreateReturn([FromBody] CreateReturnDto dto, CancellationToken cancellationToken = default)
     {
-        var loan = await _context.PackagingLoans.FirstOrDefaultAsync(l => l.Id == dto.LoanId && !l.IsDeleted, cancellationToken);
+        if (dto.ReturnedQty <= 0)
+        {
+            return BadRequest(Result<bool>.Failure("Số lượng trả phải lớn hơn 0."));
+        }
+
+        var loan = await _context.PackagingLoans
+            .Include(l => l.Packaging)
+            .FirstOrDefaultAsync(l => l.Id == dto.LoanId && !l.IsDeleted, cancellationToken);
         if (loan == null)
         {
             return BadRequest(Result<bool>.Failure("Không tìm thấy thông tin mượn bao bì."));
         }
 
-        loan.ReturnedQty = Math.Min(loan.LoanedQty, loan.ReturnedQty + dto.ReturnedQty);
+        var remainingDebt = loan.LoanedQty - loan.ReturnedQty;
+        if (dto.ReturnedQty > remainingDebt)
+        {
+            return BadRequest(Result<bool>.Failure($"Số lượng trả ({dto.ReturnedQty}) vượt quá số lượng còn nợ ({remainingDebt})."));
+        }
+
+        loan.ReturnedQty += dto.ReturnedQty;
+
+        // Hoàn trả số lượng vào tồn kho của loại bao bì
+        if (loan.Packaging != null)
+        {
+            loan.Packaging.StockQuantity += dto.ReturnedQty;
+        }
+        else
+        {
+            var pkg = await _context.Packagings.FirstOrDefaultAsync(p => p.Id == loan.PackagingId && !p.IsDeleted, cancellationToken);
+            if (pkg != null)
+            {
+                pkg.StockQuantity += dto.ReturnedQty;
+            }
+        }
 
         var ret = new PackagingReturn
         {
@@ -373,11 +430,109 @@ public class PackagingController : BaseApiController
             return BadRequest(Result<bool>.Failure("Không tìm thấy thông tin sọt / bao bì."));
         }
 
-        pkg.StockQuantity = Math.Max(0, pkg.StockQuantity + dto.AdjustmentQty);
+        if (dto.AdjustmentQty == 0)
+        {
+            return BadRequest(Result<bool>.Failure("Số lượng điều chỉnh không được bằng 0."));
+        }
+
+        var oldStock = pkg.StockQuantity;
+        string actionType = dto.AdjustmentQty > 0 ? "ADD" : "LOSS";
+        int qty = Math.Abs(dto.AdjustmentQty);
+
+        // Báo hỏng / Báo mất (AdjustmentQty < 0)
+        if (dto.AdjustmentQty < 0)
+        {
+            if (pkg.StockQuantity <= 0)
+            {
+                return BadRequest(Result<bool>.Failure($"Không thể báo hỏng do tồn kho tại chỗ hiện bằng 0 (Sọt đang cho mượn ngoài kho hoặc chưa có trong kho). Sọt phải có thực tế ở kho mới có thể báo hỏng."));
+            }
+
+            if (qty > pkg.StockQuantity)
+            {
+                return BadRequest(Result<bool>.Failure($"Số lượng báo hỏng ({qty} {pkg.Unit}) vượt quá số lượng sọt thực tế đang có trong kho (Hiện còn: {pkg.StockQuantity} {pkg.Unit})."));
+            }
+
+            pkg.StockQuantity -= qty;
+        }
+        else
+        {
+            // Nhập thêm sọt mới
+            pkg.StockQuantity += qty;
+        }
+
+        var userName = !string.IsNullOrWhiteSpace(dto.PerformedBy) ? dto.PerformedBy : (User?.Identity?.Name ?? "Thủ kho");
+
+        // Lưu vào bảng chuyên biệt PackagingAdjustments trong CSDL để truy soát
+        var adjustment = new PackagingAdjustment
+        {
+            PackagingId = pkg.Id,
+            AdjustmentType = actionType,
+            Quantity = qty,
+            BeforeStock = oldStock,
+            AfterStock = pkg.StockQuantity,
+            Reason = dto.Reason,
+            AdjustedBy = userName,
+            AdjustedAt = DateTime.UtcNow,
+            TenantId = pkg.TenantId
+        };
+        _context.PackagingAdjustments.Add(adjustment);
+
+        // Ghi thêm nhật ký AuditLog
+        var auditLog = new AuditLog
+        {
+            Timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            UserName = userName,
+            UserRole = "Thủ kho",
+            Action = actionType == "ADD" ? "PKG_IMPORT" : "PKG_LOSS",
+            TargetModule = "Bao bì",
+            Details = $"{(actionType == "ADD" ? "Nhập thêm" : "Báo hỏng / mất")} {qty} {pkg.Unit} {pkg.Name} ({pkg.Code}). Tồn kho: {oldStock} -> {pkg.StockQuantity}. Lý do: {dto.Reason}",
+            OldValues = $"{{\"PackagingCode\":\"{pkg.Code}\",\"PackagingName\":\"{pkg.Name}\",\"Stock\":{oldStock}}}",
+            NewValues = $"{{\"PackagingCode\":\"{pkg.Code}\",\"PackagingName\":\"{pkg.Name}\",\"Stock\":{pkg.StockQuantity},\"Quantity\":{qty},\"Reason\":\"{dto.Reason}\"}}",
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
+            Browser = HttpContext.Request.Headers["User-Agent"].ToString() ?? "Web Browser",
+            Status = "SUCCESS"
+        };
+        _context.AuditLogs.Add(auditLog);
 
         await _context.SaveChangesAsync(cancellationToken);
 
         return Ok(Result<bool>.Success(true));
+    }
+
+    /// <summary>
+    /// Lấy lịch sử điều chỉnh số lượng sọt (Nhập thêm sọt & Báo hỏng/mất) trực tiếp từ bảng PackagingAdjustments
+    /// </summary>
+    [HttpGet("adjust-history")]
+    public async Task<ActionResult<Result<List<PackagingAdjustHistoryDto>>>> GetAdjustHistory([FromQuery] int? packagingId, CancellationToken cancellationToken = default)
+    {
+        var query = _context.PackagingAdjustments
+            .Include(a => a.Packaging)
+            .Where(a => !a.IsDeleted);
+
+        if (packagingId.HasValue)
+        {
+            query = query.Where(a => a.PackagingId == packagingId.Value);
+        }
+
+        var list = await query
+            .OrderByDescending(a => a.AdjustedAt)
+            .Take(100)
+            .Select(a => new PackagingAdjustHistoryDto
+            {
+                Id = a.Id.ToString(),
+                Timestamp = a.AdjustedAt.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                PackagingCode = a.Packaging != null ? a.Packaging.Code : "",
+                PackagingName = a.Packaging != null ? a.Packaging.Name : "",
+                Action = a.AdjustmentType,
+                Quantity = a.Quantity,
+                BeforeStock = a.BeforeStock,
+                AfterStock = a.AfterStock,
+                Reason = a.Reason ?? "",
+                PerformedBy = a.AdjustedBy ?? "Thủ kho"
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(Result<List<PackagingAdjustHistoryDto>>.Success(list));
     }
 }
 
@@ -386,4 +541,19 @@ public class AdjustPackagingStockDto
     public int PackagingId { get; set; }
     public int AdjustmentQty { get; set; } // Dương (+) là nhập thêm, Âm (-) là báo hỏng/mất
     public string Reason { get; set; } = string.Empty;
+    public string? PerformedBy { get; set; }
+}
+
+public class PackagingAdjustHistoryDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Timestamp { get; set; } = string.Empty;
+    public string PackagingCode { get; set; } = string.Empty;
+    public string PackagingName { get; set; } = string.Empty;
+    public string Action { get; set; } = "ADD"; // ADD | LOSS
+    public int Quantity { get; set; }
+    public int BeforeStock { get; set; }
+    public int AfterStock { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public string PerformedBy { get; set; } = "Thủ kho";
 }

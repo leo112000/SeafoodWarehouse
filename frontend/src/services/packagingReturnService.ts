@@ -46,13 +46,9 @@ export const packagingReturnService = {
     }
   },
 
-  async createLoan(data: Omit<PackagingLoan, 'id' | 'returnedQty'>): Promise<PackagingLoan | null> {
-    try {
-      const response = await api.post('/packaging/loans', data);
-      return response.data?.data || null;
-    } catch {
-      return null;
-    }
+  async createLoan(data: Omit<PackagingLoan, 'id' | 'returnedQty'>): Promise<PackagingLoan> {
+    const response = await api.post('/packaging/loans', data);
+    return response.data?.data;
   },
 
   async createReturn(data: {
@@ -61,12 +57,8 @@ export const packagingReturnService = {
     returnDate: string;
     recordedBy: string;
     note?: string;
-  }): Promise<PackagingReturn | null> {
-    try {
-      const response = await api.post('/packaging/returns', data);
-      return response.data?.data || null;
-    } catch {
-      return null;
-    }
+  }): Promise<boolean> {
+    const response = await api.post('/packaging/returns', data);
+    return response.data?.data ?? true;
   },
 };

@@ -488,6 +488,22 @@ public class ApplicationDbContextInitialiser
                     END IF; 
                   END $$;",
 
+                @"CREATE TABLE IF NOT EXISTS ""PackagingAdjustments"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""PackagingId"" INT NOT NULL,
+                    ""AdjustmentType"" VARCHAR(50) NOT NULL DEFAULT 'ADD',
+                    ""Quantity"" INT NOT NULL DEFAULT 0,
+                    ""BeforeStock"" INT NOT NULL DEFAULT 0,
+                    ""AfterStock"" INT NOT NULL DEFAULT 0,
+                    ""Reason"" VARCHAR(500) NULL,
+                    ""AdjustedBy"" VARCHAR(100) NULL,
+                    ""AdjustedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+
                 @"CREATE TABLE IF NOT EXISTS ""Partners"" (
                     ""Id"" SERIAL PRIMARY KEY,
                     ""Code"" VARCHAR(50) NOT NULL,
@@ -748,6 +764,26 @@ public class ApplicationDbContextInitialiser
                   );
               END",
 
+            @"IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'PackagingAdjustments')
+              BEGIN
+                  CREATE TABLE [PackagingAdjustments] (
+                      [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                      [PackagingId] INT NOT NULL,
+                      [AdjustmentType] NVARCHAR(50) NOT NULL DEFAULT 'ADD',
+                      [Quantity] INT NOT NULL DEFAULT 0,
+                      [BeforeStock] INT NOT NULL DEFAULT 0,
+                      [AfterStock] INT NOT NULL DEFAULT 0,
+                      [Reason] NVARCHAR(500) NULL,
+                      [AdjustedBy] NVARCHAR(100) NULL,
+                      [AdjustedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                      [TenantId] INT NULL,
+                      [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                      [UpdatedAt] DATETIME2 NULL,
+                      [IsDeleted] BIT NOT NULL DEFAULT 0,
+                      CONSTRAINT [FK_PackagingAdjustments_Packagings] FOREIGN KEY ([PackagingId]) REFERENCES [Packagings] ([Id]) ON DELETE CASCADE
+                  );
+              END",
+
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'TenantId') ALTER TABLE [Users] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Roles') AND name = 'TenantId') ALTER TABLE [Roles] ADD [TenantId] INT NULL;",
             @"IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Warehouses') AND name = 'TenantId') ALTER TABLE [Warehouses] ADD [TenantId] INT NULL;",
@@ -818,6 +854,9 @@ public class ApplicationDbContextInitialiser
             @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_PackagingLoans_Tenant_Partner_Packaging' AND object_id = OBJECT_ID('PackagingLoans'))
               CREATE NONCLUSTERED INDEX [IX_PackagingLoans_Tenant_Partner_Packaging] ON [PackagingLoans] ([TenantId], [PartnerName], [PackagingId]);",
 
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_PackagingAdjustments_Tenant_Packaging_Date' AND object_id = OBJECT_ID('PackagingAdjustments'))
+              CREATE NONCLUSTERED INDEX [IX_PackagingAdjustments_Tenant_Packaging_Date] ON [PackagingAdjustments] ([TenantId], [PackagingId], [AdjustedAt] DESC);",
+
             @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_AuditLogs_Tenant_CreatedAt' AND object_id = OBJECT_ID('AuditLogs'))
               CREATE NONCLUSTERED INDEX [IX_AuditLogs_Tenant_CreatedAt] ON [AuditLogs] ([TenantId], [CreatedAt] DESC);",
 
@@ -866,38 +905,6 @@ public class ApplicationDbContextInitialiser
                 LogoUrl = "",
                 TenantId = null
             });
-            await _context.SaveChangesAsync();
-        }
-
-        // 3.5. Seed Kho bãi / Kho lạnh (Warehouses)
-        if (!await _context.Warehouses.AnyAsync())
-        {
-            var warehouses = new List<Warehouse>
-            {
-                new()
-                {
-                    Code = "KHO-TONG-01",
-                    Name = "Kho Lạnh Tổng Cảng Cá A1",
-                    Location = "Khu Bến Cảng Cá, Vũng Tàu",
-                    Type = StorageType.FrozenStorage,
-                    TargetTemperature = -18,
-                    MaxCapacityTon = 500,
-                    IsActive = true,
-                    Description = "Kho bảo quản đông lạnh hải sản tiêu chuẩn"
-                },
-                new()
-                {
-                    Code = "KHO-DONG-02",
-                    Name = "Kho Cấp Đông Sâu B2",
-                    Location = "Khu Chế Biến Thủy Sản",
-                    Type = StorageType.DeepFreeze,
-                    TargetTemperature = -25,
-                    MaxCapacityTon = 300,
-                    IsActive = true,
-                    Description = "Kho cấp đông sâu nhiệt độ âm cao"
-                }
-            };
-            _context.Warehouses.AddRange(warehouses);
             await _context.SaveChangesAsync();
         }
 
@@ -1019,7 +1026,8 @@ public class ApplicationDbContextInitialiser
                 }
             }
         }
-    /*
+
+/*
         // 1. Seed Danh mục Hải sản (Categories)
         if (!await _context.Categories.AnyAsync())
         {
@@ -1298,6 +1306,39 @@ public class ApplicationDbContextInitialiser
             };
 
             _context.Partners.AddRange(partners);
+            await _context.SaveChangesAsync();
+        }
+
+        
+        // 3.5. Seed Kho bãi / Kho lạnh (Warehouses)
+        if (!await _context.Warehouses.AnyAsync())
+        {
+            var warehouses = new List<Warehouse>
+            {
+                new()
+                {
+                    Code = "KHO-TONG-01",
+                    Name = "Kho Lạnh Tổng Cảng Cá A1",
+                    Location = "Khu Bến Cảng Cá, Vũng Tàu",
+                    Type = StorageType.FrozenStorage,
+                    TargetTemperature = -18,
+                    MaxCapacityTon = 500,
+                    IsActive = true,
+                    Description = "Kho bảo quản đông lạnh hải sản tiêu chuẩn"
+                },
+                new()
+                {
+                    Code = "KHO-DONG-02",
+                    Name = "Kho Cấp Đông Sâu B2",
+                    Location = "Khu Chế Biến Thủy Sản",
+                    Type = StorageType.DeepFreeze,
+                    TargetTemperature = -25,
+                    MaxCapacityTon = 300,
+                    IsActive = true,
+                    Description = "Kho cấp đông sâu nhiệt độ âm cao"
+                }
+            };
+            _context.Warehouses.AddRange(warehouses);
             await _context.SaveChangesAsync();
         }
     */

@@ -209,10 +209,8 @@ public class OutboundController : BaseApiController
         // Sinh mã phiếu duy nhất PXK-yyyyMMddHHmmss-XX không bao giờ trùng lặp
         string refNo = $"PXK-{txDate.AddHours(7):yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
 
-        // 1. Tính toán tài chính chuẩn
-        decimal seafoodSubTotal = 0;
-        decimal totalNetWeight = 0;
-
+        // 1. Kiểm tra tính hợp lệ và tồn kho của từng lô trước khi xuất
+        var batchEntities = new List<(CreateOutboundBatchDto item, LotBatch batch)>();
         foreach (var item in request.Batches)
         {
             var lotBatch = await _context.LotBatches
@@ -220,53 +218,71 @@ public class OutboundController : BaseApiController
                         .FirstOrDefaultAsync(b => b.BatchCode == item.BatchCode && !b.IsDeleted, cancellationToken)
                         ?? await _context.LotBatches
                         .Include(b => b.Product)
-                        .FirstOrDefaultAsync(b => b.Product.Code == item.Species && !b.IsDeleted, cancellationToken)
-                        ?? await _context.LotBatches
-                        .Include(b => b.Product)
-                        .FirstOrDefaultAsync(b => !b.IsDeleted, cancellationToken);
+                        .FirstOrDefaultAsync(b => b.Product.Code == item.Species && !b.IsDeleted, cancellationToken);
 
-            if (lotBatch != null)
+            if (lotBatch == null)
             {
-                // Trừ tồn kho lô hàng
-                lotBatch.CurrentQuantity = Math.Max(0, lotBatch.CurrentQuantity - item.QuantityKg);
-
-                // Trừ tồn kho tại vị trí
-                var invItem = await _context.InventoryItems.FirstOrDefaultAsync(i => i.LotBatchId == lotBatch.Id && !i.IsDeleted, cancellationToken);
-                if (invItem != null)
-                {
-                    invItem.Quantity = Math.Max(0, invItem.Quantity - item.QuantityKg);
-                }
-
-                // Ghi nhận giao dịch xuất kho CSDL với Giá bán, Thành tiền, Cân thô và Số cân bì
-                var sellPrice = item.UnitPrice > 0 ? item.UnitPrice : (lotBatch.UnitPrice > 0 ? lotBatch.UnitPrice : (lotBatch.Product?.ReferencePrice > 0 ? lotBatch.Product.ReferencePrice : 250000m));
-                var totalSellAmt = item.Amount > 0 ? item.Amount : (item.QuantityKg * sellPrice);
-                var grossW = item.GrossWeight > 0 ? item.GrossWeight : (item.QuantityKg + item.TareWeight);
-
-                seafoodSubTotal += totalSellAmt;
-                totalNetWeight += item.QuantityKg;
-
-                var tx = new InventoryTransaction
-                {
-                    ReferenceNumber = refNo,
-                    Type = TransactionType.Export,
-                    LotBatchId = lotBatch.Id,
-                    SourceWarehouseId = warehouse.Id,
-                    Quantity = item.QuantityKg,
-                    TareWeight = item.TareWeight,
-                    GrossWeight = grossW,
-                    PackagingCode = item.PackagingCode,
-                    PackagingQty = item.PackagingQty,
-                    UnitPrice = sellPrice,
-                    TotalAmount = totalSellAmt,
-                    TransactionDate = txDate,
-                    CreatedBy = request.CreatedBy ?? "Thủ kho",
-                    Note = $"Khách hàng: {request.CustomerName} - Lý do: {request.Reason}"
-                };
-                _context.InventoryTransactions.Add(tx);
+                return BadRequest(Result<object>.Failure($"Không tìm thấy lô hàng '{item.BatchCode}'."));
             }
+
+            if (item.QuantityKg <= 0)
+            {
+                return BadRequest(Result<object>.Failure($"Khối lượng xuất của lô '{item.BatchCode}' phải lớn hơn 0 kg."));
+            }
+
+            if (item.QuantityKg > lotBatch.CurrentQuantity)
+            {
+                return BadRequest(Result<object>.Failure($"Lô '{lotBatch.BatchCode}' ({lotBatch.Product?.Name ?? "Hải sản"}) hiện chỉ còn tồn {lotBatch.CurrentQuantity:N1} kg, không đủ để xuất {item.QuantityKg:N1} kg. Vui lòng kiểm tra lại."));
+            }
+
+            batchEntities.Add((item, lotBatch));
         }
 
-        // 2. Tạo bản ghi Phiếu Xuất Kho (OutboundReceipt) chính thức trong CSDL
+        // 2. Tính toán tài chính chuẩn & Trừ tồn kho
+        decimal seafoodSubTotal = 0;
+        decimal totalNetWeight = 0;
+
+        foreach (var (item, lotBatch) in batchEntities)
+        {
+            // Trừ tồn kho lô hàng
+            lotBatch.CurrentQuantity = Math.Max(0, lotBatch.CurrentQuantity - item.QuantityKg);
+
+            // Trừ tồn kho tại vị trí
+            var invItem = await _context.InventoryItems.FirstOrDefaultAsync(i => i.LotBatchId == lotBatch.Id && !i.IsDeleted, cancellationToken);
+            if (invItem != null)
+            {
+                invItem.Quantity = Math.Max(0, invItem.Quantity - item.QuantityKg);
+            }
+
+            // Ghi nhận giao dịch xuất kho CSDL với Giá bán, Thành tiền, Cân thô và Số cân bì
+            var sellPrice = item.UnitPrice > 0 ? item.UnitPrice : (lotBatch.UnitPrice > 0 ? lotBatch.UnitPrice : (lotBatch.Product?.ReferencePrice > 0 ? lotBatch.Product.ReferencePrice : 250000m));
+            var totalSellAmt = item.Amount > 0 ? item.Amount : (item.QuantityKg * sellPrice);
+            var grossW = item.GrossWeight > 0 ? item.GrossWeight : (item.QuantityKg + item.TareWeight);
+
+            seafoodSubTotal += totalSellAmt;
+            totalNetWeight += item.QuantityKg;
+
+            var tx = new InventoryTransaction
+            {
+                ReferenceNumber = refNo,
+                Type = TransactionType.Export,
+                LotBatchId = lotBatch.Id,
+                SourceWarehouseId = warehouse.Id,
+                Quantity = item.QuantityKg,
+                TareWeight = item.TareWeight,
+                GrossWeight = grossW,
+                PackagingCode = item.PackagingCode,
+                PackagingQty = item.PackagingQty,
+                UnitPrice = sellPrice,
+                TotalAmount = totalSellAmt,
+                TransactionDate = txDate,
+                CreatedBy = request.CreatedBy ?? "Thủ kho",
+                Note = $"Khách hàng: {request.CustomerName} - Lý do: {request.Reason}"
+            };
+            _context.InventoryTransactions.Add(tx);
+        }
+
+        // 3. Tạo bản ghi Phiếu Xuất Kho (OutboundReceipt) chính thức trong CSDL
         decimal suppliesTotal = request.Supplies.Sum(s => s.TotalAmount > 0 ? s.TotalAmount : (s.Quantity * s.UnitPrice));
         decimal finalTotal = Math.Max(0, seafoodSubTotal + suppliesTotal - request.DiscountAmount);
 
@@ -286,7 +302,7 @@ public class OutboundController : BaseApiController
             Note = $"Lý do: {request.Reason}"
         };
 
-        // 3. Thêm các vật phẩm kèm vào bảng OutboundSupplies
+        // 4. Thêm các vật phẩm kèm vào bảng OutboundSupplies và trừ tồn kho bao bì tương ứng
         foreach (var sup in request.Supplies)
         {
             var supplyItem = new OutboundSupply
@@ -299,6 +315,17 @@ public class OutboundController : BaseApiController
                 TotalAmount = sup.TotalAmount > 0 ? sup.TotalAmount : (sup.Quantity * sup.UnitPrice)
             };
             receipt.Supplies.Add(supplyItem);
+
+            // Trừ tồn kho bao bì / vật tư tiêu hao nếu có mã PackagingCode
+            if (!string.IsNullOrWhiteSpace(sup.PackagingCode))
+            {
+                var pkg = await _context.Packagings
+                    .FirstOrDefaultAsync(p => p.Code == sup.PackagingCode && !p.IsDeleted, cancellationToken);
+                if (pkg != null)
+                {
+                    pkg.StockQuantity = Math.Max(0, pkg.StockQuantity - supplyItem.Quantity);
+                }
+            }
         }
 
         _context.OutboundReceipts.Add(receipt);

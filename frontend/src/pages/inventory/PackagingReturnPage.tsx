@@ -51,6 +51,13 @@ const PackagingReturnPage: React.FC = () => {
   const [returnForm] = Form.useForm();
   const [loanForm] = Form.useForm();
 
+  const watchedPackagingCode = Form.useWatch('packagingCode', loanForm);
+  const selectedPackaging = useMemo(
+    () => packagings.find((p) => p.code === watchedPackagingCode),
+    [packagings, watchedPackagingCode]
+  );
+  const currentAvailableStock = selectedPackaging?.stockQuantity ?? 0;
+
   // ── derived stats ────────────────────────────────────────────────────────────
   const totalLoaned = useMemo(() => loans.reduce((s, l) => s + l.loanedQty, 0), [loans]);
   const totalReturned = useMemo(() => loans.reduce((s, l) => s + l.returnedQty, 0), [loans]);
@@ -129,7 +136,7 @@ const PackagingReturnPage: React.FC = () => {
       recordedBy: user?.name ?? 'Thủ kho',
       note: values.note,
     });
-    fetchPackagings();
+    await fetchPackagings();
     message.success(`Đã ghi nhận ${values.returnedQty} cái trả về từ ${selectedLoan.partnerName}!`);
     setReturnModalOpen(false);
     returnForm.resetFields();
@@ -138,7 +145,15 @@ const PackagingReturnPage: React.FC = () => {
 
   const { isSubmitting: isSubmittingLoan, handleSubmit: handleLoanSubmit } = useAsyncSubmit(async (values: any) => {
     const pkg = packagings.find((p) => p.code === values.packagingCode);
-    if (!pkg) return;
+    if (!pkg) {
+      message.error('Vui lòng chọn loại khay / bao bì hợp lệ.');
+      return;
+    }
+    const currentStock = pkg.stockQuantity ?? 0;
+    if (values.loanedQty > currentStock) {
+      message.error(`Số lượng mượn (${values.loanedQty}) vượt quá tồn kho hiện có (${currentStock} ${pkg.unit || 'cái'}).`);
+      return;
+    }
     await addLoan({
       partnerName: values.partnerName,
       partnerType: values.partnerType,
@@ -148,7 +163,7 @@ const PackagingReturnPage: React.FC = () => {
       date: dayjs().format('YYYY-MM-DD HH:mm'),
       note: values.note,
     });
-    fetchPackagings();
+    await fetchPackagings();
     message.success('Đã tạo phiếu cho mượn vỏ sọt thành công!');
     setLoanModalOpen(false);
     loanForm.resetFields();
@@ -948,7 +963,22 @@ const PackagingReturnPage: React.FC = () => {
               <Form.Item
                 name="packagingCode"
                 label="Loại Khay / Sọt"
-                rules={[{ required: true, message: 'Chọn loại khay!' }]}
+                rules={[{ required: true, message: 'Chọn loại khay / bao bì!' }]}
+                extra={
+                  selectedPackaging && (
+                    <div className="text-xs mt-1">
+                      {currentAvailableStock > 0 ? (
+                        <span className="text-emerald-600 font-medium">
+                          Khả dụng trong kho: <strong>{currentAvailableStock}</strong> {selectedPackaging.unit || 'cái'}
+                        </span>
+                      ) : (
+                        <span className="text-rose-500 font-medium">
+                          ⚠️ Loại bao bì này hiện đã hết trong kho (Tồn: 0)
+                        </span>
+                      )}
+                    </div>
+                  )
+                }
               >
                 <Select
                   placeholder="Chọn loại bao bì"
@@ -967,9 +997,31 @@ const PackagingReturnPage: React.FC = () => {
               <Form.Item
                 name="loanedQty"
                 label="Số lượng giao mượn"
-                rules={[{ required: true, message: 'Nhập số lượng!' }]}
+                rules={[
+                  { required: true, message: 'Nhập số lượng!' },
+                  {
+                    validator: (_, value) => {
+                      if (value === undefined || value === null) return Promise.resolve();
+                      if (value <= 0) return Promise.reject(new Error('Phải lớn hơn 0'));
+                      if (selectedPackaging && currentAvailableStock <= 0) {
+                        return Promise.reject(new Error('Kho đã hết loại sọt này'));
+                      }
+                      if (selectedPackaging && value > currentAvailableStock) {
+                        return Promise.reject(
+                          new Error(`Tối đa ${currentAvailableStock} ${selectedPackaging.unit || 'cái'}`)
+                        );
+                      }
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
               >
-                <InputNumber min={1} precision={0} style={{ width: '100%' }} />
+                <InputNumber
+                  min={1}
+                  max={selectedPackaging ? Math.max(1, currentAvailableStock) : undefined}
+                  precision={0}
+                  style={{ width: '100%' }}
+                />
               </Form.Item>
             </Col>
           </Row>

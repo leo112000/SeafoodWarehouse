@@ -128,13 +128,20 @@ public class InboundController : BaseApiController
     [HttpPost]
     public async Task<ActionResult<Result<object>>> Create([FromBody] CreateInboundRequestDto request, CancellationToken cancellationToken = default)
     {
-        var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => !w.IsDeleted, cancellationToken);
+        Warehouse? warehouse = null;
+        if (!string.IsNullOrWhiteSpace(request.StorageLocation))
+        {
+            warehouse = await _context.Warehouses.FirstOrDefaultAsync(w =>
+                (w.Name == request.StorageLocation || w.Code == request.StorageLocation || w.Id.ToString() == request.StorageLocation)
+                && !w.IsDeleted, cancellationToken);
+        }
+        warehouse ??= await _context.Warehouses.FirstOrDefaultAsync(w => !w.IsDeleted, cancellationToken);
         if (warehouse == null)
         {
             warehouse = new Warehouse
             {
                 Code = "KHO-MAIN",
-                Name = "Kho Hải Sản Chính",
+                Name = string.IsNullOrWhiteSpace(request.StorageLocation) ? "Kho Hải Sản Chính" : request.StorageLocation,
                 Location = "Kho Tổng",
                 IsActive = true
             };

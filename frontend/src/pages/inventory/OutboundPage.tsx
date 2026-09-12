@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Card, Form, Input, Button, DatePicker, Select, InputNumber,
-  Row, Col, Typography, App, Alert, Spin, Tag,
+  Row, Col, Typography, App, Alert, Spin, Tag, Table,
   Tooltip,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -62,12 +62,7 @@ export const OutboundPage: React.FC = () => {
   const [selectedBatches, setSelectedBatches] = useState<Record<number, string>>({});
   void selectedSeafoods;
   void selectedBatches;
-  const [qrModalOpen, setQrModalOpen] = useState(false);
-  const [_scanItemIndex, setScanItemIndex] = useState<number | null>(null);
-  void qrModalOpen;
-  void setQrModalOpen;
-  void _scanItemIndex;
-  void setScanItemIndex;
+
 
   /** Lấy lô khả dụng cho 1 loại sản phẩm (đã sắp xếp FEFO từ server) */
   const getBatchesForProduct = (productCode: string): FefoBatch[] =>
@@ -82,16 +77,23 @@ export const OutboundPage: React.FC = () => {
 
   const handleSeafoodChange = (value: string, index: number) => {
     setSelectedSeafoods((prev) => ({ ...prev, [index]: value }));
+    const available = getBatchesForProduct(value);
+    const bestBatch = available[0];
     const items = form.getFieldValue('items') || [];
     if (items[index]) {
-      items[index].batchCode = undefined;
+      items[index].seafoodCode = value;
+      items[index].batchCode = bestBatch?.batchCode;
       items[index].quantity = 0;
-      items[index].unitPrice = 0;
+      items[index].unitPrice = bestBatch?.unitPrice || 0;
       items[index].totalPrice = 0;
-      items[index].expiryDate = '';
+      items[index].expiryDate = bestBatch?.expiryDate || '';
       form.setFieldsValue({ items });
     }
-    setSelectedBatches((prev) => { const c = { ...prev }; delete c[index]; return c; });
+    if (bestBatch) {
+      setSelectedBatches((prev) => ({ ...prev, [index]: bestBatch.batchCode }));
+    } else {
+      setSelectedBatches((prev) => { const c = { ...prev }; delete c[index]; return c; });
+    }
   };
 
   const handleBatchChange = (value: string, index: number) => {
@@ -259,18 +261,6 @@ export const OutboundPage: React.FC = () => {
               <span className="hidden sm:inline">Tải lại</span>
             </Button>
           </Tooltip>
-          <Button
-            type="primary"
-            className="bg-sky-500 hover:bg-sky-600 border-none font-medium"
-            onClick={() => {
-              setScanItemIndex(null);
-              setQrModalOpen(true);
-            }}
-            size="middle"
-          >
-            <span className="hidden sm:inline">Quét QR</span>
-            <span className="sm:hidden">Quét</span>
-          </Button>
         </div>
       </div>
 
@@ -370,13 +360,18 @@ export const OutboundPage: React.FC = () => {
                           )
                         }
                       >
-                        <Row gutter={[12, 12]}>
-                          {/* Loại hải sản */}
-                          <Col xs={24} md={4}>
-                            <Form.Item {...restField} name={[name, 'seafoodCode']} label="Loại hải sản"
-                              rules={[{ required: true, message: 'Chọn hải sản!' }]}>
+                        <Row gutter={[8, 8]} align="bottom">
+                          {/* 1. Loại hải sản */}
+                          <Col xs={24} sm={12} md={4}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'seafoodCode']}
+                              label="Loại hải sản (*)"
+                              rules={[{ required: true, message: 'Chọn hải sản!' }]}
+                              className="mb-0"
+                            >
                               <Select
-                                placeholder={productOptions.length === 0 ? 'Chưa có hàng tồn kho' : 'Chọn loại hải sản'}
+                                placeholder={productOptions.length === 0 ? 'Chưa có hàng tồn' : 'Chọn loại hải sản'}
                                 disabled={productOptions.length === 0}
                                 onChange={(val) => handleSeafoodChange(val, name)}
                                 showSearch
@@ -389,45 +384,40 @@ export const OutboundPage: React.FC = () => {
                             </Form.Item>
                           </Col>
 
-                          {/* Chọn lô hàng theo FEFO */}
-                          <Col xs={24} md={4}>
-                            <Form.Item {...restField} name={[name, 'batchCode']}
+                          {/* 2. Lô xuất kho (ngang hàng, chuẩn FEFO) */}
+                          <Col xs={24} sm={12} md={4}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'batchCode']}
                               label={
-                                <span>
-                                  Chọn Lô hàng&nbsp;
-                                  <Tag color="orange" style={{ fontSize: 11 }}>Ưu tiên FEFO</Tag>
-                                </span>
+                                <div className="flex items-center justify-between w-full">
+                                  <span>Lô xuất (*)&nbsp;</span>
+                                  <Tag color="orange" className="m-0 text-[10px] py-0 leading-tight font-semibold">FEFO</Tag>
+                                </div>
                               }
-                              rules={[{ required: true, message: 'Chọn lô hàng!' }]}>
+                              rules={[{ required: true, message: 'Chọn mã lô!' }]}
+                              className="mb-0"
+                            >
                               <Select
-                                placeholder="Chọn mã lô hàng"
-                                disabled={!seafoodCode}
-                                showSearch
+                                placeholder={!seafoodCode ? 'Chọn hải sản trước' : available.length === 0 ? 'Hết tồn kho' : 'Chọn mã lô'}
+                                disabled={!seafoodCode || available.length === 0}
                                 popupMatchSelectWidth={false}
                                 optionLabelProp="label"
-                                filterOption={(input, option) => {
-                                  const text = String(option?.value ?? '') + ' ' + String(option?.label ?? '');
-                                  return text.toLowerCase().includes(input.toLowerCase());
-                                }}
+                                className="w-full font-mono"
                                 onChange={(val) => handleBatchChange(val, name)}
                               >
                                 {available.map((b, idx) => (
                                   <Select.Option
                                     key={b.batchCode}
                                     value={b.batchCode}
-                                    label={`${b.batchCode} (${b.quantity.toFixed(1)}kg)`}
+                                    label={`${idx === 0 ? '⚡ ' : ''}${b.batchCode} (${b.quantity.toFixed(1)}kg)`}
                                   >
-                                    <div className="py-1 min-w-[260px]">
-                                      <div className="flex items-center justify-between gap-2 font-semibold text-slate-800 dark:text-slate-200">
-                                        <span className={idx === 0 ? 'text-amber-600 font-bold' : ''}>
-                                          {idx === 0 ? '⚡ ' : ''}{b.batchCode}
-                                        </span>
-                                        <Tag color="cyan" className="m-0 text-[11px]">Tồn: {b.quantity.toFixed(1)}kg</Tag>
-                                      </div>
-                                      <div className="text-[11px] text-gray-500 mt-1 flex items-center justify-between gap-2">
-                                        <span>HSD: {b.expiryDate}</span>
-                                        {b.unitPrice ? <span>{formatCurrency(b.unitPrice)}/kg</span> : null}
-                                      </div>
+                                    <div className="py-0.5 flex items-center justify-between gap-3 text-xs">
+                                      <span className={idx === 0 ? 'text-amber-600 font-bold' : 'font-medium'}>
+                                        {idx === 0 ? '⚡ ' : ''}{b.batchCode}
+                                      </span>
+                                      <span className="text-gray-400 font-mono">Tồn: {b.quantity.toFixed(1)}kg</span>
+                                      <span className="text-gray-500">HSD: {b.expiryDate}</span>
                                     </div>
                                   </Select.Option>
                                 ))}
@@ -435,11 +425,11 @@ export const OutboundPage: React.FC = () => {
                             </Form.Item>
                           </Col>
 
-                          {/* Bao bì */}
-                          <Col xs={24} md={4}>
-                            <Form.Item {...restField} name={[name, 'packagingCode']} label="Loại Khay/Sọt/Bì">
+                          {/* 3. Loại bao bì */}
+                          <Col xs={12} sm={6} md={3}>
+                            <Form.Item {...restField} name={[name, 'packagingCode']} label="Bao bì" className="mb-0">
                               <Select
-                                placeholder="Chọn loại bao bì"
+                                placeholder="Chọn bì"
                                 allowClear
                                 showSearch
                                 popupMatchSelectWidth={false}
@@ -452,7 +442,7 @@ export const OutboundPage: React.FC = () => {
                               >
                                 {packagings.map((pkg) => (
                                   <Select.Option key={pkg.code} value={pkg.code} label={pkg.name}>
-                                    <div className="py-0.5 flex items-center justify-between gap-2 min-w-[220px]">
+                                    <div className="py-0.5 flex items-center justify-between gap-2 min-w-[200px]">
                                       <span className="font-medium text-slate-800 dark:text-slate-200">{pkg.name}</span>
                                       <Tag color="blue" className="m-0 text-[11px]">{pkg.defaultTareWeight} kg/cái</Tag>
                                     </div>
@@ -461,20 +451,28 @@ export const OutboundPage: React.FC = () => {
                               </Select>
                             </Form.Item>
                           </Col>
-                          <Col xs={12} md={2}>
-                            <Form.Item {...restField} name={[name, 'packagingQty']} label="SL Bì">
+
+                          {/* 4. SL Bì */}
+                          <Col xs={6} sm={3} md={2}>
+                            <Form.Item {...restField} name={[name, 'packagingQty']} label="SL Bì" className="mb-0">
                               <InputNumber min={0} precision={0} className="w-full" inputMode="numeric" onChange={() => handlePackagingChange(name)} />
                             </Form.Item>
                           </Col>
-                          <Col xs={12} md={2}>
-                            <Form.Item {...restField} name={[name, 'tareWeight']} label="Bì (kg)">
+
+                          {/* 5. Trọng lượng Bì */}
+                          <Col xs={6} sm={3} md={2}>
+                            <Form.Item {...restField} name={[name, 'tareWeight']} label="Bì (kg)" className="mb-0">
                               <InputNumber min={0} precision={1} className="w-full" inputMode="decimal" />
                             </Form.Item>
                           </Col>
 
-                          {/* Số lượng */}
-                          <Col xs={12} md={2}>
-                            <Form.Item {...restField} name={[name, 'quantity']} label="SL xuất (kg)"
+                          {/* 6. SL xuất (kg) */}
+                          <Col xs={12} sm={6} md={3}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'quantity']}
+                              label="SL xuất (kg) (*)"
+                              className="mb-0"
                               rules={[
                                 { required: true, message: 'Nhập số lượng!' },
                                 () => ({
@@ -486,14 +484,15 @@ export const OutboundPage: React.FC = () => {
                                     return Promise.resolve();
                                   },
                                 }),
-                              ]}>
+                              ]}
+                            >
                               <InputNumber min={0.1} precision={1} className="w-full" inputMode="decimal" onChange={(qty) => handleQtyChange(qty, name)} />
                             </Form.Item>
                           </Col>
 
-                          {/* Đơn giá - có thể chỉnh sửa */}
-                          <Col xs={12} md={3}>
-                            <Form.Item {...restField} name={[name, 'unitPrice']} label="Đơn giá (đ/kg)">
+                          {/* 7. Đơn giá */}
+                          <Col xs={12} sm={6} md={3}>
+                            <Form.Item {...restField} name={[name, 'unitPrice']} label="Đơn giá (đ/kg)" className="mb-0">
                               <InputNumber
                                 min={0}
                                 className="w-full"
@@ -512,158 +511,223 @@ export const OutboundPage: React.FC = () => {
                             </Form.Item>
                           </Col>
 
-                          {/* Thành tiền */}
-                          <Col xs={12} md={3}>
-                            <Form.Item {...restField} name={[name, 'totalPrice']} label="Thành tiền (đ)">
-                              <InputNumber disabled className="w-full"
-                                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+                          {/* 8. Thành tiền */}
+                          <Col xs={12} sm={6} md={3}>
+                            <Form.Item {...restField} name={[name, 'totalPrice']} label="Thành tiền (đ)" className="mb-0">
+                              <InputNumber
+                                disabled
+                                className="w-full font-semibold"
+                                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              />
                             </Form.Item>
                           </Col>
                         </Row>
 
-                        {/* Cảnh báo vi phạm FEFO */}
-                        {isViolation && (
-                          <Alert
-                            message="⚠️ Vi phạm quy tắc FEFO: Có lô khác hết hạn sớm hơn còn hàng tồn. Hãy ưu tiên xuất lô đó trước!"
-                            type="error"
-                            showIcon
-                            className="mt-2"
-                          />
-                        )}
-
-                        {/* Thông tin lô đang chọn */}
+                        {/* Thông tin phụ trợ về lô & Cảnh báo FEFO */}
                         {batchDetail && (
-                          <div className="mt-2 text-xs text-gray-400">
-                            📦 Tồn kho lô này:&nbsp;
-                            <Text strong className="text-sky-600">{formatWeight(batchDetail.quantity)}</Text>
-                            &nbsp;|&nbsp; Đơn giá:&nbsp;
-                            <Text strong>{formatCurrency(batchDetail.unitPrice)}</Text>
-                            &nbsp;|&nbsp; HSD:&nbsp;
-                            <Text strong>{batchDetail.expiryDate}</Text>
-                            &nbsp;|&nbsp; NCC:&nbsp;
-                            <Text type="secondary">{batchDetail.supplierName}</Text>
+                          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span>📦 Tồn kho lô: <Text strong className="text-sky-600 font-mono">{formatWeight(batchDetail.quantity)}</Text></span>
+                              <span>Đơn giá nhập: <Text strong className="font-mono">{formatCurrency(batchDetail.unitPrice)}</Text></span>
+                              <span>HSD: <Text strong className="font-mono">{batchDetail.expiryDate}</Text></span>
+                              {batchDetail.supplierName && <span>NCC: <Text type="secondary">{batchDetail.supplierName}</Text></span>}
+                            </div>
+                            {isViolation && (
+                              <Tag color="error" className="m-0 text-[11px] font-semibold py-0.5">
+                                ⚠️ Vi phạm FEFO: Có lô khác hết hạn sớm hơn!
+                              </Tag>
+                            )}
                           </div>
                         )}
                       </Card>
                     );
                   })}
 
-                  <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} className="py-4">
+                  <Button
+                    type="dashed"
+                    onClick={() => add()}
+                    icon={<PlusOutlined />}
+                    className="font-medium"
+                  >
                     Thêm mặt hàng hải sản xuất kho
                   </Button>
                 </div>
               )}
             </Form.List>
-          </Card>
 
-          {/* 2. Vật phẩm bán kèm & Phụ phí (Thùng xốp, đá gel...) */}
-          <Card
-            title={
-              <div className="flex items-center gap-2">
-                <span>📦 2. Vật phẩm bán kèm &amp; Phụ phí đóng gói (Thùng xốp, đá gel...)</span>
-                <Tag color="cyan">Tùy chọn</Tag>
-              </div>
-            }
-            className="shadow-sm mb-6"
-          >
+            {/* 2. Vật phẩm bán kèm & Phụ phí (Thùng xốp, đá gel...) - Bảng dạng thêm trong cùng card */}
             <Form.List name="supplies">
-              {(fields, { add, remove }) => (
-                <div className="space-y-3">
-                  {fields.map(({ key, name, ...restField }) => (
-                    <Card key={key} size="small" type="inner" className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                      <Row gutter={[12, 12]} align="middle">
-                        <Col xs={24} md={8}>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'name']}
-                            label="Tên vật phẩm / Dịch vụ kèm"
-                            rules={[{ required: true, message: 'Nhập tên vật phẩm!' }]}
-                          >
-                            <Input
-                              placeholder="Nhập tên vật phẩm / dịch vụ kèm (VD: Thùng xốp, đá gel, phí ship...)"
-                              allowClear
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={12} md={3}>
-                          <Form.Item {...restField} name={[name, 'unit']} label="Đơn vị">
-                            <Input placeholder="Cái/Thùng" defaultValue="Cái" />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={12} md={3}>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'quantity']}
-                            label="Số lượng"
-                            rules={[{ required: true, message: 'SL!' }]}
-                          >
-                            <InputNumber
-                              min={1}
-                              precision={0}
-                              className="w-full"
-                              inputMode="numeric"
-                              onChange={(qty) => {
-                                const supplies = form.getFieldValue('supplies') || [];
-                                const item = supplies[name];
-                                if (item) {
-                                  item.totalAmount = (qty || 0) * (item.unitPrice || 0);
-                                  form.setFieldsValue({ supplies });
-                                }
-                              }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={12} md={4}>
-                          <Form.Item {...restField} name={[name, 'unitPrice']} label="Đơn giá (đ)">
-                            <InputNumber
-                              min={0}
-                              className="w-full"
-                              inputMode="numeric"
-                              formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                              parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
-                              onChange={(price) => {
-                                const supplies = form.getFieldValue('supplies') || [];
-                                const item = supplies[name];
-                                if (item) {
-                                  item.totalAmount = (item.quantity || 0) * (price || 0);
-                                  form.setFieldsValue({ supplies });
-                                }
-                              }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={10} md={4}>
-                          <Form.Item {...restField} name={[name, 'totalAmount']} label="Thành tiền (đ)">
-                            <InputNumber
-                              disabled
-                              className="w-full font-semibold"
-                              formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={2} md={2} className="flex items-end justify-center pt-6">
-                          <Button danger type="text" icon={<DeleteOutlined />} onClick={() => remove(name)} />
-                        </Col>
-                      </Row>
-                    </Card>
-                  ))}
+              {(suppliesFields, { add: addSupply, remove: removeSupply }) => (
+                <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                        📦 Vật phẩm bán kèm &amp; Phụ phí đóng gói (Thùng xốp, đá gel...)
+                      </span>
+                      <Tag color="cyan" className="m-0 text-[11px]">Tùy chọn</Tag>
+                    </div>
+                    <Button
+                      type="dashed"
+                      size="small"
+                      onClick={() => addSupply({ name: '', unit: 'Cái', quantity: 1, unitPrice: 0, totalAmount: 0 })}
+                      icon={<PlusOutlined />}
+                      className="text-cyan-600 border-cyan-300 hover:border-cyan-500 hover:text-cyan-500 font-medium"
+                    >
+                      Thêm vật phẩm / phụ phí
+                    </Button>
+                  </div>
 
-                  <Button
-                    type="dashed"
-                    onClick={() => add({ name: '', unit: 'Cái', quantity: 1, unitPrice: 0, totalAmount: 0 })}
-                    block
-                    icon={<PlusOutlined />}
-                  >
-                    Thêm thùng xốp / đá gel / vật phẩm kèm
-                  </Button>
+                  {suppliesFields.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <style>{`
+                        .supplies-inline-table .ant-table-thead > tr > th {
+                          text-align: left !important;
+                          background-color: #f8fafc !important;
+                          font-size: 12px !important;
+                          padding: 6px 8px !important;
+                        }
+                        .dark .supplies-inline-table .ant-table-thead > tr > th {
+                          background-color: #0f172a !important;
+                        }
+                        .supplies-inline-table .ant-table-tbody > tr > td {
+                          vertical-align: middle !important;
+                          padding: 6px 8px !important;
+                        }
+                      `}</style>
+                      <Table
+                        dataSource={suppliesFields}
+                        rowKey="key"
+                        pagination={false}
+                        size="small"
+                        bordered={false}
+                        className="supplies-inline-table"
+                        columns={[
+                          {
+                            title: '#',
+                            key: 'stt',
+                            width: 45,
+                            align: 'center',
+                            render: (_: any, __: any, idx: number) => (
+                              <span className="font-mono text-gray-400">{idx + 1}</span>
+                            ),
+                          },
+                          {
+                            title: 'Tên vật phẩm / Phụ phí (*)',
+                            key: 'name',
+                            render: (_: any, field: any) => (
+                              <Form.Item
+                                name={[field.name, 'name']}
+                                rules={[{ required: true, message: 'Nhập tên vật phẩm/phụ phí!' }]}
+                                className="mb-0"
+                              >
+                                <Input
+                                  placeholder="VD: Thùng xốp 30kg, Đá gel 500g, Phí giao hàng..."
+                                  allowClear
+                                />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Đơn vị',
+                            key: 'unit',
+                            width: 110,
+                            render: (_: any, field: any) => (
+                              <Form.Item name={[field.name, 'unit']} className="mb-0">
+                                <Input placeholder="Cái/Thùng" defaultValue="Cái" />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Số lượng (*)',
+                            key: 'quantity',
+                            width: 120,
+                            render: (_: any, field: any) => (
+                              <Form.Item
+                                name={[field.name, 'quantity']}
+                                rules={[{ required: true, message: 'SL!' }]}
+                                className="mb-0"
+                              >
+                                <InputNumber
+                                  min={1}
+                                  precision={0}
+                                  className="w-full"
+                                  inputMode="numeric"
+                                  onChange={(qty) => {
+                                    const supplies = form.getFieldValue('supplies') || [];
+                                    const item = supplies[field.name];
+                                    if (item) {
+                                      item.totalAmount = (qty || 0) * (item.unitPrice || 0);
+                                      form.setFieldsValue({ supplies });
+                                    }
+                                  }}
+                                />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Đơn giá (đ)',
+                            key: 'unitPrice',
+                            width: 140,
+                            render: (_: any, field: any) => (
+                              <Form.Item name={[field.name, 'unitPrice']} className="mb-0">
+                                <InputNumber
+                                  min={0}
+                                  className="w-full"
+                                  inputMode="numeric"
+                                  formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                  parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
+                                  onChange={(price) => {
+                                    const supplies = form.getFieldValue('supplies') || [];
+                                    const item = supplies[field.name];
+                                    if (item) {
+                                      item.totalAmount = (item.quantity || 0) * (price || 0);
+                                      form.setFieldsValue({ supplies });
+                                    }
+                                  }}
+                                />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: 'Thành tiền (đ)',
+                            key: 'totalAmount',
+                            width: 140,
+                            render: (_: any, field: any) => (
+                              <Form.Item name={[field.name, 'totalAmount']} className="mb-0">
+                                <InputNumber
+                                  disabled
+                                  className="w-full font-semibold"
+                                  formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                />
+                              </Form.Item>
+                            ),
+                          },
+                          {
+                            title: '',
+                            key: 'actions',
+                            width: 45,
+                            align: 'center',
+                            render: (_: any, field: any) => (
+                              <Button
+                                danger
+                                type="text"
+                                icon={<DeleteOutlined />}
+                                onClick={() => removeSupply(field.name)}
+                              />
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </Form.List>
           </Card>
 
-          {/* 3. Chiết khấu & Tổng kết đơn hàng */}
+          {/* 2. Chiết khấu & Tổng kết đơn hàng */}
           <Card
-            title={<span className="font-bold text-slate-800 dark:text-slate-100">3. Chiết khấu &amp; Tổng kết thanh toán</span>}
+            title={<span className="font-bold text-slate-800 dark:text-slate-100">2. Chiết khấu &amp; Tổng kết thanh toán</span>}
             className="shadow-sm mb-6 bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl"
           >
             <Row gutter={[16, 16]}>

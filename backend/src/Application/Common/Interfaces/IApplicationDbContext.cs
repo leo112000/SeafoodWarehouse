@@ -17,6 +17,7 @@ public interface IApplicationDbContext
     DbSet<Packaging> Packagings { get; }
     DbSet<PackagingLoan> PackagingLoans { get; }
     DbSet<PackagingReturn> PackagingReturns { get; }
+    DbSet<PackagingAdjustment> PackagingAdjustments { get; }
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<RolePermission> RolePermissions { get; }
     DbSet<SystemSetting> Settings { get; }

@@ -118,8 +118,139 @@ public class ProductService : IProductService
     }
 
     /// <summary>
+    /// Tạo hàng loạt sản phẩm từ danh sách (Import Excel)
+    /// </summary>
+    public async Task<Result<BatchProductResultDto>> CreateBatchAsync(IEnumerable<CreateProductDto> dtos, CancellationToken cancellationToken = default)
+    {
+        var dtoList = dtos?.ToList() ?? new List<CreateProductDto>();
+        var resultDto = new BatchProductResultDto
+        {
+            TotalRequested = dtoList.Count
+        };
+
+        if (dtoList.Count == 0)
+        {
+            return Result<BatchProductResultDto>.Failure("Danh sách sản phẩm nhập vào rỗng.");
+        }
+
+        var repository = _unitOfWork.Repository<Product>();
+        var categoryRepository = _unitOfWork.Repository<Category>();
+
+        var existingProducts = await repository.GetAllAsync(cancellationToken);
+        var existingCategories = await categoryRepository.GetAllAsync(cancellationToken);
+        var validCategories = existingCategories.Where(c => !c.IsDeleted).ToList();
+        var defaultCategory = validCategories.FirstOrDefault();
+
+        var existingCodes = new HashSet<string>(
+            existingProducts.Where(p => !p.IsDeleted).Select(p => p.Code.Trim().ToUpper()),
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        var productsToAdd = new List<Product>();
+
+        for (int i = 0; i < dtoList.Count; i++)
+        {
+            var dto = dtoList[i];
+            var rowNum = i + 1;
+
+            if (string.IsNullOrWhiteSpace(dto.Name))
+            {
+                resultDto.SkippedCount++;
+                resultDto.Errors.Add($"Dòng {rowNum}: Tên sản phẩm không được để trống.");
+                continue;
+            }
+
+            // Xử lý Category
+            var matchedCategory = validCategories.FirstOrDefault(c => c.Id == dto.CategoryId)
+                ?? defaultCategory;
+
+            if (matchedCategory == null)
+            {
+                resultDto.SkippedCount++;
+                resultDto.Errors.Add($"Dòng {rowNum} ({dto.Name}): Không tìm thấy danh mục phù hợp.");
+                continue;
+            }
+
+            // Xử lý mã sản phẩm
+            string finalCode;
+            if (string.IsNullOrWhiteSpace(dto.Code))
+            {
+                var baseCode = SeafoodWarehouseManagement.Application.Common.Helpers.CodeGeneratorHelper.GenerateCode(dto.Name, "SP");
+                finalCode = baseCode;
+                var counter = 1;
+                while (existingCodes.Contains(finalCode))
+                {
+                    finalCode = $"{baseCode}-{counter:D2}";
+                    counter++;
+                }
+            }
+            else
+            {
+                finalCode = dto.Code.Trim().ToUpper();
+                if (existingCodes.Contains(finalCode))
+                {
+                    resultDto.SkippedCount++;
+                    resultDto.Errors.Add($"Dòng {rowNum} ({dto.Name}): Mã sản phẩm '{finalCode}' đã tồn tại trong hệ thống hoặc bị trùng trong danh sách import.");
+                    continue;
+                }
+            }
+
+            existingCodes.Add(finalCode);
+
+            var product = new Product
+            {
+                Code = finalCode,
+                Name = dto.Name.Trim(),
+                Unit = string.IsNullOrWhiteSpace(dto.Unit) ? "Kg" : dto.Unit.Trim(),
+                MinimumStock = dto.MinimumStock >= 0 ? dto.MinimumStock : 50,
+                MaximumStock = dto.MaximumStock >= 0 ? dto.MaximumStock : 500,
+                TargetTemperature = dto.TargetTemperature,
+                ScientificName = dto.ScientificName?.Trim(),
+                ReferencePrice = dto.ReferencePrice >= 0 ? dto.ReferencePrice : 0,
+                WarningDaysBeforeExpiry = dto.WarningDaysBeforeExpiry > 0 ? dto.WarningDaysBeforeExpiry : 3,
+                StorageType = string.IsNullOrWhiteSpace(dto.StorageType) ? "FROZEN" : dto.StorageType.Trim().ToUpper(),
+                Status = string.IsNullOrWhiteSpace(dto.Status) ? "ACTIVE" : dto.Status.Trim().ToUpper(),
+                Description = dto.Description?.Trim(),
+                CategoryId = matchedCategory.Id
+            };
+
+            productsToAdd.Add(product);
+        }
+
+        if (productsToAdd.Count > 0)
+        {
+            foreach (var p in productsToAdd)
+            {
+                await repository.AddAsync(p, cancellationToken);
+            }
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            // Nạp lại dữ liệu gồm cả Category để map DTO
+            var newlySaved = await repository.GetPagedAsync(
+                pageNumber: 1,
+                pageSize: productsToAdd.Count + 10,
+                predicate: p => productsToAdd.Select(x => x.Id).Contains(p.Id),
+                cancellationToken: cancellationToken,
+                includes: p => p.Category
+            );
+
+            resultDto.Items = newlySaved.Items.Select(MapToDto).ToList();
+            resultDto.ImportedCount = resultDto.Items.Count;
+        }
+
+        var message = $"Đã nhập thành công {resultDto.ImportedCount}/{resultDto.TotalRequested} sản phẩm.";
+        if (resultDto.SkippedCount > 0)
+        {
+            message += $" Bỏ qua {resultDto.SkippedCount} dòng lỗi.";
+        }
+
+        return Result<BatchProductResultDto>.Success(resultDto, message);
+    }
+
+    /// <summary>
     /// Cập nhật sản phẩm
     /// </summary>
+
     public async Task<Result<ProductDto>> UpdateAsync(int id, UpdateProductDto dto, CancellationToken cancellationToken = default)
     {
         var repository = _unitOfWork.Repository<Product>();

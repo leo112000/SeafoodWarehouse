@@ -85,62 +85,23 @@ export const usePackagingReturnStore = create<PackagingReturnState>()(
       const loan = state.loans.find((l) => l.id === loanId);
       if (!loan) return;
 
-      try {
-        await packagingReturnService.createReturn({
-          loanId,
-          returnedQty,
-          returnDate,
-          recordedBy,
-          note,
-        });
-      } catch {
-        // fallback offline/mock
-      }
-
-      const newReturn: PackagingReturn = {
-        id: `RET-${Date.now()}`,
+      await packagingReturnService.createReturn({
         loanId,
-        partnerName: loan.partnerName,
-        packagingCode: loan.packagingCode,
-        packagingName: loan.packagingName,
         returnedQty,
-        returnDate: returnDate || new Date().toISOString().slice(0, 16).replace('T', ' '),
-        recordedBy: recordedBy || 'Thủ kho',
-        note: note || '',
-      };
-
-      set((currState) => ({
-        loans: currState.loans.map((l) =>
-          l.id === loanId
-            ? { ...l, returnedQty: Math.min(l.loanedQty, l.returnedQty + returnedQty) }
-            : l
-        ),
-        returns: [newReturn, ...currState.returns],
-      }));
+        returnDate,
+        recordedBy,
+        note,
+      });
 
       // Tự động đồng bộ chuẩn lại từ server
-      get().fetchLoansAndReturns();
+      await get().fetchLoansAndReturns();
     },
 
     addLoan: async (loanData) => {
-      let createdLoan: PackagingLoan | null = null;
-      try {
-        createdLoan = await packagingReturnService.createLoan(loanData);
-      } catch {
-        // fallback offline/mock
-      }
-
-      set((state) => ({
-        loans: [
-          (typeof createdLoan === 'object' && createdLoan && createdLoan.id)
-            ? createdLoan
-            : { ...loanData, id: `LOAN-${Date.now()}`, returnedQty: 0 },
-          ...state.loans,
-        ],
-      }));
+      await packagingReturnService.createLoan(loanData);
 
       // Tự động đồng bộ chuẩn lại từ server
-      get().fetchLoansAndReturns();
+      await get().fetchLoansAndReturns();
     },
   }))
 );

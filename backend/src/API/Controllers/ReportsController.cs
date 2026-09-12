@@ -30,24 +30,24 @@ public class ReportsController : BaseApiController
         [FromQuery] int? categoryId = null,
         CancellationToken cancellationToken = default)
     {
-        // 1. Lấy tất cả giao dịch nhập / xuất / hủy từ CSDL
+        // 1. Lấy tất cả giao dịch nhập / xuất / hủy từ CSDL (Chỉ lấy giao dịch còn hiệu lực, loại bỏ phiếu hủy)
         var inboundTx = await _context.InventoryTransactions
-            .Where(t => !t.IsDeleted && t.Type == TransactionType.Import)
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Import)
             .Include(t => t.LotBatch).ThenInclude(l => l.Product)
             .ToListAsync(cancellationToken);
 
         var outboundTx = await _context.InventoryTransactions
-            .Where(t => !t.IsDeleted && t.Type == TransactionType.Export)
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Export)
             .Include(t => t.LotBatch).ThenInclude(l => l.Product)
             .ToListAsync(cancellationToken);
 
         var wastageTx = await _context.InventoryTransactions
-            .Where(t => !t.IsDeleted && t.Type == TransactionType.Disposal)
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Disposal)
             .Include(t => t.LotBatch).ThenInclude(l => l.Product)
             .ToListAsync(cancellationToken);
 
         var outboundReceipts = await _context.OutboundReceipts
-            .Where(r => !r.IsDeleted)
+            .Where(r => !r.IsDeleted && r.Status != "CANCELLED")
             .Include(r => r.Supplies.Where(s => !s.IsDeleted))
             .ToListAsync(cancellationToken);
 
@@ -265,7 +265,7 @@ public class ReportsController : BaseApiController
             .ToListAsync(cancellationToken);
 
         var allTransactions = await _context.InventoryTransactions
-            .Where(t => !t.IsDeleted)
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED")
             .Include(t => t.LotBatch)
             .ToListAsync(cancellationToken);
 
@@ -345,11 +345,11 @@ public class ReportsController : BaseApiController
             var monthStr = $"{month:D2}/{year}";
 
             var inboundKg = await _context.InventoryTransactions
-                .Where(t => !t.IsDeleted && t.Type == TransactionType.Import && t.TransactionDate.Year == year && t.TransactionDate.Month == month)
+                .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Import && t.TransactionDate.Year == year && t.TransactionDate.Month == month)
                 .SumAsync(t => (double?)t.Quantity, cancellationToken) ?? 0.0;
 
             var wastageKg = await _context.InventoryTransactions
-                .Where(t => !t.IsDeleted && t.Type == TransactionType.Disposal && t.TransactionDate.Year == year && t.TransactionDate.Month == month)
+                .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Disposal && t.TransactionDate.Year == year && t.TransactionDate.Month == month)
                 .SumAsync(t => (double?)t.Quantity, cancellationToken) ?? 0.0;
 
             double rate = inboundKg > 0 ? Math.Round((wastageKg / inboundKg) * 100.0, 2) : 0.0;

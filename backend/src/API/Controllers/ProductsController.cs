@@ -62,6 +62,21 @@ public class ProductsController : BaseApiController
     }
 
     /// <summary>
+    /// Nhập hàng loạt sản phẩm từ danh sách (Import Excel)
+    /// </summary>
+    [HttpPost("batch")]
+    public async Task<ActionResult<Result<BatchProductResultDto>>> CreateBatch([FromBody] List<CreateProductDto> dtos, CancellationToken cancellationToken = default)
+    {
+        var result = await _productService.CreateBatchAsync(dtos, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+
+    /// <summary>
     /// Cập nhật sản phẩm
     /// </summary>
     [HttpPut("{id:int}")]

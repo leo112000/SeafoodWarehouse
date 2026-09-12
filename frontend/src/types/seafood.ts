@@ -56,7 +56,9 @@ export interface PackagingType {
   category: PackagingCategory; // Vật chứa tái sử dụng OR Vật tư dùng 1 lần
   defaultTareWeight: number; // Trọng lượng bì chuẩn (Kg)
   unit: string;           // Cái / Chiếc / Thùng
-  stockQuantity: number;  // Tồn kho hiện tại của vật tư này
+  stockQuantity: number;  // Tồn kho tại chỗ (khả dụng)
+  loanedQuantity?: number;// Đang cho mượn ngoài kho
+  totalQuantity?: number; // Tổng số lượng thật (Tổng tài sản sở hữu = Tồn kho + Đang mượn)
   note?: string;
 }
 

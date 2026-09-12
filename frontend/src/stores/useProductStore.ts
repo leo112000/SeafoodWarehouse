@@ -11,6 +11,7 @@ interface ProductState {
   addProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
   updateProduct: (id: string, product: Omit<Product, 'id'>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  addProductsBatch: (items: Array<Omit<Product, 'id'>>) => Promise<{ importedCount: number; skippedCount: number; errors: string[] }>;
 }
 
 export const useProductStore = create<ProductState>()(
@@ -39,6 +40,25 @@ export const useProductStore = create<ProductState>()(
           const newProduct: Product = { ...productData, id: `p-${Date.now()}` };
           set((state) => ({ products: [newProduct, ...state.products] }));
           return newProduct;
+        }
+      },
+
+      addProductsBatch: async (items) => {
+        try {
+          const res = await productService.createBatch(items);
+          await get().fetchProducts();
+          return res;
+        } catch {
+          const newProducts: Product[] = items.map((it, idx) => ({
+            ...it,
+            id: `p-${Date.now()}-${idx}`,
+          }));
+          set((state) => ({ products: [...newProducts, ...state.products] }));
+          return {
+            importedCount: items.length,
+            skippedCount: 0,
+            errors: [],
+          };
         }
       },
 

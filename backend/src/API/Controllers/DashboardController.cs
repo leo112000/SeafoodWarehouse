@@ -47,8 +47,9 @@ public class DashboardController : BaseApiController
         double totalStockKg = inventoryItems.Sum(i => (double)i.Quantity);
         double totalStockValue = inventoryItems.Sum(i =>
         {
+            var batchPrice = (double)(i.LotBatch?.UnitPrice ?? 0);
             var refPrice = (double)(i.LotBatch?.Product?.ReferencePrice ?? 0);
-            var unitPrice = refPrice > 0 ? refPrice : defaultSeafoodPrice;
+            var unitPrice = batchPrice > 0 ? batchPrice : (refPrice > 0 ? refPrice : defaultSeafoodPrice);
             return (double)i.Quantity * unitPrice;
         });
 

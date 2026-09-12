@@ -69,6 +69,50 @@ export const productService = {
     });
   },
 
+  async createBatch(items: Array<Omit<Product, 'id'>>): Promise<{ importedCount: number; skippedCount: number; errors: string[] }> {
+    try {
+      const payload = items.map((data) => ({
+        code: data.code,
+        name: data.name,
+        categoryId: parseInt(data.categoryId) || 1,
+        unit: data.unit,
+        storageType: data.storageType,
+        targetTemperature: data.targetTemperature,
+        minimumStock: data.minStock,
+        maximumStock: data.maxStock,
+        referencePrice: data.referencePrice,
+        warningDaysBeforeExpiry: data.warningDaysBeforeExpiry,
+        status: data.status || 'ACTIVE',
+        description: data.note,
+      }));
+
+      const response = await api.post('/products/batch', payload);
+      const resData = response.data?.data || response.data;
+      return {
+        importedCount: resData?.importedCount ?? items.length,
+        skippedCount: resData?.skippedCount ?? 0,
+        errors: resData?.errors ?? [],
+      };
+    } catch {
+      // Fallback: create sequentially if batch endpoint not yet reachable
+      let success = 0;
+      const errs: string[] = [];
+      for (const item of items) {
+        try {
+          await productService.create(item);
+          success++;
+        } catch (e: any) {
+          errs.push(`${item.name}: ${e?.message || 'Lỗi không xác định'}`);
+        }
+      }
+      return {
+        importedCount: success,
+        skippedCount: items.length - success,
+        errors: errs,
+      };
+    }
+  },
+
   async delete(id: string): Promise<void> {
     await api.delete(`/products/${id}`);
   },

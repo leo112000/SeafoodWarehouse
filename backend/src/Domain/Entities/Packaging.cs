@@ -14,4 +14,5 @@ public class Packaging : BaseEntity, IMustHaveTenant
     public int? TenantId { get; set; }
 
     public ICollection<PackagingLoan> Loans { get; set; } = new List<PackagingLoan>();
+    public ICollection<PackagingAdjustment> Adjustments { get; set; } = new List<PackagingAdjustment>();
 }

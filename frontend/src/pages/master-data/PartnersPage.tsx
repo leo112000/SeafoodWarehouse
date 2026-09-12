@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Tag, Space, App, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, PhoneOutlined, MailOutlined, HomeOutlined, NumberOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, PhoneOutlined, MailOutlined, HomeOutlined, NumberOutlined, TeamOutlined, UserOutlined, FileExcelOutlined, UploadOutlined } from '@ant-design/icons';
 import { partnerService, type PartnerItem, type CreatePartnerDto } from '../../services/partnerService';
 import { generateCodeFromName } from '../../utils/codeGenerator';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
+import { exportToExcel } from '../../utils/exportUtils';
+import { PartnerImportModal } from './PartnerImportModal';
 
 export const PartnersPage: React.FC = () => {
   const { message } = App.useApp();
@@ -11,10 +13,30 @@ export const PartnersPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [editingPartner, setEditingPartner] = useState<PartnerItem | null>(null);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [isZoomed, setIsZoomed] = useState(false);
   const [form] = Form.useForm();
+
+  const handleExportExcel = () => {
+    if (partners.length === 0) {
+      message.warning('Không có dữ liệu nhà cung cấp để xuất.');
+      return;
+    }
+    const cols = [
+      { header: 'Mã nhà cung cấp', key: 'code', width: 18 },
+      { header: 'Tên nhà cung cấp', key: 'name', width: 35 },
+      { header: 'Người liên hệ', key: 'contactPerson', width: 20 },
+      { header: 'Số điện thoại', key: 'phone', width: 16 },
+      { header: 'Email', key: 'email', width: 24 },
+      { header: 'Địa chỉ', key: 'address', width: 40 },
+      { header: 'Mã số thuế', key: 'taxCode', width: 16 },
+      { header: 'Ghi chú', key: 'note', width: 30 },
+    ];
+    exportToExcel(partners, cols, 'Danh_Sach_Nha_Cung_Cap', 'Nhà cung cấp');
+    message.success('Đã xuất file Excel nhà cung cấp thành công!');
+  };
 
   const fetchPartners = useCallback(async () => {
     setLoading(true);
@@ -171,20 +193,40 @@ export const PartnersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-2 mb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate flex items-center gap-2">
           <TeamOutlined className="text-sky-600" /> Nhà Cung Cấp
         </h1>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => handleOpenModal()}
-          className="bg-sky-500 hover:bg-sky-600 border-none font-medium flex-shrink-0"
-          size="middle"
-        >
-          <span className="hidden sm:inline">Thêm Nhà Cung Cấp</span>
-          <span className="sm:hidden">Thêm mới</span>
-        </Button>
+        <Space wrap className="flex-shrink-0">
+          <Button
+            icon={<FileExcelOutlined className="text-emerald-600" />}
+            size="middle"
+            onClick={handleExportExcel}
+            className="font-medium hover:border-emerald-500 hover:text-emerald-600"
+          >
+            <span className="hidden sm:inline">Xuất Excel</span>
+            <span className="sm:hidden">Xuất</span>
+          </Button>
+          <Button
+            icon={<UploadOutlined className="text-emerald-600" />}
+            size="middle"
+            onClick={() => setIsImportModalOpen(true)}
+            className="font-medium border-emerald-500 text-emerald-600 hover:text-emerald-500 hover:border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20"
+          >
+            <span className="hidden sm:inline">Nhập Excel</span>
+            <span className="sm:hidden">Nhập</span>
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => handleOpenModal()}
+            className="bg-sky-500 hover:bg-sky-600 border-none font-medium flex-shrink-0"
+            size="middle"
+          >
+            <span className="hidden sm:inline">Thêm Nhà Cung Cấp</span>
+            <span className="sm:hidden">Thêm mới</span>
+          </Button>
+        </Space>
       </div>
 
       <Card
@@ -317,8 +359,16 @@ export const PartnersPage: React.FC = () => {
           </div>
         )}
       </ZoomViewerModal>
+
+      {/* Modal Import Excel */}
+      <PartnerImportModal
+        open={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => fetchPartners()}
+      />
     </div>
   );
 };
+
 
 export default PartnersPage;

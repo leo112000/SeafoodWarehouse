@@ -1,18 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Modal, Form, Input, InputNumber, Tag, Space, Popconfirm, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EnvironmentOutlined, FireOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EnvironmentOutlined, FireOutlined, FileExcelOutlined, UploadOutlined } from '@ant-design/icons';
 import { useWarehouseStore } from '../../stores/useWarehouseStore';
 import { warehouseService, type WarehouseItem } from '../../services/warehouseService';
 import { generateCodeFromName } from '../../utils/codeGenerator';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
+import { exportToExcel } from '../../utils/exportUtils';
+import { WarehouseImportModal } from './WarehouseImportModal';
 
 export const WarehousesPage: React.FC = () => {
   const { warehouses, loading, fetchWarehouses } = useWarehouseStore();
   const [modalOpen, setModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [isZoomed, setIsZoomed] = useState(false);
   const [form] = Form.useForm();
+
+  const handleExportExcel = () => {
+    if (warehouses.length === 0) {
+      message.warning('Không có dữ liệu kho bãi để xuất.');
+      return;
+    }
+    const cols = [
+      { header: 'Mã kho', key: 'code', width: 18 },
+      { header: 'Tên kho lạnh', key: 'name', width: 30 },
+      { header: 'Vị trí', key: 'location', width: 35 },
+      { header: 'Sức chứa (Kg)', key: 'capacityKg', width: 18 },
+      { header: 'Nhiệt độ (°C)', key: 'temperatureCelsius', width: 16 },
+      { header: 'Ghi chú', key: 'description', width: 40 },
+    ];
+    exportToExcel(warehouses, cols, 'Danh_Muc_Kho_Bai', 'Kho bãi');
+    message.success('Đã xuất file Excel danh mục kho bãi thành công!');
+  };
 
   useEffect(() => {
     fetchWarehouses();
@@ -143,13 +163,33 @@ export const WarehousesPage: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* ── Page Header ── */}
-      <div className="flex items-center justify-between gap-2 mb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
           Danh Mục Kho Bãi
         </h1>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingId(null); form.resetFields(); setModalOpen(true); }} size="middle">
-          Thêm Kho Mới
-        </Button>
+        <Space wrap className="flex-shrink-0">
+          <Button
+            icon={<FileExcelOutlined className="text-emerald-600" />}
+            size="middle"
+            onClick={handleExportExcel}
+            className="font-medium hover:border-emerald-500 hover:text-emerald-600"
+          >
+            <span className="hidden sm:inline">Xuất Excel</span>
+            <span className="sm:hidden">Xuất</span>
+          </Button>
+          <Button
+            icon={<UploadOutlined className="text-emerald-600" />}
+            size="middle"
+            onClick={() => setIsImportModalOpen(true)}
+            className="font-medium border-emerald-500 text-emerald-600 hover:text-emerald-500 hover:border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20"
+          >
+            <span className="hidden sm:inline">Nhập Excel</span>
+            <span className="sm:hidden">Nhập</span>
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingId(null); form.resetFields(); setModalOpen(true); }} size="middle">
+            Thêm Kho Mới
+          </Button>
+        </Space>
       </div>
 
       <Card
@@ -237,8 +277,16 @@ export const WarehousesPage: React.FC = () => {
           </div>
         )}
       </ZoomViewerModal>
+
+      {/* Modal Import Excel */}
+      <WarehouseImportModal
+        open={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => fetchWarehouses()}
+      />
     </div>
   );
 };
 
 export default WarehousesPage;
+

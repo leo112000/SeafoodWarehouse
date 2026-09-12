@@ -8,6 +8,7 @@ import {
   FireOutlined, SlidersOutlined, DropboxOutlined,
   SunOutlined, BarChartOutlined, CheckCircleOutlined,
   FileOutlined, SearchOutlined, ReloadOutlined,
+  FileExcelOutlined, UploadOutlined,
 } from '@ant-design/icons';
 import type { Product } from '../../types/seafood';
 import { formatCurrency } from '../../utils/format';
@@ -17,6 +18,8 @@ import { useCategoryStore } from '../../stores/useCategoryStore';
 import { QRCodeSVG } from 'qrcode.react';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
+import { exportToExcel } from '../../utils/exportUtils';
+import { ProductImportModal } from './ProductImportModal';
 
 
 
@@ -46,6 +49,7 @@ export const ProductsPage: React.FC = () => {
   const { products, fetchProducts, addProduct, updateProduct, deleteProduct } = useProductStore();
   const { categories, fetchCategories } = useCategoryStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [selectedProductQr, setSelectedProductQr] = useState<Product | null>(null);
@@ -97,6 +101,44 @@ export const ProductsPage: React.FC = () => {
     });
     setPagination((prev) => ({ ...prev, current: 1 }));
     fetchProducts();
+  };
+
+  const handleExportExcel = () => {
+    if (products.length === 0) {
+      message.warning('Không có dữ liệu sản phẩm để xuất.');
+      return;
+    }
+    const exportColumns = [
+      { header: 'Mã sản phẩm', key: 'code', width: 16 },
+      { header: 'Tên hải sản', key: 'name', width: 30 },
+      { header: 'Danh mục', key: 'categoryName', width: 18 },
+      { header: 'Đơn vị tính', key: 'unit', width: 12 },
+      {
+        header: 'Loại bảo quản',
+        key: 'storageType',
+        width: 16,
+        formatter: (val: any) => STORAGE_TYPE_CONFIG[val as Product['storageType']]?.label || val,
+      },
+      { header: 'Nhiệt độ (°C)', key: 'targetTemperature', width: 14 },
+      { header: 'Tồn tối thiểu', key: 'minStock', width: 14 },
+      { header: 'Tồn tối đa', key: 'maxStock', width: 14 },
+      {
+        header: 'Đơn giá tham chiếu (VNĐ)',
+        key: 'referencePrice',
+        width: 22,
+        formatter: (val: any) => val ?? 0,
+      },
+      { header: 'Cảnh báo HSD (ngày)', key: 'warningDaysBeforeExpiry', width: 18 },
+      {
+        header: 'Trạng thái',
+        key: 'status',
+        width: 16,
+        formatter: (val: any) => (val === 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng bán'),
+      },
+      { header: 'Ghi chú', key: 'note', width: 35 },
+    ];
+    exportToExcel(filtered, exportColumns, 'Danh_Muc_Hai_San', 'Danh sách hải sản');
+    message.success('Đã xuất file Excel danh mục hải sản thành công!');
   };
 
   // ── filtered list ────────────────────────────────────────────────────────────
@@ -310,22 +352,42 @@ export const ProductsPage: React.FC = () => {
     <div className="space-y-6">
 
       {/* ── Page Header ── */}
-      <div className="flex items-center justify-between gap-2 mb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white m-0 truncate">
             Danh Mục Hải Sản
           </h1>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="middle"
-          onClick={openAdd}
-          className="flex-shrink-0 font-medium"
-        >
-          <span className="hidden sm:inline">Thêm Sản Phẩm Mới</span>
-          <span className="sm:hidden">Thêm mới</span>
-        </Button>
+        <Space wrap className="flex-shrink-0">
+          <Button
+            icon={<FileExcelOutlined className="text-emerald-600" />}
+            size="middle"
+            onClick={handleExportExcel}
+            className="font-medium hover:border-emerald-500 hover:text-emerald-600"
+          >
+            <span className="hidden sm:inline">Xuất Excel</span>
+            <span className="sm:hidden">Xuất</span>
+          </Button>
+          <Button
+            icon={<UploadOutlined className="text-emerald-600" />}
+            size="middle"
+            onClick={() => setIsImportModalOpen(true)}
+            className="font-medium border-emerald-500 text-emerald-600 hover:text-emerald-500 hover:border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20"
+          >
+            <span className="hidden sm:inline">Nhập Excel</span>
+            <span className="sm:hidden">Nhập</span>
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            size="middle"
+            onClick={openAdd}
+            className="font-medium"
+          >
+            <span className="hidden sm:inline">Thêm Sản Phẩm Mới</span>
+            <span className="sm:hidden">Thêm mới</span>
+          </Button>
+        </Space>
       </div>
 
       {/* ── Statistics Cards (2 cột 1 dòng trên mobile) ── */}
@@ -698,8 +760,16 @@ export const ProductsPage: React.FC = () => {
           </div>
         )}
       </ZoomViewerModal>
+
+      {/* ── Modal Nhập Excel ── */}
+      <ProductImportModal
+        open={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => fetchProducts()}
+      />
     </div>
   );
 };
 
 export default ProductsPage;
+

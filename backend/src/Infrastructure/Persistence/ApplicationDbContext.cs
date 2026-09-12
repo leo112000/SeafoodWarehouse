@@ -30,6 +30,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Packaging> Packagings => Set<Packaging>();
     public DbSet<PackagingLoan> PackagingLoans => Set<PackagingLoan>();
     public DbSet<PackagingReturn> PackagingReturns => Set<PackagingReturn>();
+    public DbSet<PackagingAdjustment> PackagingAdjustments => Set<PackagingAdjustment>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<SystemSetting> Settings => Set<SystemSetting>();
