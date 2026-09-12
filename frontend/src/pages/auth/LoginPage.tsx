@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Checkbox, Typography, App, Tag, Tooltip } from 'antd';
+import { Form, Input, Button, Checkbox, App, Tooltip } from 'antd';
 import {
   UserOutlined,
   LockOutlined,
@@ -73,22 +73,19 @@ export const LoginPage: React.FC = () => {
         targetTenantId = checkResult.tenantId ?? undefined;
         targetTenantName = checkResult.tenantCode || rawTenant;
 
-        if (values.remember) {
+        // Ghi nhớ Tenant cho các lần đăng nhập tiếp theo
+        if (targetTenantName) {
           localStorage.setItem('rememberedTenant', targetTenantName);
-        } else {
-          localStorage.removeItem('rememberedTenant');
+          localStorage.setItem('tenantName', targetTenantName);
         }
         if (targetTenantId) {
           localStorage.setItem('tenantId', targetTenantId.toString());
         }
-        localStorage.setItem('tenantName', targetTenantName);
       } else {
-        // Đăng nhập quyền Host (Tenant = null): Xóa toàn bộ cache tenant cũ
+        // Đăng nhập quyền Host (Tenant = null)
         localStorage.removeItem('rememberedTenant');
         localStorage.removeItem('tenantId');
         localStorage.removeItem('tenantName');
-        targetTenantId = undefined;
-        targetTenantName = undefined;
       }
 
       // 2. Thực hiện đăng nhập
@@ -99,9 +96,8 @@ export const LoginPage: React.FC = () => {
         tenantId: targetTenantId,
       });
 
-      // Nếu ô tenant để trống, tuyệt đối không nhận tenant từ cache hay tài khoản
-      const userTenantCode = targetTenantName ? (response.user.tenantCode || targetTenantName) : undefined;
-      const userTenantId = targetTenantId ? (response.user.tenantId ?? targetTenantId) : undefined;
+      const userTenantCode = response.user.tenantCode || targetTenantName || undefined;
+      const userTenantId = response.user.tenantId ?? targetTenantId ?? undefined;
 
       login(
         response.token,
@@ -121,18 +117,16 @@ export const LoginPage: React.FC = () => {
       navigate(from, { replace: true });
     } catch (err: any) {
       const errMsg = getErrorMessage(err, 'Có lỗi xảy ra khi đăng nhập.');
-      if (errMsg.toLowerCase().includes('tài khoản hoặc mật khẩu')) {
-        message.error(errMsg);
+      if (errMsg.toLowerCase().includes('mật khẩu') || errMsg.toLowerCase().includes('password')) {
+        form.setFields([{ name: 'password', errors: [errMsg] }]);
+      } else if (errMsg.toLowerCase().includes('email') || errMsg.toLowerCase().includes('tài khoản')) {
+        form.setFields([{ name: 'email', errors: [errMsg] }]);
       } else if (
         errMsg.toLowerCase().includes('tenant') ||
         errMsg.toLowerCase().includes('chi nhánh') ||
         errMsg.toLowerCase().includes('doanh nghiệp')
       ) {
         form.setFields([{ name: 'tenant', errors: [errMsg] }]);
-      } else if (errMsg.toLowerCase().includes('mật khẩu') || errMsg.toLowerCase().includes('password')) {
-        form.setFields([{ name: 'password', errors: [errMsg] }]);
-      } else if (errMsg.toLowerCase().includes('email') || errMsg.toLowerCase().includes('tài khoản')) {
-        form.setFields([{ name: 'email', errors: [errMsg] }]);
       } else {
         message.error(errMsg);
       }
@@ -144,8 +138,8 @@ export const LoginPage: React.FC = () => {
   return (
     <div
       className={`min-h-screen relative flex items-center justify-center p-4 md:p-8 overflow-hidden transition-colors duration-500 ${isDark
-          ? 'bg-[#0b1329] text-slate-100'
-          : 'bg-gradient-to-br from-[#f0f9ff] via-[#e0f2fe] to-[#eff6ff] text-slate-800'
+        ? 'bg-[#0b1329] text-slate-100'
+        : 'bg-gradient-to-br from-[#f0f9ff] via-[#e0f2fe] to-[#eff6ff] text-slate-800'
         }`}
     >
       {/* Dynamic Animated Ambient Background Glows */}
@@ -165,8 +159,8 @@ export const LoginPage: React.FC = () => {
       {/* Main Glassmorphism Presentation Container */}
       <div
         className={`relative z-10 w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border transition-all duration-300 backdrop-blur-xl ${isDark
-            ? 'bg-slate-900/80 border-slate-700/60 shadow-black/40'
-            : 'bg-white/90 border-sky-100/90 shadow-sky-900/10'
+          ? 'bg-slate-900/80 border-slate-700/60 shadow-black/40'
+          : 'bg-white/90 border-sky-100/90 shadow-sky-900/10'
           }`}
       >
         <div className="grid grid-cols-1 lg:grid-cols-12">
@@ -259,8 +253,8 @@ export const LoginPage: React.FC = () => {
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-300 shadow-sm ${isDark
-                    ? 'bg-slate-800/90 hover:bg-slate-700 text-sky-400 border-slate-700'
-                    : 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 border-slate-200'
+                  ? 'bg-slate-800/90 hover:bg-slate-700 text-sky-400 border-slate-700'
+                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 border-slate-200'
                   }`}
               >
                 {isDark ? <SunOutlined className="text-amber-400" /> : <MoonOutlined className="text-indigo-600" />}
