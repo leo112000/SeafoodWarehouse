@@ -42,7 +42,11 @@ public class NotificationsController : BaseApiController
 
         if (tenantId.HasValue && tenantId.Value > 0)
         {
-            query = query.Where(un => un.TenantId == tenantId.Value || un.TenantId == null);
+            query = query.Where(un => un.TenantId == tenantId.Value);
+        }
+        else
+        {
+            query = query.Where(un => un.TenantId == null);
         }
 
         if (state.HasValue)
@@ -93,7 +97,11 @@ public class NotificationsController : BaseApiController
 
         if (tenantId.HasValue && tenantId.Value > 0)
         {
-            query = query.Where(un => un.TenantId == tenantId.Value || un.TenantId == null);
+            query = query.Where(un => un.TenantId == tenantId.Value);
+        }
+        else
+        {
+            query = query.Where(un => un.TenantId == null);
         }
 
         var count = await query
@@ -109,6 +117,8 @@ public class NotificationsController : BaseApiController
     [HttpPut("{id:int}/read")]
     public async Task<ActionResult<Result>> MarkAsRead(int id, CancellationToken cancellationToken = default)
     {
+        var tenantId = _currentTenant.Id;
+
         var userNotif = await _context.UserNotifications
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(un => un.Id == id && !un.IsDeleted, cancellationToken);
@@ -116,6 +126,21 @@ public class NotificationsController : BaseApiController
         if (userNotif == null)
         {
             return NotFound(Result.Failure("Không tìm thấy thông báo."));
+        }
+
+        if (tenantId.HasValue && tenantId.Value > 0)
+        {
+            if (userNotif.TenantId != tenantId.Value)
+            {
+                return NotFound(Result.Failure("Không tìm thấy thông báo."));
+            }
+        }
+        else
+        {
+            if (userNotif.TenantId != null)
+            {
+                return NotFound(Result.Failure("Không tìm thấy thông báo."));
+            }
         }
 
         // Đánh dấu tất cả các bản ghi UserNotification thuộc sự kiện này sang trạng thái Read
@@ -150,15 +175,20 @@ public class NotificationsController : BaseApiController
 
         if (tenantId.HasValue && tenantId.Value > 0)
         {
-            query = query.Where(un => un.TenantId == tenantId.Value || un.TenantId == null);
+            query = query.Where(un => un.TenantId == tenantId.Value);
+        }
+        else
+        {
+            query = query.Where(un => un.TenantId == null);
         }
 
         var unreadList = await query.ToListAsync(cancellationToken);
+        var now = DateTime.UtcNow;
         foreach (var item in unreadList)
         {
             item.State = UserNotificationState.Read;
-            item.ReadAt = DateTime.UtcNow;
-            item.UpdatedAt = DateTime.UtcNow;
+            item.ReadAt = now;
+            item.UpdatedAt = now;
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -171,6 +201,8 @@ public class NotificationsController : BaseApiController
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<Result>> Delete(int id, CancellationToken cancellationToken = default)
     {
+        var tenantId = _currentTenant.Id;
+
         var userNotif = await _context.UserNotifications
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(un => un.Id == id && !un.IsDeleted, cancellationToken);
@@ -178,6 +210,21 @@ public class NotificationsController : BaseApiController
         if (userNotif == null)
         {
             return NotFound(Result.Failure("Không tìm thấy thông báo."));
+        }
+
+        if (tenantId.HasValue && tenantId.Value > 0)
+        {
+            if (userNotif.TenantId != tenantId.Value)
+            {
+                return NotFound(Result.Failure("Không tìm thấy thông báo."));
+            }
+        }
+        else
+        {
+            if (userNotif.TenantId != null)
+            {
+                return NotFound(Result.Failure("Không tìm thấy thông báo."));
+            }
         }
 
         userNotif.IsDeleted = true;

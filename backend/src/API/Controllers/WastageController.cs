@@ -88,9 +88,15 @@ public class WastageController : BaseApiController
 
         // 2. Ghi nhận giao dịch Hủy/Hao hụt trong CSDL
         var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => !w.IsDeleted, cancellationToken);
+        var refNo = $"WST-{DateTime.UtcNow:yyyyMMddHHmmss}";
+        while (await _context.InventoryTransactions.AnyAsync(t => t.ReferenceNumber == refNo, cancellationToken))
+        {
+            refNo = $"WST-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
+        }
+
         var tx = new InventoryTransaction
         {
-            ReferenceNumber = $"WST-{DateTime.UtcNow:yyyyMMddHHmmss}",
+            ReferenceNumber = refNo,
             Type = TransactionType.Disposal,
             LotBatchId = lotBatch.Id,
             SourceWarehouseId = warehouse?.Id ?? 1,
@@ -105,10 +111,18 @@ public class WastageController : BaseApiController
         // 3. Nếu là chuyển phân loại, tạo lô hàng mới đại diện cho sản phẩm hạ cấp
         if (dto.Mode == "reclass")
         {
-            var newBatchCode = $"LOT-{lotBatch.Product?.Code}-NGOP-{DateTime.UtcNow:yyyyMMdd}";
+            var baseNewBatchCode = $"LOT-{lotBatch.Product?.Code}-NGOP-{DateTime.UtcNow:yyyyMMdd}";
+            var newBatchCode = baseNewBatchCode;
+            var batchCounter = 1;
+            while (await _context.LotBatches.AnyAsync(b => b.BatchCode == newBatchCode && !b.IsDeleted, cancellationToken))
+            {
+                newBatchCode = $"{baseNewBatchCode}-{batchCounter:D2}";
+                batchCounter++;
+            }
+
             var newLot = new LotBatch
             {
-                BatchCode = $"LOT-{lotBatch.Product?.Code}-NGOP-{DateTime.UtcNow:yyyyMMddHHmm}",
+                BatchCode = newBatchCode,
                 ProductId = lotBatch.ProductId,
                 ProductionDate = DateTime.UtcNow,
                 ExpirationDate = DateTime.TryParse(dto.NewExpiryDate, out var exp) ? DateTime.SpecifyKind(exp, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(3),

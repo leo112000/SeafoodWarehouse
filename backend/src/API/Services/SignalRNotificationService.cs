@@ -80,13 +80,12 @@ public class SignalRNotificationService : INotificationService
         _context.AppNotifications.Add(appNotif);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // 2. Chỉ tạo UserNotification cho các Admin / Manager của Tenant này và Host Admin
+        // 2. Chỉ tạo UserNotification cho các Admin / Manager của Tenant này
         var targetUsers = await _context.Users
             .IgnoreQueryFilters()
-            .Where(u => !u.IsDeleted && (
-                u.TenantId == null || 
-                (u.TenantId == tenantId && (u.UserRoles.Count == 0 || u.UserRoles.Any(ur => ur.Role.Name == "Admin" || ur.Role.Name == "Manager")))
-            ))
+            .Where(u => !u.IsDeleted &&
+                u.TenantId == tenantId && 
+                (u.UserRoles.Count == 0 || u.UserRoles.Any(ur => ur.Role.Name == "Admin" || ur.Role.Name == "Manager")))
             .Select(u => new { u.Id, u.TenantId })
             .ToListAsync(cancellationToken);
 
@@ -103,10 +102,9 @@ public class SignalRNotificationService : INotificationService
         }
         await _context.SaveChangesAsync(cancellationToken);
 
-        // 3. Gửi Real-time qua SignalR cho nhóm Tenant và Host Admin
+        // 3. Gửi Real-time qua SignalR cho nhóm Tenant Admin
         message.Id = appNotif.Id.ToString();
-        await _hubContext.Clients.Group($"Tenant_{tenantId}").SendAsync("ReceiveNotification", message, cancellationToken);
-        await _hubContext.Clients.Group("HostAdmin").SendAsync("ReceiveNotification", message, cancellationToken);
+        await _hubContext.Clients.Group($"Tenant_{tenantId}_Admin").SendAsync("ReceiveNotification", message, cancellationToken);
     }
 
     public async Task SendNotificationToHostAsync(NotificationMessage message, CancellationToken cancellationToken = default)

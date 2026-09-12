@@ -53,7 +53,7 @@ export const useSystemNotifications = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, tenantId]);
 
   useEffect(() => {
     fetchDbNotifications();

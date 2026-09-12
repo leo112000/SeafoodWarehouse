@@ -208,6 +208,11 @@ public class OutboundController : BaseApiController
 
         // Sinh mã phiếu duy nhất PXK-yyyyMMddHHmmss-XX không bao giờ trùng lặp
         string refNo = $"PXK-{txDate.AddHours(7):yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
+        while (await _context.OutboundReceipts.AnyAsync(r => r.ReferenceNumber == refNo, cancellationToken) ||
+               await _context.InventoryTransactions.AnyAsync(t => t.ReferenceNumber == refNo, cancellationToken))
+        {
+            refNo = $"PXK-{DateTime.UtcNow.AddHours(7):yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
+        }
 
         // 1. Kiểm tra tính hợp lệ và tồn kho của từng lô trước khi xuất
         var batchEntities = new List<(CreateOutboundBatchDto item, LotBatch batch)>();

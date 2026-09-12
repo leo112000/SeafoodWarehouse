@@ -159,6 +159,10 @@ public class InboundController : BaseApiController
 
         // Sinh mã phiếu duy nhất PNK-yyyyMMddHHmmss-XX không bao giờ trùng lặp
         string refNo = $"PNK-{txDate.AddHours(7):yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
+        while (await _context.InventoryTransactions.AnyAsync(t => t.ReferenceNumber == refNo, cancellationToken))
+        {
+            refNo = $"PNK-{DateTime.UtcNow.AddHours(7):yyyyMMddHHmmss}-{Random.Shared.Next(10, 99)}";
+        }
 
         var category = await _context.Categories.FirstOrDefaultAsync(c => !c.IsDeleted, cancellationToken);
         if (category == null)
@@ -183,9 +187,21 @@ public class InboundController : BaseApiController
 
             if (product == null)
             {
+                var baseProdCode = string.IsNullOrWhiteSpace(item.SeafoodCode)
+                    ? SeafoodWarehouseManagement.Application.Common.Helpers.CodeGeneratorHelper.GenerateCode(item.SeafoodName, "SP")
+                    : item.SeafoodCode.Trim().ToUpper();
+
+                var prodCode = baseProdCode;
+                var pCounter = 1;
+                while (await _context.Products.AnyAsync(p => p.Code == prodCode && !p.IsDeleted, cancellationToken))
+                {
+                    prodCode = $"{baseProdCode}-{pCounter:D2}";
+                    pCounter++;
+                }
+
                 product = new Product
                 {
-                    Code = string.IsNullOrWhiteSpace(item.SeafoodCode) ? $"HS-{DateTime.UtcNow:yyyyMMddHHmmss}" : item.SeafoodCode,
+                    Code = prodCode,
                     Name = string.IsNullOrWhiteSpace(item.SeafoodName) ? "Hải sản tươi" : item.SeafoodName,
                     CategoryId = category.Id,
                     Unit = "Kg",
@@ -209,10 +225,13 @@ public class InboundController : BaseApiController
 
             var netQty = item.NetWeight > 0 ? item.NetWeight : item.TotalWeight;
 
-            string bCode = string.IsNullOrWhiteSpace(item.BatchCode) ? $"LOT-{product.Code}-{txDate:yyyyMMddHHmmss}" : item.BatchCode;
-            if (await _context.LotBatches.AnyAsync(b => b.BatchCode == bCode && !b.IsDeleted, cancellationToken))
+            string baseBCode = string.IsNullOrWhiteSpace(item.BatchCode) ? $"LOT-{product.Code}-{txDate:yyyyMMddHHmmss}" : item.BatchCode;
+            string bCode = baseBCode;
+            var bCounter = 1;
+            while (await _context.LotBatches.AnyAsync(b => b.BatchCode == bCode && !b.IsDeleted, cancellationToken))
             {
-                bCode = $"{bCode}-{Random.Shared.Next(10, 99)}";
+                bCode = $"{baseBCode}-{bCounter:D2}";
+                bCounter++;
             }
 
             var lotBatch = new LotBatch
