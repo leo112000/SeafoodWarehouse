@@ -39,10 +39,12 @@ export const PERMISSIONS: Permission[] = [
   { code: 'Pages.AuditLogs.View', displayName: 'Xem nhật ký hệ thống', category: 'Hệ thống' },
 ];
 
-const allPermissionCodes = PERMISSIONS.map((permission) => permission.code);
+const tenantAdminPermissionCodes = PERMISSIONS
+  .filter((permission) => permission.code !== 'Pages.Tenants.Manage')
+  .map((permission) => permission.code);
 
 export const createDefaultRoles = (): Role[] => [
-  { id: '1', name: 'Admin', description: 'Toàn quyền quản trị hệ thống.', isSystemDefault: true, permissions: allPermissionCodes },
+  { id: '1', name: 'Admin', description: 'Toàn quyền quản trị chi nhánh.', isSystemDefault: true, permissions: tenantAdminPermissionCodes },
   {
     id: '2', name: 'Thukho', description: 'Thực hiện nghiệp vụ nhập, xuất và kiểm kê kho.', isSystemDefault: true,
     permissions: PERMISSIONS.filter((permission) => permission.category !== 'Hệ thống').map((permission) => permission.code),

@@ -16,6 +16,12 @@ export const usePermission = (permission: string): boolean => {
   const rolesByTenant = useRoleStore((state) => state.rolesByTenant);
 
   if (!user) return false;
+
+  // Quyền quản lý Cửa hàng & Chi nhánh (Pages.Tenants.Manage) chỉ dành RIÊNG cho Host Super Admin (tenantId == null / undefined)
+  if (permission === 'Pages.Tenants.Manage') {
+    return (user.tenantId === null || user.tenantId === undefined) && user.roles.includes('Admin');
+  }
+
   if (user.roles.includes('Admin')) return true;
 
   const tenantRoles = rolesByTenant[tenantName?.trim() || 'Default'] ?? createDefaultRoles();

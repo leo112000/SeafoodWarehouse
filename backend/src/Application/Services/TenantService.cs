@@ -104,7 +104,7 @@ public class TenantService : ITenantService
             "Pages.Warehouses.View", "Pages.Warehouses.Create", "Pages.Warehouses.Edit", "Pages.Warehouses.Delete",
             "Pages.Inbound.Create", "Pages.Inbound.View", "Pages.Outbound.Create", "Pages.Outbound.View",
             "Pages.Wastage.Create", "Pages.Wastage.View", "Pages.PackagingReturn.Create", "Pages.PackagingReturn.View",
-            "Pages.Reports.View", "Pages.Alerts.View", "Pages.Users.Manage", "Pages.Roles.Manage", "Pages.Settings.Manage", "Pages.Tenants.Manage", "Pages.AuditLogs.View"
+            "Pages.Reports.View", "Pages.Alerts.View", "Pages.Users.Manage", "Pages.Roles.Manage", "Pages.Settings.Manage", "Pages.AuditLogs.View"
         };
 
         foreach (var perm in allPermissions)

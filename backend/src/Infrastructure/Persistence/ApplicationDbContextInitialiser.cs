@@ -1041,6 +1041,18 @@ public class ApplicationDbContextInitialiser
             await _context.SaveChangesAsync();
         }
 
+        // 5.3. Thu hồi quyền Pages.Tenants.Manage từ tất cả các Role thuộc Tenant (chỉ Host Super Admin TenantId == null mới có quyền này)
+        var invalidTenantRolePerms = await _context.RolePermissions
+            .IgnoreQueryFilters()
+            .Include(rp => rp.Role)
+            .Where(rp => rp.PermissionCode == "Pages.Tenants.Manage" && rp.Role != null && rp.Role.TenantId != null)
+            .ToListAsync();
+        if (invalidTenantRolePerms.Count > 0)
+        {
+            _context.RolePermissions.RemoveRange(invalidTenantRolePerms);
+            await _context.SaveChangesAsync();
+        }
+
 /*
         // 1. Seed Danh mục Hải sản (Categories)
         if (!await _context.Categories.AnyAsync())

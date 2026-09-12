@@ -14,11 +14,13 @@ public class TenantsController : BaseApiController
 {
     private readonly ITenantService _tenantService;
     private readonly INotificationService _notificationService;
+    private readonly ICurrentTenant _currentTenant;
 
-    public TenantsController(ITenantService tenantService, INotificationService notificationService)
+    public TenantsController(ITenantService tenantService, INotificationService notificationService, ICurrentTenant currentTenant)
     {
         _tenantService = tenantService;
         _notificationService = notificationService;
+        _currentTenant = currentTenant;
     }
 
     /// <summary>
@@ -27,6 +29,11 @@ public class TenantsController : BaseApiController
     [HttpGet]
     public async Task<ActionResult<List<TenantDto>>> GetAll(CancellationToken cancellationToken = default)
     {
+        if (_currentTenant.Id.HasValue)
+        {
+            return StatusCode(403, new { message = "Chỉ Quản trị viên cấp cao (Host Admin) mới có quyền truy cập danh sách Cửa hàng / Chi nhánh." });
+        }
+
         var result = await _tenantService.GetAllAsync(cancellationToken);
         return Ok(result);
     }
@@ -37,6 +44,10 @@ public class TenantsController : BaseApiController
     [HttpGet("{id:int}")]
     public async Task<ActionResult<TenantDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
+        if (_currentTenant.Id.HasValue && _currentTenant.Id.Value != id)
+        {
+            return StatusCode(403, new { message = "Bạn không có quyền truy cập thông tin của chi nhánh khác." });
+        }
         var result = await _tenantService.GetByIdAsync(id, cancellationToken);
         if (result == null)
         {
@@ -65,6 +76,11 @@ public class TenantsController : BaseApiController
     [HttpPost]
     public async Task<ActionResult<Result<TenantDto>>> Create([FromBody] CreateTenantDto dto, CancellationToken cancellationToken = default)
     {
+        if (_currentTenant.Id.HasValue)
+        {
+            return StatusCode(403, Result<TenantDto>.Failure("Chỉ Quản trị viên cấp cao (Host Admin) mới có quyền tạo mới Cửa hàng / Chi nhánh."));
+        }
+
         var result = await _tenantService.CreateAsync(dto, cancellationToken);
         if (!result.IsSuccess)
         {
@@ -90,6 +106,11 @@ public class TenantsController : BaseApiController
     [HttpPut("{id:int}")]
     public async Task<ActionResult<Result<TenantDto>>> Update(int id, [FromBody] UpdateTenantDto dto, CancellationToken cancellationToken = default)
     {
+        if (_currentTenant.Id.HasValue)
+        {
+            return StatusCode(403, Result<TenantDto>.Failure("Chỉ Quản trị viên cấp cao (Host Admin) mới có quyền cập nhật Cửa hàng / Chi nhánh."));
+        }
+
         var result = await _tenantService.UpdateAsync(id, dto, cancellationToken);
         if (!result.IsSuccess)
         {
@@ -114,6 +135,11 @@ public class TenantsController : BaseApiController
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<Result>> Delete(int id, CancellationToken cancellationToken = default)
     {
+        if (_currentTenant.Id.HasValue)
+        {
+            return StatusCode(403, Result.Failure("Chỉ Quản trị viên cấp cao (Host Admin) mới có quyền xóa Cửa hàng / Chi nhánh."));
+        }
+
         var result = await _tenantService.DeleteAsync(id, cancellationToken);
         if (!result.IsSuccess)
         {
