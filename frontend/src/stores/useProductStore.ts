@@ -31,43 +31,20 @@ export const useProductStore = create<ProductState>()(
       },
 
       addProduct: async (productData) => {
-        try {
-          const newProduct = await productService.create(productData);
-          set((state) => ({ products: [newProduct, ...state.products] }));
-          get().fetchProducts();
-          return newProduct;
-        } catch {
-          const newProduct: Product = { ...productData, id: `p-${Date.now()}` };
-          set((state) => ({ products: [newProduct, ...state.products] }));
-          return newProduct;
-        }
+        const newProduct = await productService.create(productData);
+        set((state) => ({ products: [newProduct, ...state.products] }));
+        get().fetchProducts();
+        return newProduct;
       },
 
       addProductsBatch: async (items) => {
-        try {
-          const res = await productService.createBatch(items);
-          await get().fetchProducts();
-          return res;
-        } catch {
-          const newProducts: Product[] = items.map((it, idx) => ({
-            ...it,
-            id: `p-${Date.now()}-${idx}`,
-          }));
-          set((state) => ({ products: [...newProducts, ...state.products] }));
-          return {
-            importedCount: items.length,
-            skippedCount: 0,
-            errors: [],
-          };
-        }
+        const res = await productService.createBatch(items);
+        await get().fetchProducts();
+        return res;
       },
 
       updateProduct: async (id, productData) => {
-        try {
-          await productService.update(id, productData);
-        } catch {
-          // Continue updating local store
-        }
+        await productService.update(id, productData);
         set((state) => ({
           products: state.products.map((p) =>
             p.id === id ? { ...productData, id } : p
@@ -77,11 +54,7 @@ export const useProductStore = create<ProductState>()(
       },
 
       deleteProduct: async (id) => {
-        try {
-          await productService.delete(id);
-        } catch {
-          // Continue local delete
-        }
+        await productService.delete(id);
         set((state) => ({ products: state.products.filter((p) => p.id !== id) }));
         get().fetchProducts();
       },

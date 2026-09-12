@@ -19,6 +19,7 @@ import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerM
 import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 import { exportToExcel } from '../../utils/exportUtils';
 import { CategoryImportModal } from './CategoryImportModal';
+import { getErrorMessage } from '../../services/api';
 
 // ─── component ─────────────────────────────────────────────────────────────────
 
@@ -178,8 +179,16 @@ export const CategoriesPage: React.FC = () => {
       setIsModalOpen(false);
       form.resetFields();
       setEditingCategory(null);
-    } catch {
-      message.error('Lỗi khi lưu thông tin danh mục.');
+    } catch (err: any) {
+      const errMsg = getErrorMessage(err, 'Lỗi khi lưu thông tin danh mục.');
+      const isNameErr = errMsg.toLowerCase().includes('tên') || errMsg.toLowerCase().includes('name');
+
+      if (isNameErr) {
+        form.setFields([{ name: 'name', errors: [errMsg] }]);
+      } else {
+        form.setFields([{ name: 'code', errors: [errMsg] }]);
+      }
+      message.warning(errMsg);
     }
   });
 

@@ -31,29 +31,15 @@ export const usePackagingStore = create<PackagingState>()(
       },
 
       addPackaging: async (packagingData) => {
-        try {
-          const newPackaging = await packagingService.create(packagingData);
-          if (newPackaging) {
-            set((state) => ({ packagings: [newPackaging, ...state.packagings] }));
-          }
-          return newPackaging;
-        } catch {
-          // Fallback: add locally with generated id
-          const fallback: PackagingType = {
-            ...packagingData,
-            id: `pkg-${Date.now()}`,
-          };
-          set((state) => ({ packagings: [fallback, ...state.packagings] }));
-          return fallback;
+        const newPackaging = await packagingService.create(packagingData);
+        if (newPackaging) {
+          set((state) => ({ packagings: [newPackaging, ...state.packagings] }));
         }
+        return newPackaging;
       },
 
       updatePackaging: async (id, packagingData) => {
-        try {
-          await packagingService.update(id, packagingData);
-        } catch {
-          // Continue updating local store
-        }
+        await packagingService.update(id, packagingData);
         set((state) => ({
           packagings: state.packagings.map((p) =>
             p.id === id ? { ...p, ...packagingData, id } : p
@@ -62,11 +48,7 @@ export const usePackagingStore = create<PackagingState>()(
       },
 
       deletePackaging: async (id) => {
-        try {
-          await packagingService.delete(id);
-        } catch {
-          // Continue local delete
-        }
+        await packagingService.delete(id);
         set((state) => ({
           packagings: state.packagings.filter((p) => p.id !== id),
         }));

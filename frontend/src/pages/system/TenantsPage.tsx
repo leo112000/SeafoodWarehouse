@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useTenantStore } from '../../stores/useTenantStore';
 import { authService } from '../../services/authService';
 import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
+import { getErrorMessage } from '../../services/api';
 
 export const TenantsPage: React.FC = () => {
   const { message } = App.useApp();
@@ -82,7 +83,15 @@ export const TenantsPage: React.FC = () => {
       fetchTenants();
     } catch (err: any) {
       if (err?.errorFields) return; // Validation error from Antd form
-      message.error(err?.message || 'Có lỗi xảy ra khi lưu thông tin đơn vị thuê.');
+      const errMsg = getErrorMessage(err, 'Có lỗi xảy ra khi lưu thông tin đơn vị thuê.');
+      const isNameErr = errMsg.toLowerCase().includes('tên') || errMsg.toLowerCase().includes('name');
+
+      if (isNameErr) {
+        form.setFields([{ name: 'name', errors: [errMsg] }]);
+      } else {
+        form.setFields([{ name: 'code', errors: [errMsg] }]);
+      }
+      message.warning(errMsg);
     } finally {
       setLoading(false);
     }

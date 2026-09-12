@@ -7,6 +7,7 @@ import { generateCodeFromName } from '../../utils/codeGenerator';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 import { exportToExcel } from '../../utils/exportUtils';
 import { WarehouseImportModal } from './WarehouseImportModal';
+import { getErrorMessage } from '../../services/api';
 
 export const WarehousesPage: React.FC = () => {
   const { warehouses, loading, fetchWarehouses } = useWarehouseStore();
@@ -55,7 +56,15 @@ export const WarehousesPage: React.FC = () => {
       fetchWarehouses();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi lưu kho.');
+      const errMsg = getErrorMessage(err, 'Có lỗi xảy ra khi lưu kho.');
+      const isNameErr = errMsg.toLowerCase().includes('tên') || errMsg.toLowerCase().includes('name');
+
+      if (isNameErr) {
+        form.setFields([{ name: 'name', errors: [errMsg] }]);
+      } else {
+        form.setFields([{ name: 'code', errors: [errMsg] }]);
+      }
+      message.warning(errMsg);
     }
   };
 

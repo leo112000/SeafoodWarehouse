@@ -20,6 +20,7 @@ import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerM
 import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 import { exportToExcel } from '../../utils/exportUtils';
 import { ProductImportModal } from './ProductImportModal';
+import { getErrorMessage } from '../../services/api';
 
 
 
@@ -185,32 +186,44 @@ export const ProductsPage: React.FC = () => {
   };
 
   const { isSubmitting, handleSubmit } = useAsyncSubmit(async (values: any) => {
-    const cat = categories.find(c => c.id === values.categoryId || c.code === values.categoryId);
-    const productData: Omit<Product, 'id'> = {
-      code: (values.code as string).toUpperCase(),
-      name: values.name,
-      categoryId: values.categoryId,
-      categoryName: cat?.name,
-      unit: values.unit,
-      storageType: values.storageType,
-      targetTemperature: values.targetTemperature,
-      warningDaysBeforeExpiry: values.warningDaysBeforeExpiry,
-      minStock: values.minStock,
-      maxStock: values.maxStock,
-      referencePrice: values.referencePrice,
-      status: values.statusSwitch ? 'ACTIVE' : 'INACTIVE',
-      note: values.note,
-    };
+    try {
+      const cat = categories.find(c => c.id === values.categoryId || c.code === values.categoryId);
+      const productData: Omit<Product, 'id'> = {
+        code: (values.code as string).toUpperCase(),
+        name: values.name,
+        categoryId: values.categoryId,
+        categoryName: cat?.name,
+        unit: values.unit,
+        storageType: values.storageType,
+        targetTemperature: values.targetTemperature,
+        warningDaysBeforeExpiry: values.warningDaysBeforeExpiry,
+        minStock: values.minStock,
+        maxStock: values.maxStock,
+        referencePrice: values.referencePrice,
+        status: values.statusSwitch ? 'ACTIVE' : 'INACTIVE',
+        note: values.note,
+      };
 
-    if (editingProduct) {
-      await updateProduct(editingProduct.id, productData);
-      message.success('Cập nhật sản phẩm thành công!');
-    } else {
-      await addProduct(productData);
-      setPagination((prev) => ({ ...prev, current: 1 }));
-      message.success('Thêm sản phẩm mới thành công!');
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, productData);
+        message.success('Cập nhật sản phẩm thành công!');
+      } else {
+        await addProduct(productData);
+        setPagination((prev) => ({ ...prev, current: 1 }));
+        message.success('Thêm sản phẩm mới thành công!');
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      const errMsg = getErrorMessage(err, 'Lỗi khi lưu sản phẩm.');
+      const isNameErr = errMsg.toLowerCase().includes('tên') || errMsg.toLowerCase().includes('name');
+
+      if (isNameErr) {
+        form.setFields([{ name: 'name', errors: [errMsg] }]);
+      } else {
+        form.setFields([{ name: 'code', errors: [errMsg] }]);
+      }
+      message.warning(errMsg);
     }
-    setIsModalOpen(false);
   });
 
   // ── table columns ─────────────────────────────────────────────────────────────

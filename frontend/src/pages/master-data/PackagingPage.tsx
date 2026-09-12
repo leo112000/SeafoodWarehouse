@@ -10,6 +10,7 @@ import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerM
 import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
 import { exportToExcel } from '../../utils/exportUtils';
 import { PackagingImportModal } from './PackagingImportModal';
+import { getErrorMessage } from '../../services/api';
 
 export const PackagingPage: React.FC = () => {
   const { message, modal } = App.useApp();
@@ -234,8 +235,16 @@ export const PackagingPage: React.FC = () => {
       }
       setIsModalOpen(false);
       fetchPackagings();
-    } catch {
-      message.error('Lỗi khi lưu thông tin bao bì.');
+    } catch (err: any) {
+      const errMsg = getErrorMessage(err, 'Lỗi khi lưu thông tin bao bì.');
+      const isNameErr = errMsg.toLowerCase().includes('tên') || errMsg.toLowerCase().includes('name');
+
+      if (isNameErr) {
+        form.setFields([{ name: 'name', errors: [errMsg] }]);
+      } else {
+        form.setFields([{ name: 'code', errors: [errMsg] }]);
+      }
+      message.warning(errMsg);
     }
   });
 

@@ -6,6 +6,7 @@ import { generateCodeFromName } from '../../utils/codeGenerator';
 import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 import { exportToExcel } from '../../utils/exportUtils';
 import { PartnerImportModal } from './PartnerImportModal';
+import { getErrorMessage } from '../../services/api';
 
 export const PartnersPage: React.FC = () => {
   const { message } = App.useApp();
@@ -86,7 +87,15 @@ export const PartnersPage: React.FC = () => {
       fetchPartners();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error(err?.message || 'Có lỗi xảy ra khi lưu thông tin.');
+      const errMsg = getErrorMessage(err, 'Có lỗi xảy ra khi lưu thông tin.');
+      const isNameErr = errMsg.toLowerCase().includes('tên') || errMsg.toLowerCase().includes('name');
+
+      if (isNameErr) {
+        form.setFields([{ name: 'name', errors: [errMsg] }]);
+      } else {
+        form.setFields([{ name: 'code', errors: [errMsg] }]);
+      }
+      message.warning(errMsg);
     } finally {
       setLoading(false);
     }
