@@ -63,6 +63,7 @@ export const UsersPage: React.FC = () => {
         await userService.update(editingUser.id, {
           name: values.name,
           email: values.email,
+          password: values.password,
           phone: values.phone,
           roles: values.roles,
           status,
@@ -74,6 +75,7 @@ export const UsersPage: React.FC = () => {
         await userService.create({
           name: values.name,
           email: values.email,
+          password: values.password,
           phone: values.phone,
           roles: values.roles,
           status,
@@ -320,6 +322,22 @@ export const UsersPage: React.FC = () => {
             ]}
           >
             <Input placeholder="vi-du@gmail.com" disabled={!!editingUser} />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            label={editingUser ? 'Đổi mật khẩu mới' : 'Mật khẩu khởi tạo'}
+            rules={
+              editingUser
+                ? []
+                : [
+                    { min: 6, message: 'Mật khẩu tối thiểu 6 ký tự!' },
+                  ]
+            }
+          >
+            <Input.Password
+              placeholder={editingUser ? 'Để trống nếu không muốn đổi mật khẩu' : 'Mặc định: 123456'}
+            />
           </Form.Item>
 
           <Form.Item

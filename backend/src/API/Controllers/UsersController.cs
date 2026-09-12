@@ -32,6 +32,7 @@ public class UpdateUserRequestDto
 {
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public string? Password { get; set; }
     public string Phone { get; set; } = string.Empty;
     public string Status { get; set; } = "Active";
     public List<string> Roles { get; set; } = new();
@@ -45,10 +46,12 @@ public class UpdateUserRequestDto
 public class UsersController : BaseApiController
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentTenant _currentTenant;
 
-    public UsersController(IApplicationDbContext context)
+    public UsersController(IApplicationDbContext context, ICurrentTenant currentTenant)
     {
         _context = context;
+        _currentTenant = currentTenant;
     }
 
     /// <summary>
@@ -57,9 +60,25 @@ public class UsersController : BaseApiController
     [HttpGet]
     public async Task<ActionResult<Result<List<UserDto>>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var users = await _context.Users
-            .IgnoreQueryFilters()
-            .Where(u => !u.IsDeleted)
+        IQueryable<User> query;
+
+        if (_currentTenant.Id.HasValue)
+        {
+            // Khi đang đăng nhập vào một Tenant: CHỈ xem danh sách nhân viên của chính Tenant đó!
+            // Tuyệt đối không hiển thị tài khoản Host (TenantId == null) hay các Tenant khác.
+            query = _context.Users
+                .IgnoreQueryFilters()
+                .Where(u => !u.IsDeleted && u.TenantId == _currentTenant.Id.Value);
+        }
+        else
+        {
+            // Khi là Host Admin (TenantId == null): Xem toàn bộ hệ thống
+            query = _context.Users
+                .IgnoreQueryFilters()
+                .Where(u => !u.IsDeleted);
+        }
+
+        var users = await query
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
             .OrderByDescending(u => u.CreatedAt)
@@ -94,11 +113,19 @@ public class UsersController : BaseApiController
     [HttpGet("{id}")]
     public async Task<ActionResult<Result<UserDto>>> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var user = await _context.Users
+        var query = _context.Users
             .IgnoreQueryFilters()
+            .Where(u => u.Id == id && !u.IsDeleted);
+
+        if (_currentTenant.Id.HasValue)
+        {
+            query = query.Where(u => u.TenantId == _currentTenant.Id.Value);
+        }
+
+        var user = await query
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
-            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (user == null)
         {
@@ -153,20 +180,20 @@ public class UsersController : BaseApiController
             Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword),
             Phone = request.Phone ?? string.Empty,
-            Status = request.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) ? "ACTIVE" : "BLOCKED"
+            Status = request.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) ? "ACTIVE" : "BLOCKED",
+            TenantId = _currentTenant.Id
         };
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Xử lý Roles: Nếu không truyền role nào, mặc định cấp quyền Admin (đặc biệt khi TenantId == null)
+        // Xử lý Roles
         var rolesToAssign = (request.Roles != null && request.Roles.Count > 0)
             ? request.Roles
-            : new List<string> { "Admin" };
+            : new List<string> { "Nhanvien" };
 
         var dbRoles = await _context.Roles.IgnoreQueryFilters().Where(r => rolesToAssign.Contains(r.Name)).ToListAsync(cancellationToken);
         
-        // Nếu DB chưa có role Admin, tạo role Admin mặc định
         if (dbRoles.Count == 0 && rolesToAssign.Contains("Admin"))
         {
             var defaultAdminRole = new Role { Name = "Admin", Description = "Quản trị viên toàn quyền", IsSystemDefault = true };
@@ -189,7 +216,7 @@ public class UsersController : BaseApiController
             Phone = user.Phone,
             Status = request.Status,
             Roles = dbRoles.Select(r => r.Name).ToList(),
-            TenantName = request.TenantName ?? "Default"
+            TenantName = request.TenantName ?? (_currentTenant.Id.HasValue ? $"Tenant #{_currentTenant.Id}" : "Host")
         };
 
         return Ok(Result<UserDto>.Success(dto));
@@ -201,10 +228,17 @@ public class UsersController : BaseApiController
     [HttpPut("{id}")]
     public async Task<ActionResult<Result<UserDto>>> Update(int id, [FromBody] UpdateUserRequestDto request, CancellationToken cancellationToken = default)
     {
-        var user = await _context.Users
+        var query = _context.Users
             .IgnoreQueryFilters()
             .Include(u => u.UserRoles)
-            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
+            .Where(u => u.Id == id && !u.IsDeleted);
+
+        if (_currentTenant.Id.HasValue)
+        {
+            query = query.Where(u => u.TenantId == _currentTenant.Id.Value);
+        }
+
+        var user = await query.FirstOrDefaultAsync(cancellationToken);
 
         if (user == null)
         {
@@ -214,6 +248,12 @@ public class UsersController : BaseApiController
         user.FullName = request.Name;
         user.Phone = request.Phone ?? user.Phone;
         user.Status = request.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) ? "ACTIVE" : "BLOCKED";
+
+        // Cập nhật mật khẩu nếu có truyền vào
+        if (!string.IsNullOrWhiteSpace(request.Password))
+        {
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+        }
 
         // Update Roles
         _context.UserRoles.RemoveRange(user.UserRoles);
@@ -248,7 +288,13 @@ public class UsersController : BaseApiController
     [HttpPatch("{id}/status")]
     public async Task<ActionResult<Result<bool>>> ToggleStatus(int id, CancellationToken cancellationToken = default)
     {
-        var user = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
+        var query = _context.Users.IgnoreQueryFilters().Where(u => u.Id == id && !u.IsDeleted);
+        if (_currentTenant.Id.HasValue)
+        {
+            query = query.Where(u => u.TenantId == _currentTenant.Id.Value);
+        }
+
+        var user = await query.FirstOrDefaultAsync(cancellationToken);
         if (user == null)
         {
             return NotFound(Result<bool>.Failure("Không tìm thấy nhân viên."));
@@ -266,7 +312,13 @@ public class UsersController : BaseApiController
     [HttpDelete("{id}")]
     public async Task<ActionResult<Result<bool>>> Delete(int id, CancellationToken cancellationToken = default)
     {
-        var user = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
+        var query = _context.Users.IgnoreQueryFilters().Where(u => u.Id == id && !u.IsDeleted);
+        if (_currentTenant.Id.HasValue)
+        {
+            query = query.Where(u => u.TenantId == _currentTenant.Id.Value);
+        }
+
+        var user = await query.FirstOrDefaultAsync(cancellationToken);
         if (user == null)
         {
             return NotFound(Result<bool>.Failure("Không tìm thấy nhân viên."));

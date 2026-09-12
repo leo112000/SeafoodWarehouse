@@ -23,10 +23,11 @@ export const userService = {
     }
   },
 
-  async create(data: Partial<UserRecord>): Promise<UserRecord | null> {
+  async create(data: Partial<UserRecord> & { password?: string }): Promise<UserRecord | null> {
     const response = await api.post('/users', {
       name: data.name,
       email: data.email,
+      password: data.password,
       phone: data.phone,
       roles: data.roles,
       status: data.status || 'Active',
@@ -35,10 +36,11 @@ export const userService = {
     return response.data?.data || null;
   },
 
-  async update(id: string, data: Partial<UserRecord>): Promise<void> {
+  async update(id: string, data: Partial<UserRecord> & { password?: string }): Promise<void> {
     await api.put(`/users/${id}`, {
       name: data.name,
       email: data.email,
+      password: data.password,
       phone: data.phone,
       roles: data.roles,
       status: data.status || 'Active',

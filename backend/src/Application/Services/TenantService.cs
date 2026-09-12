@@ -133,7 +133,7 @@ public class TenantService : ITenantService
         {
             FullName = $"Admin ({tenant.Name})",
             Email = adminEmail,
-            PasswordHash = "Admin@123", // Mật khẩu mặc định khởi tạo
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"), // Mật khẩu mặc định khởi tạo được băm BCrypt chuẩn
             Phone = dto.Phone?.Trim() ?? string.Empty,
             Status = "ACTIVE",
             TenantId = tenant.Id,

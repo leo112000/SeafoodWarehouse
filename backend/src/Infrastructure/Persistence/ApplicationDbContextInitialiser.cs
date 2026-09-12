@@ -1027,6 +1027,20 @@ public class ApplicationDbContextInitialiser
             }
         }
 
+        // 5.2. Tự động băm BCrypt toàn bộ mật khẩu cũ dạng plaintext nếu có trong database
+        var unhashedUsers = await _context.Users
+            .IgnoreQueryFilters()
+            .Where(u => !string.IsNullOrEmpty(u.PasswordHash) && !u.PasswordHash.StartsWith("$2"))
+            .ToListAsync();
+        foreach (var u in unhashedUsers)
+        {
+            u.PasswordHash = BCrypt.Net.BCrypt.HashPassword(u.PasswordHash);
+        }
+        if (unhashedUsers.Count > 0)
+        {
+            await _context.SaveChangesAsync();
+        }
+
 /*
         // 1. Seed Danh mục Hải sản (Categories)
         if (!await _context.Categories.AnyAsync())
