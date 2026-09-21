@@ -1,8 +1,8 @@
 import React from 'react';
 import { Result, Button } from 'antd';
 import { Link, Outlet } from 'react-router-dom';
-import { useAuthStore } from '../stores/useAuthStore';
-import type { UserInfo } from '../stores/useAuthStore';
+import { useAuthStore } from '@/stores/useAuthStore';
+import type { UserInfo } from '@/stores/useAuthStore';
 
 interface RoleGuardProps {
   allowedRoles: UserInfo['roles'];

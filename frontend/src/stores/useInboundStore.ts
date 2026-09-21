@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { transactionService, type InboundReceiptPayload } from '../services/transactionService';
-import type { TransactionStatus } from '../constants';
+import { transactionService, type InboundReceiptPayload } from '@/services/transactionService';
+import type { TransactionStatus } from '@/constants';
 
 export interface InboundItem {
   seafoodName: string;

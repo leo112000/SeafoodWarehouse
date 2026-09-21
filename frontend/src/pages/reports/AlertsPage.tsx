@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Tag, Row, Col, Alert, Space, Button, App, Statistic } from 'antd';
 import { AlertOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
-import { batchService, type FefoBatch } from '../../services/batchService';
-import { productService } from '../../services/productService';
-import { settingService, type SystemSetting } from '../../services/settingService';
-import type { Product } from '../../types/seafood';
-import { formatWeight } from '../../utils/format';
+import { batchService, type FefoBatch } from '@/services/batchService';
+import { productService } from '@/services/productService';
+import { settingService, type SystemSetting } from '@/services/settingService';
+import type { Product } from '@/types/seafood';
+import { formatWeight } from '@/utils/format';
 import dayjs from 'dayjs';
-import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 export const AlertsPage: React.FC = () => {
   const { message } = App.useApp();
   const [fefoBatches, setFefoBatches] = useState<FefoBatch[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [zoomAlert, setZoomAlert] = useState<'expiry' | 'lowStock' | null>(null);
   const [settings, setSettings] = useState<SystemSetting>({
     expiringAlertDays: 15,
     tempDeviationThreshold: 3.0,
@@ -240,7 +238,6 @@ export const AlertsPage: React.FC = () => {
               <span className="text-sm sm:text-base font-bold">Cảnh Báo Hải Sản Cận Hạn Sử Dụng</span>
             </Space>
           }
-          extra={<ZoomButton onClick={() => setZoomAlert('expiry')} />}
           className="shadow-sm rounded-2xl overflow-hidden"
           styles={{ body: { padding: '12px' } }}
         >
@@ -314,7 +311,6 @@ export const AlertsPage: React.FC = () => {
               <span className="text-sm sm:text-base font-bold">Cảnh Báo Trữ Lượng Tồn Kho Thấp</span>
             </Space>
           }
-          extra={<ZoomButton onClick={() => setZoomAlert('lowStock')} />}
           className="shadow-sm rounded-2xl overflow-hidden"
           styles={{ body: { padding: '12px' } }}
         >
@@ -368,45 +364,6 @@ export const AlertsPage: React.FC = () => {
           </div>
         </Card>
       </Space>
-
-      {/* Modal Phóng To Bảng Cảnh Báo & Quay Ngang */}
-      <ZoomViewerModal
-        open={zoomAlert !== null}
-        onClose={() => setZoomAlert(null)}
-        title={
-          zoomAlert === 'expiry'
-            ? 'Cảnh Báo Hải Sản Cận Hạn Sử Dụng'
-            : 'Cảnh Báo Trữ Lượng Tồn Kho Thấp'
-        }
-        subtitle="Chế độ toàn màn hình hỗ trợ kiểm tra chi tiết"
-      >
-        {({ isRotated }) => (
-          <div className="w-full h-full flex flex-col p-2">
-            {zoomAlert === 'expiry' && (
-              <Table
-                dataSource={expiryAlerts}
-                columns={expiryColumns}
-                rowKey="batchCode"
-                loading={loading}
-                pagination={false}
-                size="middle"
-                scroll={{ x: 900, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
-              />
-            )}
-            {zoomAlert === 'lowStock' && (
-              <Table
-                dataSource={lowStockAlerts}
-                columns={lowStockColumns}
-                rowKey="id"
-                loading={loading}
-                pagination={false}
-                size="middle"
-                scroll={{ x: 800, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
-              />
-            )}
-          </div>
-        )}
-      </ZoomViewerModal>
     </div>
   );
 };

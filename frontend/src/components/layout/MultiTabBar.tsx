@@ -7,7 +7,7 @@ import {
   MinusCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useTabStore, type TabItem } from '../../stores/useTabStore';
+import { useTabStore, type TabItem } from '@/stores/useTabStore';
 
 export const MultiTabBar: React.FC = () => {
   const { tabs, activeKey, removeTab, closeOtherTabs, closeAllTabs } = useTabStore();

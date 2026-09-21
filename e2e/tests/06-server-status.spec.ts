@@ -4,7 +4,7 @@ test.describe('Kiểm thử Báo lỗi & Khóa màn hình chuẩn ASP.NET Boiler
   test('Hiển thị Modal ABP khóa tương tác toàn màn hình khi Server trả về Lỗi 502 / Offline', async ({ page }) => {
     // 1. Mở trang đăng nhập bình thường
     await page.goto('/login');
-    const emailInput = page.locator('input[placeholder="Email đăng nhập"]');
+    const emailInput = page.locator('#login_form_email');
     await expect(emailInput).toBeVisible({ timeout: 10000 });
 
     // 2. Mô phỏng sự cố mạng máy chủ (Server trả về lỗi 502 Bad Gateway)
@@ -17,9 +17,9 @@ test.describe('Kiểm thử Báo lỗi & Khóa màn hình chuẩn ASP.NET Boiler
     });
 
     // 3. Thực hiện thao tác gọi API (ví dụ: nhấn đăng nhập)
-    await page.fill('input[placeholder="Email đăng nhập"]', 'admin@gmail.com');
-    await page.fill('input[placeholder="Mật khẩu"]', 'qazwsxedc@123A');
-    await page.click('button:has-text("Đăng nhập")');
+    await page.fill('#login_form_email', 'admin@gmail.com');
+    await page.fill('#login_form_password', 'qazwsxedc@123A');
+    await page.click('button[type="submit"]');
 
     // 4. Xác nhận Modal báo lỗi ABP xuất hiện và KHÓA CHẶN MÀN HÌNH
     const errorModal = page.locator('aside[aria-label="Cảnh báo sự cố máy chủ"]');
@@ -52,7 +52,7 @@ test.describe('Kiểm thử Báo lỗi & Khóa màn hình chuẩn ASP.NET Boiler
   test('Hiển thị popup Modal ABP (văng lỗi) khi gặp lỗi nghiệp vụ / 400 / 403', async ({ page }) => {
     // 1. Mở trang đăng nhập
     await page.goto('/login');
-    await expect(page.locator('input[placeholder="Email đăng nhập"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#login_form_email')).toBeVisible({ timeout: 10000 });
 
     // 2. Mô phỏng API trả về lỗi nghiệp vụ 400 kèm chi tiết validation
     await page.route('**/api/tenants/**', (route) => {

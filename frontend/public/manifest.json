@@ -1,0 +1,23 @@
+{
+  "short_name": "Kho Hải Sản",
+  "name": "Hệ Thống Quản Lý Kho Hải Sản",
+  "description": "Nền tảng Quản trị Chuỗi lạnh & Kho Hải Sản đa chi nhánh",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0b1329",
+  "theme_color": "#0284c7",
+  "display": "standalone",
+  "scope": "/",
+  "orientation": "portrait"
+}

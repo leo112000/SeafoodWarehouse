@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { Product } from '../types/seafood';
-import { productService } from '../services/productService';
+import type { Product } from '@/types/seafood';
+import { productService } from '@/services/productService';
 
 const INITIAL_PRODUCTS: Product[] = [];
 

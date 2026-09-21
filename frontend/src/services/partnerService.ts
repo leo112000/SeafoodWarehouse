@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { PartnerType } from '../constants';
+import type { PartnerType } from '@/constants';
 
 export interface PartnerItem {
   id: number;

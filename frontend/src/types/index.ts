@@ -1,4 +1,4 @@
-import type { StockStatus } from '../constants/enums';
+import type { StockStatus } from '@/constants/enums';
 
 export interface SeafoodProduct {
   id: string;
@@ -18,7 +18,7 @@ export interface WarehouseStats {
   categoriesCount: Record<string, number>;
 }
 
-export * from '../constants/enums';
+export * from '@/constants/enums';
 export * from './seafood';
 
 

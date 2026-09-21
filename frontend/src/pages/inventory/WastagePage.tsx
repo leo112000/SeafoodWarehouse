@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Form, Button, Select, InputNumber, Row, Col, Space, Table, Tag, DatePicker, Radio, App, Pagination } from 'antd';
 import { SaveOutlined, ReloadOutlined, SwapOutlined, WarningOutlined } from '@ant-design/icons';
-import { api } from '../../services/api';
-import { useBatchStore } from '../../stores/useBatchStore';
-import { formatCurrency, formatWeight, formatDateTime } from '../../utils/format';
-import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
-import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
+import { api } from '@/services/api';
+import { useBatchStore } from '@/stores/useBatchStore';
+import { formatCurrency, formatWeight, formatDateTime } from '@/utils/format';
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit';
 
 interface WastageLog {
   id: string;
@@ -21,7 +20,6 @@ interface WastageLog {
 export const WastagePage: React.FC = () => {
   const [form] = Form.useForm();
   const { message } = App.useApp();
-  const [zoomSection, setZoomSection] = useState<'stats' | 'logs' | null>(null);
 
   const batches = useBatchStore((state) => state.batches);
 
@@ -264,7 +262,6 @@ export const WastagePage: React.FC = () => {
                 <span>Báo Cáo Tỷ Lệ Hao Hụt Theo Tháng</span>
               </Space>
             }
-            extra={<ZoomButton onClick={() => setZoomSection('stats')} />}
             className="shadow-sm h-full"
           >
             {/* Mobile View: Thống kê tỷ lệ hao hụt dạng thẻ nhỏ */}
@@ -321,7 +318,6 @@ export const WastagePage: React.FC = () => {
 
       <Card
         title="Lịch sử nhật ký hao hụt & chuyển đổi phân loại"
-        extra={<ZoomButton onClick={() => setZoomSection('logs')} />}
         className="shadow-sm mt-6 rounded-2xl overflow-hidden"
         styles={{ body: { padding: '12px' } }}
       >
@@ -406,54 +402,6 @@ export const WastagePage: React.FC = () => {
           />
         </div>
       </Card>
-
-      {/* Modal Phóng To & Quay Ngang Toàn Màn Hình */}
-      <ZoomViewerModal
-        open={zoomSection !== null}
-        onClose={() => setZoomSection(null)}
-        title={
-          zoomSection === 'stats'
-            ? 'Báo Cáo Tỷ Lệ Hao Hụt Theo Tháng'
-            : 'Lịch Sử Nhật Ký Hao Hụt & Chuyển Đổi Phân Loại'
-        }
-        subtitle="Chế độ toàn màn hình tối ưu quan sát chi tiết"
-      >
-        {({ isRotated }) => (
-          <div className="w-full h-full flex flex-col p-2">
-            {zoomSection === 'stats' ? (
-              <Table
-                dataSource={monthlyStats}
-                columns={[
-                  { title: 'STT', key: 'stt', width: 55, align: 'center' as const, render: (_: any, __: any, index: number) => index + 1 },
-                  { title: 'Tháng', dataIndex: 'month', key: 'month' },
-                  { title: 'Tổng khối lượng nhập (kg)', dataIndex: 'totalInbound', key: 'totalInbound', render: (val) => `${val.toLocaleString()} kg` },
-                  { title: 'Hao hụt (kg)', dataIndex: 'totalWastage', key: 'totalWastage', render: (val) => `${val} kg` },
-                  { title: 'Tỷ lệ hao hụt (%)', dataIndex: 'rate', key: 'rate', render: (val) => <Tag color={val > 1.2 ? 'red' : 'green'}>{val}%</Tag> },
-                ]}
-                rowKey="month"
-                pagination={false}
-                size="middle"
-                scroll={{ x: 800, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
-              />
-            ) : (
-              <Table
-                dataSource={logs}
-                columns={logColumns}
-                rowKey="id"
-                pagination={{
-                  current: pagination.current,
-                  pageSize: pagination.pageSize,
-                  showSizeChanger: true,
-                  pageSizeOptions: ['5', '10', '20', '50'],
-                  onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-                }}
-                size="middle"
-                scroll={{ x: 900, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
-              />
-            )}
-          </div>
-        )}
-      </ZoomViewerModal>
     </div>
   );
 };

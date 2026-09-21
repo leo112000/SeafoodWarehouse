@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { PackagingLoan, PackagingReturn } from '../stores/usePackagingReturnStore';
+import type { PackagingLoan, PackagingReturn } from '@/stores/usePackagingReturnStore';
 
 export const packagingReturnService = {
   async getLoans(): Promise<PackagingLoan[]> {

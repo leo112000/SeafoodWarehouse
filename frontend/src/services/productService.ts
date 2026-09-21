@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Product } from '../types/seafood';
+import type { Product } from '@/types/seafood';
 
 export const productService = {
   async getAll(): Promise<Product[]> {

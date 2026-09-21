@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { AuditAction, AuditStatus } from '../constants';
+import type { AuditAction, AuditStatus } from '@/constants';
 
 export interface AuditLogItem {
   id: string;

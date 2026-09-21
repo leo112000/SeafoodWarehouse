@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { tenantService, type TenantItem } from '../services/tenantService';
+import { tenantService, type TenantItem } from '@/services/tenantService';
 
 interface TenantState {
   tenants: TenantItem[];

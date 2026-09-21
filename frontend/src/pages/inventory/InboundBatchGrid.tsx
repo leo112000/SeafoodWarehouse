@@ -11,13 +11,13 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { useInboundStore } from '../../stores/useInboundStore';
-import { useProductStore } from '../../stores/useProductStore';
-import { usePackagingStore } from '../../stores/usePackagingStore';
-import { useWarehouseStore } from '../../stores/useWarehouseStore';
-import { partnerService, type PartnerItem } from '../../services/partnerService';
-import { formatCurrency } from '../../utils/format';
-import { computeTareWeight, computeNetWeight, computeTotalPrice, generateBatchCode } from '../../utils/weightCalculator';
+import { useInboundStore } from '@/stores/useInboundStore';
+import { useProductStore } from '@/stores/useProductStore';
+import { usePackagingStore } from '@/stores/usePackagingStore';
+import { useWarehouseStore } from '@/stores/useWarehouseStore';
+import { partnerService, type PartnerItem } from '@/services/partnerService';
+import { formatCurrency } from '@/utils/format';
+import { computeTareWeight, computeNetWeight, computeTotalPrice, generateBatchCode } from '@/utils/weightCalculator';
 
 const { Text } = Typography;
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Row, Col, Button, Table, Typography, Space, Tag, Tooltip, Drawer, Segmented } from 'antd';
+import { Card, Row, Col, Button, Table, Typography, Tag, Tooltip, Drawer, Segmented } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import {
   InboxOutlined,
@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   ComposedChart,
   Bar,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -24,11 +23,12 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { EMPTY_DASHBOARD_DATA, type DashboardData, type RecentTransaction } from '../../services/mockDashboardData';
-import { dashboardService } from '../../services/dashboardService';
-import { TRANSACTION_STATUS, TRANSACTION_TYPE, type TransactionType } from '../../constants';
-import { formatCurrency, formatWeight, formatDateTime } from '../../utils/format';
-import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
+import { EMPTY_DASHBOARD_DATA, type DashboardData, type RecentTransaction } from '@/services/mockDashboardData';
+import { dashboardService } from '@/services/dashboardService';
+import { TRANSACTION_STATUS, TRANSACTION_TYPE, type TransactionType } from '@/constants';
+import { formatCurrency, formatWeight, formatDateTime } from '@/utils/format';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+import type { ExcelExportColumn } from '@/utils/exportUtils';
 
 const { Text } = Typography;
 
@@ -38,7 +38,6 @@ export const DashboardPage: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [drawerTx, setDrawerTx] = React.useState<RecentTransaction | null>(null);
   const [drawerVisible, setDrawerVisible] = React.useState(false);
-  const [zoomTarget, setZoomTarget] = React.useState<'flowChart' | 'categoryPie' | 'recentTransactions' | null>(null);
   const [chartMetric, setChartMetric] = React.useState<'KG' | 'VND'>('KG');
 
   const fetchData = React.useCallback(async () => {
@@ -221,6 +220,17 @@ export const DashboardPage: React.FC = () => {
     },
   ];
 
+  const recentTransactionsExportColumns: ExcelExportColumn[] = [
+    { header: 'Mã Phiếu', key: 'id', width: 18 },
+    { header: 'Thời Gian', key: 'date', width: 18, formatter: (val: string) => formatDateTime(val) },
+    { header: 'Loại Phiếu', key: 'type', width: 15, formatter: (val: string) => val === 'INBOUND' ? 'Nhập kho' : 'Xuất kho' },
+    { header: 'Đối Tác', key: 'partner', width: 25 },
+    { header: 'Mặt Hàng', key: 'product', width: 25 },
+    { header: 'Khối Lượng (kg)', key: 'weightKg', width: 18, formatter: (val: number) => `${val.toLocaleString()} kg` },
+    { header: 'Giá Trị (VNĐ)', key: 'amount', width: 20, formatter: (val: number) => formatCurrency(val) },
+    { header: 'Trạng Thái', key: 'status', width: 15, formatter: (val: string) => val === 'COMPLETED' ? 'Hoàn tất' : val === 'PENDING' ? 'Đang xử lý' : 'Đã hủy' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -371,7 +381,7 @@ export const DashboardPage: React.FC = () => {
               </div>
             }
             extra={
-              <Space size="small">
+              <div className="shrink-0">
                 <Segmented
                   size="small"
                   value={chartMetric}
@@ -379,26 +389,27 @@ export const DashboardPage: React.FC = () => {
                   options={[
                     {
                       label: (
-                        <span>
-                          <span className="hidden sm:inline">📦 Khối lượng (Kg)</span>
-                          <span className="sm:hidden font-semibold">📦 Kg</span>
+                        <span className="inline-flex items-center justify-center gap-1 leading-none py-0.5 px-0.5">
+                          <span>📦</span>
+                          <span className="hidden sm:inline font-medium">Khối lượng (Kg)</span>
+                          <span className="sm:hidden font-bold">Kg</span>
                         </span>
                       ),
                       value: 'KG',
                     },
                     {
                       label: (
-                        <span>
-                          <span className="hidden sm:inline">💰 Doanh số (VNĐ)</span>
-                          <span className="sm:hidden font-semibold">💰 VNĐ</span>
+                        <span className="inline-flex items-center justify-center gap-1 leading-none py-0.5 px-0.5">
+                          <span>💰</span>
+                          <span className="hidden sm:inline font-medium">Doanh số (VNĐ)</span>
+                          <span className="sm:hidden font-bold">VNĐ</span>
                         </span>
                       ),
                       value: 'VND',
                     },
                   ]}
                 />
-                <ZoomButton onClick={() => setZoomTarget('flowChart')} />
-              </Space>
+              </div>
             }
             className="shadow-sm rounded-2xl"
             styles={{
@@ -407,7 +418,7 @@ export const DashboardPage: React.FC = () => {
             }}
           >
             <ResponsiveContainer width="100%" height={240}>
-              <ComposedChart data={dailyFlow} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+              <ComposedChart data={dailyFlow} margin={{ top: 12, right: 10, left: 6, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis
                   dataKey="date"
@@ -425,10 +436,18 @@ export const DashboardPage: React.FC = () => {
                 {chartMetric === 'KG' ? (
                   <>
                     <YAxis
+                      width={44}
                       tickLine={false}
-                      tick={{ fontSize: 11 }}
+                      tickMargin={4}
+                      tick={{ fontSize: 10 }}
                       tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}t` : `${val}`)}
-                      label={{ value: 'Kg', angle: -90, position: 'insideLeft', offset: 15 }}
+                      label={{
+                        value: 'Kg',
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 12,
+                        style: { textAnchor: 'middle', fontSize: 11, fill: '#64748b', fontWeight: 600 },
+                      }}
                     />
                     <RechartTooltip
                       formatter={(value: any, name: any) => [`${Number(value).toLocaleString()} kg`, name]}
@@ -440,10 +459,18 @@ export const DashboardPage: React.FC = () => {
                 ) : (
                   <>
                     <YAxis
+                      width={52}
                       tickLine={false}
-                      tick={{ fontSize: 11 }}
+                      tickMargin={4}
+                      tick={{ fontSize: 10 }}
                       tickFormatter={(val) => `${(val / 1_000_000).toFixed(1)} tr`}
-                      label={{ value: 'Tr. VNĐ', angle: -90, position: 'insideLeft', offset: 15 }}
+                      label={{
+                        value: 'Tr. VNĐ',
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 12,
+                        style: { textAnchor: 'middle', fontSize: 11, fill: '#64748b', fontWeight: 600 },
+                      }}
                     />
                     <RechartTooltip
                       formatter={(value: any, name: any) => [formatCurrency(Number(value)), name]}
@@ -468,7 +495,6 @@ export const DashboardPage: React.FC = () => {
                 </span>
               </div>
             }
-            extra={<ZoomButton onClick={() => setZoomTarget('categoryPie')} />}
             className="shadow-sm rounded-2xl h-full"
             styles={{
               header: { padding: '8px 12px', minHeight: 46 },
@@ -493,7 +519,7 @@ export const DashboardPage: React.FC = () => {
                 <RechartTooltip formatter={(value) => `${value} kg`} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-2 gap-x-2 gap-y-1 mt-2">
               {categoryStock.map((item) => (
                 <div key={item.name} className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-800/60 p-1.5 rounded-lg">
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -519,12 +545,17 @@ export const DashboardPage: React.FC = () => {
           </div>
         }
         extra={
-          <Space>
-            <Text type="secondary" className="text-xs hidden sm:inline">
-              💡 Nhấp vào dòng để xem chi tiết phiếu bên góc phải
+          <div className="flex items-center gap-2">
+            <ExportExcelButton
+              data={recentTransactions}
+              columns={recentTransactionsExportColumns}
+              fileName="Giao_Dich_Gan_Day_Dashboard"
+              sheetName="Giao dịch"
+            />
+            <Text type="secondary" className="text-xs hidden md:inline">
+              💡 Nhấp vào dòng để xem chi tiết
             </Text>
-            <ZoomButton onClick={() => setZoomTarget('recentTransactions')} />
-          </Space>
+          </div>
         }
         className="shadow-sm rounded-2xl"
         styles={{
@@ -618,7 +649,7 @@ export const DashboardPage: React.FC = () => {
         open={drawerVisible}
         styles={{
           wrapper: {
-            width: typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : 500,
+            width: typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : typeof window !== 'undefined' && window.innerWidth < 1024 ? 420 : 500,
             borderTopLeftRadius: typeof window !== 'undefined' && window.innerWidth < 640 ? 20 : 0,
             borderTopRightRadius: typeof window !== 'undefined' && window.innerWidth < 640 ? 20 : 0,
             overflow: 'hidden',
@@ -761,120 +792,6 @@ export const DashboardPage: React.FC = () => {
           </div>
         )}
       </Drawer>
-
-      {/* Modal Phóng To & Quay Ngang Toàn Màn Hình */}
-      <ZoomViewerModal
-        open={zoomTarget !== null}
-        onClose={() => setZoomTarget(null)}
-        title={
-          zoomTarget === 'flowChart'
-            ? 'Sản Lượng Nhập – Xuất 7 Ngày Gần Nhất'
-            : zoomTarget === 'categoryPie'
-              ? 'Cơ Cấu Tồn Kho Hải Sản'
-              : 'Lịch Sử Giao Dịch Chi Tiết'
-        }
-        subtitle={
-          zoomTarget === 'flowChart'
-            ? 'Tương quan khối lượng nhập/xuất và dòng tiền giao dịch'
-            : zoomTarget === 'categoryPie'
-              ? 'Tỷ lệ phân bố tồn kho theo từng ngành hàng'
-              : 'Bảng dữ liệu mở rộng các phiếu nhập và xuất kho mới nhất'
-        }
-      >
-        {({ isRotated }) => (
-          <>
-            {zoomTarget === 'flowChart' && (
-              <div className="w-full h-full min-h-[300px] p-2 flex flex-col">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={dailyFlow} margin={{ top: 20, right: 35, left: 10, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis dataKey="date" tickLine={false} tick={{ fontSize: 13, fontWeight: 600 }} />
-                    <YAxis yAxisId="left" tickLine={false} tick={{ fontSize: 12 }} label={{ value: 'Khối lượng (Kg)', angle: -90, position: 'insideLeft', offset: 10 }} />
-                    <YAxis
-                      yAxisId="right"
-                      orientation="right"
-                      tickLine={false}
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(val) => `${(val / 1_000_000).toFixed(1)} tr`}
-                      label={{ value: 'Doanh số (Triệu VNĐ)', angle: 90, position: 'insideRight', offset: 15 }}
-                    />
-                    <RechartTooltip
-                      formatter={(value: any, name: any) => {
-                        if (String(name).includes('Tiền')) {
-                          return [formatCurrency(Number(value)), name];
-                        }
-                        return [`${Number(value).toLocaleString()} kg`, name];
-                      }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 13, paddingTop: 12 }} />
-                    <Bar yAxisId="left" name="Nhập kho (kg)" dataKey="inboundKg" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                    <Bar yAxisId="left" name="Xuất kho (kg)" dataKey="outboundKg" fill="#10b981" radius={[6, 6, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" name="Tiền nhập (VNĐ)" dataKey="inboundAmount" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4 }} />
-                    <Line yAxisId="right" type="monotone" name="Tiền xuất (VNĐ)" dataKey="outboundAmount" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-
-            {zoomTarget === 'categoryPie' && (
-              <div className="w-full h-full flex flex-col md:flex-row items-center justify-around gap-6 p-4">
-                <div className="w-full md:w-1/2 h-64 sm:h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryStock}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={65}
-                        outerRadius={105}
-                        paddingAngle={5}
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
-                      >
-                        {categoryStock.map((entry, index) => (
-                          <Cell key={`cell-zoom-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <RechartTooltip formatter={(value) => `${value} kg`} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="w-full md:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {categoryStock.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between text-sm p-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span className="font-semibold text-gray-800 dark:text-gray-200">{item.name}</span>
-                      </div>
-                      <span className="font-bold text-base text-gray-900 dark:text-gray-100">{item.value.toLocaleString()} kg</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {zoomTarget === 'recentTransactions' && (
-              <div className="w-full h-full flex flex-col">
-                <Table
-                  dataSource={recentTransactions}
-                  columns={transactionColumns}
-                  rowKey="id"
-                  pagination={{ pageSize: 10, showSizeChanger: true, responsive: true }}
-                  size="middle"
-                  scroll={{ x: 850, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 250px)' }}
-                  onRow={(record) => ({
-                    onClick: () => {
-                      setDrawerTx(record);
-                      setDrawerVisible(true);
-                    },
-                  })}
-                  rowClassName="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                />
-              </div>
-            )}
-          </>
-        )}
-      </ZoomViewerModal>
     </div>
   );
 };

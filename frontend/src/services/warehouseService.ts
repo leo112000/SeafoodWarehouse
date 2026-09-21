@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { WarehouseZoneStatus, StorageType } from '../constants';
+import type { WarehouseZoneStatus, StorageType } from '@/constants';
 
 export interface WarehouseItem {
   id: string;

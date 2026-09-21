@@ -6,15 +6,15 @@ import {
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { usePackagingStore } from '../../stores/usePackagingStore';
-import { formatCurrency, formatWeight } from '../../utils/format';
-import { InvoiceModal } from '../../components/invoice/InvoiceModal';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { usePackagingStore } from '@/stores/usePackagingStore';
+import { formatCurrency, formatWeight } from '@/utils/format';
+import { InvoiceModal } from '@/components/invoice/InvoiceModal';
 import dayjs from 'dayjs';
-import type { InvoicePrintData } from '../../types';
-import { useOutboundStore } from '../../stores/useOutboundStore';
-import { batchService, type FefoBatch } from '../../services/batchService';
-import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
+import type { InvoicePrintData } from '@/types';
+import { useOutboundStore } from '@/stores/useOutboundStore';
+import { batchService, type FefoBatch } from '@/services/batchService';
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit';
 
 const { Text } = Typography;
 
@@ -559,166 +559,281 @@ export const OutboundPage: React.FC = () => {
             <Form.List name="supplies">
               {(suppliesFields, { add: addSupply, remove: removeSupply }) => (
                 <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-                        📦 Vật phẩm bán kèm &amp; Phụ phí đóng gói (Thùng xốp, đá gel...)
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                        📦 Vật phẩm bán kèm &amp; Phụ phí
                       </span>
-                      <Tag color="cyan" className="m-0 text-[11px]">Tùy chọn</Tag>
+                      <Tag color="cyan" className="m-0 text-[10px] shrink-0 font-medium">Tùy chọn</Tag>
                     </div>
                     <Button
                       type="dashed"
                       size="small"
                       onClick={() => addSupply({ name: '', unit: 'Cái', quantity: 1, unitPrice: 0, totalAmount: 0 })}
                       icon={<PlusOutlined />}
-                      className="text-cyan-600 border-cyan-300 hover:border-cyan-500 hover:text-cyan-500 font-medium"
+                      className="text-cyan-600 border-cyan-300 hover:border-cyan-500 hover:text-cyan-500 font-medium text-xs"
                     >
                       Thêm vật phẩm / phụ phí
                     </Button>
                   </div>
 
                   {suppliesFields.length > 0 && (
-                    <div className="overflow-x-auto">
-                      <style>{`
-                        .supplies-inline-table .ant-table-thead > tr > th {
-                          text-align: left !important;
-                          background-color: #f8fafc !important;
-                          font-size: 12px !important;
-                          padding: 6px 8px !important;
-                        }
-                        .dark .supplies-inline-table .ant-table-thead > tr > th {
-                          background-color: #0f172a !important;
-                        }
-                        .supplies-inline-table .ant-table-tbody > tr > td {
-                          vertical-align: middle !important;
-                          padding: 6px 8px !important;
-                        }
-                      `}</style>
-                      <Table
-                        dataSource={suppliesFields}
-                        rowKey="key"
-                        pagination={false}
-                        size="small"
-                        bordered={false}
-                        className="supplies-inline-table"
-                        columns={[
-                          {
-                            title: '#',
-                            key: 'stt',
-                            width: 45,
-                            align: 'center',
-                            render: (_: any, __: any, idx: number) => (
-                              <span className="font-mono text-gray-400">{idx + 1}</span>
-                            ),
-                          },
-                          {
-                            title: 'Tên vật phẩm / Phụ phí (*)',
-                            key: 'name',
-                            render: (_: any, field: any) => (
-                              <Form.Item
-                                name={[field.name, 'name']}
-                                rules={[{ required: true, message: 'Nhập tên vật phẩm/phụ phí!' }]}
-                                className="mb-0"
-                              >
-                                <Input
-                                  placeholder="VD: Thùng xốp 30kg, Đá gel 500g, Phí giao hàng..."
-                                  allowClear
-                                />
-                              </Form.Item>
-                            ),
-                          },
-                          {
-                            title: 'Đơn vị',
-                            key: 'unit',
-                            width: 110,
-                            render: (_: any, field: any) => (
-                              <Form.Item name={[field.name, 'unit']} className="mb-0">
-                                <Input placeholder="Cái/Thùng" defaultValue="Cái" />
-                              </Form.Item>
-                            ),
-                          },
-                          {
-                            title: 'Số lượng (*)',
-                            key: 'quantity',
-                            width: 120,
-                            render: (_: any, field: any) => (
-                              <Form.Item
-                                name={[field.name, 'quantity']}
-                                rules={[{ required: true, message: 'SL!' }]}
-                                className="mb-0"
-                              >
-                                <InputNumber
-                                  min={1}
-                                  precision={0}
-                                  className="w-full"
-                                  inputMode="numeric"
-                                  onChange={(qty) => {
-                                    const supplies = form.getFieldValue('supplies') || [];
-                                    const item = supplies[field.name];
-                                    if (item) {
-                                      item.totalAmount = (qty || 0) * (item.unitPrice || 0);
-                                      form.setFieldsValue({ supplies });
-                                    }
-                                  }}
-                                />
-                              </Form.Item>
-                            ),
-                          },
-                          {
-                            title: 'Đơn giá (đ)',
-                            key: 'unitPrice',
-                            width: 140,
-                            render: (_: any, field: any) => (
-                              <Form.Item name={[field.name, 'unitPrice']} className="mb-0">
-                                <InputNumber
-                                  min={0}
-                                  className="w-full"
-                                  inputMode="numeric"
-                                  formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                  parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
-                                  onChange={(price) => {
-                                    const supplies = form.getFieldValue('supplies') || [];
-                                    const item = supplies[field.name];
-                                    if (item) {
-                                      item.totalAmount = (item.quantity || 0) * (price || 0);
-                                      form.setFieldsValue({ supplies });
-                                    }
-                                  }}
-                                />
-                              </Form.Item>
-                            ),
-                          },
-                          {
-                            title: 'Thành tiền (đ)',
-                            key: 'totalAmount',
-                            width: 140,
-                            render: (_: any, field: any) => (
-                              <Form.Item name={[field.name, 'totalAmount']} className="mb-0">
-                                <InputNumber
-                                  disabled
-                                  className="w-full font-semibold"
-                                  formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                />
-                              </Form.Item>
-                            ),
-                          },
-                          {
-                            title: '',
-                            key: 'actions',
-                            width: 45,
-                            align: 'center',
-                            render: (_: any, field: any) => (
+                    <>
+                      {/* ── Mobile Card View: Hiển thị dạng thẻ rộng rãi, không bị dồn chữ trên điện thoại ── */}
+                      <div className="space-y-3 md:hidden">
+                        {suppliesFields.map((field, idx) => (
+                          <div
+                            key={field.key}
+                            className="p-3 rounded-xl border border-cyan-200/80 bg-cyan-50/30 dark:bg-slate-900/60 dark:border-cyan-900/40 relative shadow-xs"
+                          >
+                            <div className="flex items-center justify-between pb-2 mb-2 border-b border-cyan-100 dark:border-cyan-900/30">
+                              <span className="font-bold text-xs text-cyan-700 dark:text-cyan-400">
+                                #{idx + 1}. Vật phẩm / Phụ phí
+                              </span>
                               <Button
                                 danger
                                 type="text"
+                                size="small"
                                 icon={<DeleteOutlined />}
                                 onClick={() => removeSupply(field.name)}
+                                className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg h-7 w-7 flex items-center justify-center p-0"
                               />
-                            ),
-                          },
-                        ]}
-                      />
-                    </div>
+                            </div>
+
+                            {/* 1. Tên vật phẩm / Phụ phí */}
+                            <Form.Item
+                              name={[field.name, 'name']}
+                              label={<span className="text-xs font-medium text-slate-700 dark:text-slate-300">Tên vật phẩm / Phụ phí (*)</span>}
+                              rules={[{ required: true, message: 'Nhập tên vật phẩm/phụ phí!' }]}
+                              className="mb-2"
+                            >
+                              <Input
+                                placeholder="VD: Thùng xốp 30kg, Đá gel, Giao hàng..."
+                                allowClear
+                                className="rounded-lg text-sm"
+                              />
+                            </Form.Item>
+
+                            {/* 2. Đơn vị, Số lượng, Đơn giá */}
+                            <Row gutter={[8, 8]}>
+                              <Col xs={8}>
+                                <Form.Item
+                                  name={[field.name, 'unit']}
+                                  label={<span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Đơn vị</span>}
+                                  className="mb-0"
+                                >
+                                  <Input placeholder="Cái" defaultValue="Cái" className="rounded-lg text-xs" />
+                                </Form.Item>
+                              </Col>
+                              <Col xs={8}>
+                                <Form.Item
+                                  name={[field.name, 'quantity']}
+                                  label={<span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Số lượng (*)</span>}
+                                  rules={[{ required: true, message: 'SL!' }]}
+                                  className="mb-0"
+                                >
+                                  <InputNumber
+                                    min={1}
+                                    precision={0}
+                                    className="w-full rounded-lg text-xs font-semibold"
+                                    inputMode="numeric"
+                                    onChange={(qty) => {
+                                      const supplies = form.getFieldValue('supplies') || [];
+                                      const item = supplies[field.name];
+                                      if (item) {
+                                        item.totalAmount = (qty || 0) * (item.unitPrice || 0);
+                                        form.setFieldsValue({ supplies });
+                                      }
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Col>
+                              <Col xs={8}>
+                                <Form.Item
+                                  name={[field.name, 'unitPrice']}
+                                  label={<span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Đơn giá (đ)</span>}
+                                  className="mb-0"
+                                >
+                                  <InputNumber
+                                    min={0}
+                                    className="w-full rounded-lg text-xs"
+                                    inputMode="numeric"
+                                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                    parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
+                                    onChange={(price) => {
+                                      const supplies = form.getFieldValue('supplies') || [];
+                                      const item = supplies[field.name];
+                                      if (item) {
+                                        item.totalAmount = (item.quantity || 0) * (price || 0);
+                                        form.setFieldsValue({ supplies });
+                                      }
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Col>
+                            </Row>
+
+                            {/* 3. Thành tiền */}
+                            <div className="mt-2.5 pt-2 border-t border-cyan-100 dark:border-cyan-900/30 flex items-center justify-between">
+                              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Thành tiền:</span>
+                              <div className="w-36">
+                                <Form.Item name={[field.name, 'totalAmount']} className="mb-0">
+                                  <InputNumber
+                                    disabled
+                                    className="w-full font-bold text-cyan-600 dark:text-cyan-400 text-right rounded-lg bg-white/80 dark:bg-slate-800"
+                                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                  />
+                                </Form.Item>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* ── Desktop Table View: Hiển thị dạng bảng có thanh cuộn ngang khi trên PC ── */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <style>{`
+                          .supplies-inline-table .ant-table-thead > tr > th {
+                            text-align: left !important;
+                            background-color: #f8fafc !important;
+                            font-size: 12px !important;
+                            padding: 6px 8px !important;
+                          }
+                          .dark .supplies-inline-table .ant-table-thead > tr > th {
+                            background-color: #0f172a !important;
+                          }
+                          .supplies-inline-table .ant-table-tbody > tr > td {
+                            vertical-align: middle !important;
+                            padding: 6px 8px !important;
+                          }
+                        `}</style>
+                        <Table
+                          dataSource={suppliesFields}
+                          rowKey="key"
+                          pagination={false}
+                          size="small"
+                          bordered={false}
+                          className="supplies-inline-table"
+                          scroll={{ x: 650 }}
+                          columns={[
+                            {
+                              title: '#',
+                              key: 'stt',
+                              width: 45,
+                              align: 'center',
+                              render: (_: any, __: any, idx: number) => (
+                                <span className="font-mono text-gray-400">{idx + 1}</span>
+                              ),
+                            },
+                            {
+                              title: 'Tên vật phẩm / Phụ phí (*)',
+                              key: 'name',
+                              render: (_: any, field: any) => (
+                                <Form.Item
+                                  name={[field.name, 'name']}
+                                  rules={[{ required: true, message: 'Nhập tên vật phẩm/phụ phí!' }]}
+                                  className="mb-0"
+                                >
+                                  <Input
+                                    placeholder="VD: Thùng xốp 30kg, Đá gel 500g, Phí giao hàng..."
+                                    allowClear
+                                  />
+                                </Form.Item>
+                              ),
+                            },
+                            {
+                              title: 'Đơn vị',
+                              key: 'unit',
+                              width: 110,
+                              render: (_: any, field: any) => (
+                                <Form.Item name={[field.name, 'unit']} className="mb-0">
+                                  <Input placeholder="Cái/Thùng" defaultValue="Cái" />
+                                </Form.Item>
+                              ),
+                            },
+                            {
+                              title: 'Số lượng (*)',
+                              key: 'quantity',
+                              width: 120,
+                              render: (_: any, field: any) => (
+                                <Form.Item
+                                  name={[field.name, 'quantity']}
+                                  rules={[{ required: true, message: 'SL!' }]}
+                                  className="mb-0"
+                                >
+                                  <InputNumber
+                                    min={1}
+                                    precision={0}
+                                    className="w-full"
+                                    inputMode="numeric"
+                                    onChange={(qty) => {
+                                      const supplies = form.getFieldValue('supplies') || [];
+                                      const item = supplies[field.name];
+                                      if (item) {
+                                        item.totalAmount = (qty || 0) * (item.unitPrice || 0);
+                                        form.setFieldsValue({ supplies });
+                                      }
+                                    }}
+                                  />
+                                </Form.Item>
+                              ),
+                            },
+                            {
+                              title: 'Đơn giá (đ)',
+                              key: 'unitPrice',
+                              width: 140,
+                              render: (_: any, field: any) => (
+                                <Form.Item name={[field.name, 'unitPrice']} className="mb-0">
+                                  <InputNumber
+                                    min={0}
+                                    className="w-full"
+                                    inputMode="numeric"
+                                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                    parser={(v) => Number(v?.replace(/,/g, '') || 0) as 0}
+                                    onChange={(price) => {
+                                      const supplies = form.getFieldValue('supplies') || [];
+                                      const item = supplies[field.name];
+                                      if (item) {
+                                        item.totalAmount = (item.quantity || 0) * (price || 0);
+                                        form.setFieldsValue({ supplies });
+                                      }
+                                    }}
+                                  />
+                                </Form.Item>
+                              ),
+                            },
+                            {
+                              title: 'Thành tiền (đ)',
+                              key: 'totalAmount',
+                              width: 140,
+                              render: (_: any, field: any) => (
+                                <Form.Item name={[field.name, 'totalAmount']} className="mb-0">
+                                  <InputNumber
+                                    disabled
+                                    className="w-full font-semibold"
+                                    formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                  />
+                                </Form.Item>
+                              ),
+                            },
+                            {
+                              title: '',
+                              key: 'actions',
+                              width: 45,
+                              align: 'center',
+                              render: (_: any, field: any) => (
+                                <Button
+                                  danger
+                                  type="text"
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => removeSupply(field.name)}
+                                />
+                              ),
+                            },
+                          ]}
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
               )}

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useWarehouseStore } from '../stores/useWarehouseStore';
-import type { SeafoodProduct } from '../types';
+import { useWarehouseStore } from '@/stores/useWarehouseStore';
+import type { SeafoodProduct } from '@/types';
 
 export const useSeafood = () => {
   const { products, addProduct, updateProduct, deleteProduct } = useWarehouseStore();

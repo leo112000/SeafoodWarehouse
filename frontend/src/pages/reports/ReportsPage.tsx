@@ -22,11 +22,11 @@ import {
   type TimeSeriesPoint,
   type StockByCategory,
   type ReportData,
-} from '../../services/mockReportData';
-import { reportService } from '../../services/reportService';
-import { formatCurrency, formatWeight } from '../../utils/format';
-import { exportReportToExcel } from '../../utils/excelExporter';
-import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
+} from '@/services/mockReportData';
+import { reportService } from '@/services/reportService';
+import { formatCurrency, formatWeight } from '@/utils/format';
+import { exportReportToExcel } from '@/utils/excelExporter';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 dayjs.extend(isoWeek);
 
@@ -208,7 +208,6 @@ export const ReportsPage: React.FC = () => {
   const [selectedQuarter, setSelectedQuarter] = useState<number>(Math.ceil(CURRENT_MONTH / 3));
   const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
   const [customRange, setCustomRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
-  const [zoomSection, setZoomSection] = useState<'chart' | 'table' | null>(null);
 
   const [data, setData] = useState<ReportData>(EMPTY_REPORT_DATA);
 
@@ -488,7 +487,6 @@ export const ReportsPage: React.FC = () => {
                 <span>Biến Động Sản Lượng Nhập – Xuất ({periodLabel})</span>
               </Space>
             }
-            extra={<ZoomButton onClick={() => setZoomSection('chart')} />}
             className="shadow-sm h-full"
           >
             <ResponsiveContainer width="100%" height={320}>
@@ -600,16 +598,7 @@ export const ReportsPage: React.FC = () => {
             <Text type="secondary" className="text-xs hidden sm:inline">
               {periodLabel}
             </Text>
-            <Button
-              size="small"
-              onClick={handleExport}
-              className="text-xs flex items-center gap-1 border-slate-200 dark:border-slate-700 font-medium"
-            >
-              <span>📥</span>
-              <span className="hidden sm:inline">Xuất Excel</span>
-              <span className="sm:hidden">Excel</span>
-            </Button>
-            <ZoomButton onClick={() => setZoomSection('table')} />
+            <ExportExcelButton onExport={handleExport} />
           </Space>
         }
       >
@@ -671,66 +660,6 @@ export const ReportsPage: React.FC = () => {
           ))}
         </Row>
       </Card>
-
-      {/* Modal Phóng To Báo Cáo & Quay Ngang */}
-      <ZoomViewerModal
-        open={zoomSection !== null}
-        onClose={() => setZoomSection(null)}
-        title={
-          zoomSection === 'chart'
-            ? `Biến Động Sản Lượng Nhập – Xuất (${periodLabel})`
-            : `Top 10 Mặt Hàng Xuất/Nhập Nhiều Nhất (${periodLabel})`
-        }
-        subtitle={`Dữ liệu thống kê tổng hợp chi tiết theo ${periodLabel}`}
-      >
-        {({ isRotated }) => (
-          <div className="w-full h-full flex flex-col p-2">
-            {zoomSection === 'chart' ? (
-              <div className="w-full h-full min-h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  {barData.length > 8 ? (
-                    <LineChart data={barData} margin={{ top: 15, right: 30, left: 10, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" tick={{ fontSize: 13, fontWeight: 600 }} />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
-                      />
-                      <RechartTooltip content={<CustomBarTooltip />} />
-                      <Legend wrapperStyle={{ fontSize: 13, paddingTop: 10 }} />
-                      <Line type="monotone" dataKey="Nhập (kg)" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                      <Line type="monotone" dataKey="Xuất (kg)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                    </LineChart>
-                  ) : (
-                    <BarChart data={barData} margin={{ top: 15, right: 30, left: 10, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" tick={{ fontSize: 13, fontWeight: 600 }} />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
-                      />
-                      <RechartTooltip content={<CustomBarTooltip />} />
-                      <Legend wrapperStyle={{ fontSize: 13, paddingTop: 10 }} />
-                      <Bar dataKey="Nhập (kg)" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="Xuất (kg)" fill="#10b981" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  )}
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <Table<TopItem>
-                dataSource={data.topItems}
-                columns={TOP_ITEMS_COLUMNS}
-                rowKey="name"
-                pagination={false}
-                size="middle"
-                scroll={{ x: 850, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
-                rowClassName={(_, index) => index < 3 ? 'bg-amber-50 dark:bg-amber-900/10' : ''}
-              />
-            )}
-          </div>
-        )}
-      </ZoomViewerModal>
     </div>
   );
 };

@@ -1,12 +1,64 @@
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import type { ReportData } from '../services/mockReportData';
+import type { ReportData } from '@/services/mockReportData';
 
 export interface ExcelExportColumn {
   header: string;
   key: string;
   width?: number;
   formatter?: (value: any, row: any) => string | number;
+}
+
+/**
+ * Tải file hoặc kích hoạt bảng chia sẻ trên di động (hỗ trợ toàn diện iPhone/iPad Safari, PWA Standalone, Android Chrome, Desktop)
+ */
+export async function downloadOrShareExcel(blob: Blob, fileName: string): Promise<boolean> {
+  const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  // 1. Thử Web Share API cho thiết bị di động (đặc biệt iOS Safari và iOS PWA Standalone)
+  if (isMobile && typeof navigator.share === 'function' && typeof File !== 'undefined') {
+    try {
+      const file = new File([blob], fileName, {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: fileName,
+        });
+        return true;
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        // Người dùng chủ động đóng share sheet
+        return true;
+      }
+      console.warn('Web Share API error, fallback to download link', err);
+    }
+  }
+
+  // 2. Tải trực tiếp bằng thẻ <a> download (cho Desktop hoặc trình duyệt di động)
+  try {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.rel = 'noopener';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
+      URL.revokeObjectURL(url);
+    }, 2000);
+    return true;
+  } catch (err) {
+    console.warn('Anchor download failed, fallback to saveAs', err);
+    saveAs(blob, fileName);
+    return true;
+  }
 }
 
 /**
@@ -54,7 +106,8 @@ export function exportToExcel(
     const blob = new Blob([excelBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8',
     });
-    saveAs(blob, `${fileName}_${timestamp}.xlsx`);
+    const fullFileName = `${fileName}_${timestamp}.xlsx`;
+    downloadOrShareExcel(blob, fullFileName);
     return true;
   } else {
     // Cách 2: exportToExcel(data, fileName, sheetName)
@@ -68,7 +121,8 @@ export function exportToExcel(
     const blob = new Blob([excelBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8',
     });
-    saveAs(blob, `${fileName}_${timestamp}.xlsx`);
+    const fullFileName = `${fileName}_${timestamp}.xlsx`;
+    downloadOrShareExcel(blob, fullFileName);
     return true;
   }
 }
@@ -145,9 +199,9 @@ export function exportReportToExcel(data: ReportData | any, periodName: string =
 
   const timestamp = new Date().toISOString().slice(0, 10);
   const outBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  saveAs(
-    new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    `Bao_Cao_Kho_Hai_San_${timestamp}.xlsx`
-  );
+  const blob = new Blob([outBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8',
+  });
+  downloadOrShareExcel(blob, `Bao_Cao_Kho_Hai_San_${timestamp}.xlsx`);
 }
 

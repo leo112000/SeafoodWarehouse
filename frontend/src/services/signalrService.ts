@@ -1,5 +1,5 @@
 import * as signalR from '@microsoft/signalr';
-import { isTokenExpired } from '../stores/useAuthStore';
+import { isTokenExpired } from '@/stores/useAuthStore';
 
 export interface RealtimeNotification {
   id: string;

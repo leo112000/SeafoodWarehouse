@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Row, Col, Input, Select, Tag, Button, Modal, Descriptions, Tooltip } from 'antd';
 import { SearchOutlined, ReloadOutlined, DatabaseOutlined, SafetyCertificateOutlined, AlertOutlined, EnvironmentOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { useInventoryStore } from '../../stores/useInventoryStore';
-import { useWarehouseStore } from '../../stores/useWarehouseStore';
-import { useProductStore } from '../../stores/useProductStore';
+import { useInventoryStore } from '@/stores/useInventoryStore';
+import { useWarehouseStore } from '@/stores/useWarehouseStore';
+import { useProductStore } from '@/stores/useProductStore';
 import dayjs from 'dayjs';
-import type { InventoryItemDto } from '../../services/inventoryService';
-import { settingService } from '../../services/settingService';
-import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
+import type { InventoryItemDto } from '@/services/inventoryService';
+import { settingService } from '@/services/settingService';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 const { Option } = Select;
 
@@ -21,7 +21,6 @@ export const InventoryStockPage: React.FC = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [detailItem, setDetailItem] = useState<InventoryItemDto | null>(null);
   const [expiringAlertDays, setExpiringAlertDays] = useState<number>(15);
-  const [isZoomed, setIsZoomed] = useState(false);
 
   useEffect(() => {
     fetchInventory();
@@ -70,7 +69,7 @@ export const InventoryStockPage: React.FC = () => {
       'Ngày Sản Xuất/Nhập': item.productionDate ? dayjs(item.productionDate).format('DD/MM/YYYY') : '',
       'Hạn Sử Dụng': item.expirationDate ? dayjs(item.expirationDate).format('DD/MM/YYYY') : '',
     }));
-    import('../../utils/excelExport').then(({ exportToExcel }) => {
+    import('@/utils/excelExport').then(({ exportToExcel }) => {
       exportToExcel(exportData, 'Bao_Cao_Ton_Kho_Hai_San', 'Ton_Kho');
     });
   };
@@ -325,16 +324,7 @@ export const InventoryStockPage: React.FC = () => {
         }
         extra={
           <div className="flex items-center gap-2">
-            <Button
-              size="small"
-              onClick={handleExportExcel}
-              className="text-xs flex items-center gap-1 border-slate-200 dark:border-slate-700 font-medium"
-            >
-              <span>📥</span>
-              <span className="hidden sm:inline">Xuất Excel</span>
-              <span className="sm:hidden">Excel</span>
-            </Button>
-            <ZoomButton onClick={() => setIsZoomed(true)} />
+            <ExportExcelButton onExport={handleExportExcel} />
           </div>
         }
         className="shadow-sm rounded-2xl overflow-hidden"
@@ -440,35 +430,6 @@ export const InventoryStockPage: React.FC = () => {
           </Descriptions>
         )}
       </Modal>
-
-      {/* Modal Phóng To Bảng Tồn Kho & Quay Ngang */}
-      <ZoomViewerModal
-        open={isZoomed}
-        onClose={() => setIsZoomed(false)}
-        title="📦 Danh Sách Chi Tiết Tồn Kho Hải Sản"
-        subtitle={`Hiển thị ${items.length} lô hàng trên tổng số ${totalCount} vị trí lưu trữ`}
-      >
-        {({ isRotated }) => (
-          <div className="w-full h-full flex flex-col">
-            <Table
-              rowKey="id"
-              columns={columns}
-              dataSource={items}
-              loading={loading}
-              scroll={{ x: 1000, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
-              pagination={{
-                current: pageNumber,
-                pageSize: pageSize,
-                total: totalCount,
-                onChange: (page, pSize) => fetchInventory({ pageNumber: page, pageSize: pSize }),
-                showSizeChanger: true,
-                responsive: true,
-                showTotal: (total) => `Tổng ${total} vị trí hàng`,
-              }}
-            />
-          </div>
-        )}
-      </ZoomViewerModal>
     </div>
   );
 };

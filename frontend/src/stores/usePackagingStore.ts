@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { PackagingType } from '../types/seafood';
-import { packagingService } from '../services/packagingService';
+import type { PackagingType } from '@/types/seafood';
+import { packagingService } from '@/services/packagingService';
 
 interface PackagingState {
   packagings: PackagingType[];

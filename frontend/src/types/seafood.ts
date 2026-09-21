@@ -5,7 +5,7 @@ import type {
   ProductStatus,
   AuditAction,
   AuditStatus,
-} from '../constants/enums';
+} from '@/constants/enums';
 
 export interface InvoiceItem {
   batchCode: string;

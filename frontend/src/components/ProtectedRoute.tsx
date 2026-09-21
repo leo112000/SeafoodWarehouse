@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation, Outlet } from 'react-router-dom';
-import { useAuthStore, isTokenExpired } from '../stores/useAuthStore';
+import { useAuthStore, isTokenExpired } from '@/stores/useAuthStore';
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;

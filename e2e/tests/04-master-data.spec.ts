@@ -4,10 +4,10 @@ test.describe('Kiểm thử Quản lý Dữ liệu nền (Master Data)', () => {
   test.beforeEach(async ({ page }) => {
     // 1. Đăng nhập hệ thống
     await page.goto('/login');
-    await expect(page.locator('input[placeholder="Email đăng nhập"]')).toBeVisible({ timeout: 10000 });
-    await page.fill('input[placeholder="Email đăng nhập"]', 'admin@gmail.com');
-    await page.fill('input[placeholder="Mật khẩu"]', 'qazwsxedc@123A');
-    await page.click('button:has-text("Đăng nhập")');
+    await expect(page.locator('#login_form_email')).toBeVisible({ timeout: 10000 });
+    await page.fill('#login_form_email', 'admin@gmail.com');
+    await page.fill('#login_form_password', 'qazwsxedc@123A');
+    await page.click('button[type="submit"]');
     await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 20000 });
   });
 

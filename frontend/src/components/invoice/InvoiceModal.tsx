@@ -3,7 +3,7 @@ import { Modal, Button, Tooltip, App } from 'antd';
 import { PrinterOutlined, FilePdfOutlined, CloseOutlined } from '@ant-design/icons';
 import { useReactToPrint } from 'react-to-print';
 import { InvoicePrintTemplate } from './InvoicePrintTemplate';
-import type { InvoicePrintData } from '../../types';
+import type { InvoicePrintData } from '@/types';
 
 interface InvoiceModalProps {
   open: boolean;

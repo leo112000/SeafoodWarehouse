@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { App, Button, Descriptions, Form, Input, Modal, Space, Tag } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
-import type { UserInfo } from '../../stores/useAuthStore';
-import { useAuthStore } from '../../stores/useAuthStore';
+import type { UserInfo } from '@/stores/useAuthStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 interface UserProfileModalProps {
   open: boolean;

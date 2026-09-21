@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { SeafoodProduct } from '../types';
-import { warehouseService, type WarehouseItem } from '../services/warehouseService';
+import type { SeafoodProduct } from '@/types';
+import { warehouseService, type WarehouseItem } from '@/services/warehouseService';
 
 interface WarehouseState {
   products: SeafoodProduct[];

@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popconfirm, Popover, Tag, theme, Tooltip } from 'antd';
+import { App, Avatar, Badge, Button, Divider, Drawer, Dropdown, Layout, Menu, Popover, Tag, theme, Tooltip } from 'antd';
 import { AppstoreOutlined, BarChartOutlined, BellOutlined, DashboardOutlined, DatabaseOutlined, EnvironmentOutlined, FolderOutlined, HistoryOutlined, InboxOutlined, KeyOutlined, LogoutOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined, MoonOutlined, SafetyCertificateOutlined, SettingOutlined, SunOutlined, TeamOutlined, UserOutlined, PhoneOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useThemeStore } from '../stores/useThemeStore';
-import { useAuthStore } from '../stores/useAuthStore';
-import { usePermission } from '../components/PermissionGuard';
-import { UserProfileModal } from '../components/user/UserProfileModal';
-import { ChangePasswordModal } from '../components/user/ChangePasswordModal';
-import { MultiTabBar } from '../components/layout/MultiTabBar';
-import { TabContentRenderer } from '../components/layout/TabContentRenderer';
-import { MobileBottomNav } from '../components/layout/MobileBottomNav';
-import { useTabStore } from '../stores/useTabStore';
-import { useBrandStore } from '../stores/useBrandStore';
-import { useSystemNotifications } from '../hooks/useSystemNotifications';
+import { useThemeStore } from '@/stores/useThemeStore';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { usePermission } from '@/components/PermissionGuard';
+import { UserProfileModal } from '@/components/user/UserProfileModal';
+import { ChangePasswordModal } from '@/components/user/ChangePasswordModal';
+import { MultiTabBar } from '@/components/layout/MultiTabBar';
+import { TabContentRenderer } from '@/components/layout/TabContentRenderer';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { useTabStore } from '@/stores/useTabStore';
+import { useBrandStore } from '@/stores/useBrandStore';
+import { useSystemNotifications } from '@/hooks/useSystemNotifications';
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -20,13 +20,14 @@ const roleMeta = (role: string) => role === 'Admin' ? { label: 'Admin', color: '
 
 export const MainLayout: React.FC = () => {
   const { websiteName, logoUrl, loadBrand } = useBrandStore();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const { modal } = App.useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const { token: { colorBgContainer, borderRadiusLG } } = theme.useToken();
@@ -108,7 +109,20 @@ export const MainLayout: React.FC = () => {
     }
   }, [location.pathname, addTab, setActiveKey]);
 
-  const handleLogout = () => { setProfileOpen(false); logout(); navigate('/login', { replace: true }); };
+  const handleLogout = () => {
+    setProfileOpen(false);
+    modal.confirm({
+      title: 'Xác nhận đăng xuất',
+      content: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?',
+      okText: 'Đăng xuất',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: () => {
+        logout();
+        navigate('/login', { replace: true });
+      },
+    });
+  };
   const openProfile = () => { setProfileOpen(false); setProfileModalOpen(true); };
   const openChangePassword = () => { setProfileOpen(false); setChangePasswordOpen(true); };
   const openAuditLogs = () => { setProfileOpen(false); navigate('/system/audit-logs'); };
@@ -217,7 +231,7 @@ export const MainLayout: React.FC = () => {
     <Divider className="my-3" />
     <div className="flex flex-col"><Button type="text" icon={<UserOutlined />} className="text-left" style={{ justifyContent: 'flex-start' }} onClick={openProfile}>Thông tin cá nhân</Button><Button type="text" icon={<KeyOutlined />} className="text-left" style={{ justifyContent: 'flex-start' }} onClick={openChangePassword}>Đổi mật khẩu</Button><Button type="text" icon={<HistoryOutlined />} className="text-left" style={{ justifyContent: 'flex-start' }} onClick={openAuditLogs}>Nhật ký cá nhân</Button></div>
     <Divider className="my-3" />
-    <Popconfirm title="Đăng xuất khỏi hệ thống?" description="Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?" okText="Đồng ý" cancelText="Hủy" okButtonProps={{ danger: true }} onConfirm={handleLogout}><Button type="text" danger icon={<LogoutOutlined />} className="w-full text-left" style={{ justifyContent: 'flex-start' }}>Đăng xuất</Button></Popconfirm>
+    <Button type="text" danger icon={<LogoutOutlined />} className="w-full text-left" style={{ justifyContent: 'flex-start' }} onClick={handleLogout}>Đăng xuất</Button>
   </div>;
 
   return (
@@ -228,8 +242,12 @@ export const MainLayout: React.FC = () => {
             trigger={null}
             collapsible
             collapsed={collapsed}
-            width={260}
-            collapsedWidth={80}
+            breakpoint="lg"
+            onBreakpoint={(broken) => {
+              setCollapsed(broken);
+            }}
+            width={240}
+            collapsedWidth={72}
             theme={currentTheme === 'dark' ? 'dark' : 'light'}
             style={{
               height: '100vh',
@@ -352,7 +370,13 @@ export const MainLayout: React.FC = () => {
             placement="left"
             onClose={() => setDrawerVisible(false)}
             open={drawerVisible}
-            styles={{ body: { padding: 0 }, wrapper: { width: 290 } }}
+            styles={{
+              header: {
+                paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
+              },
+              body: { padding: 0 },
+              wrapper: { width: 290 }
+            }}
           >
             <div className="flex flex-col h-full">
               {/* User Profile Mini Card in Drawer */}
@@ -388,7 +412,10 @@ export const MainLayout: React.FC = () => {
                   items={menuItems}
                 />
               </div>
-              <div className="flex-shrink-0 p-3 bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 text-xs text-gray-500 dark:text-gray-400 text-center">
+              <div
+                className="flex-shrink-0 p-3 bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 text-xs text-gray-500 dark:text-gray-400 text-center"
+                style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+              >
                 <div className="space-y-1 flex flex-col items-center justify-center">
                   <div className="flex items-center justify-center gap-2 text-sky-600 dark:text-sky-400 font-semibold">
                     <PhoneOutlined />
@@ -404,27 +431,31 @@ export const MainLayout: React.FC = () => {
         )}
         <Layout className="min-w-0 overflow-x-clip">
           <div
-            className="sticky top-0 z-40 shadow-sm border-b border-gray-200 dark:border-gray-800"
+            className="sticky top-0 z-40 shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors safe-area-header"
             style={{
               background: colorBgContainer,
             }}
           >
             <Header
               className="p-0 flex items-center justify-between"
-              style={{ background: colorBgContainer, lineHeight: 'normal' }}
+              style={{
+                background: colorBgContainer,
+                lineHeight: 'normal',
+                height: isMobile ? '46px' : '52px',
+              }}
             >
               <Button
                 type="text"
                 icon={isMobile ? <MenuOutlined /> : collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                 onClick={() => (isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed))}
-                className="text-lg w-12 h-12 ml-2 sm:ml-4 sm:w-14 sm:h-14 flex items-center justify-center rounded-xl"
+                className="text-base sm:text-lg w-9 h-9 sm:w-10 sm:h-10 ml-2 sm:ml-4 flex items-center justify-center rounded-lg"
               />
-              <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6">
+              <div className="flex items-center gap-1.5 sm:gap-2.5 pr-2.5 sm:pr-5">
                 <Button
                   type="text"
                   icon={currentTheme === 'dark' ? <SunOutlined className="text-yellow-400" /> : <MoonOutlined />}
                   onClick={toggleTheme}
-                  className="text-lg flex items-center justify-center w-10 h-10"
+                  className="text-base flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg"
                   aria-label="Đổi giao diện"
                 />
                 {isMobile ? (
@@ -434,7 +465,7 @@ export const MainLayout: React.FC = () => {
                         type="text"
                         icon={<BellOutlined />}
                         onClick={() => setNotificationDrawerOpen(true)}
-                        className="text-lg flex items-center justify-center w-10 h-10"
+                        className="text-base flex items-center justify-center w-8 h-8 rounded-lg"
                         aria-label="Thông báo"
                       />
                     </Badge>
@@ -458,7 +489,10 @@ export const MainLayout: React.FC = () => {
                       }
                       styles={{
                         wrapper: { borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
-                        body: { padding: '12px 16px' }
+                        body: {
+                          padding: '12px 16px',
+                          paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+                        }
                       }}
                     >
                       <div className="space-y-2.5">
@@ -505,7 +539,7 @@ export const MainLayout: React.FC = () => {
                       <Button
                         type="text"
                         icon={<BellOutlined />}
-                        className="text-lg flex items-center justify-center w-10 h-10"
+                        className="text-base flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg"
                         aria-label="Thông báo"
                       />
                     </Badge>
@@ -535,8 +569,8 @@ export const MainLayout: React.FC = () => {
                       aria-label="Mở menu tài khoản"
                     >
                       <Avatar
-                        size={36}
-                        className="bg-gradient-to-tr from-sky-500 to-blue-600 text-white font-bold shadow-md shadow-sky-500/30 ring-2 ring-sky-400/50 hover:ring-sky-400 transition-all cursor-pointer"
+                        size={isMobile ? 30 : 34}
+                        className="bg-gradient-to-tr from-sky-500 to-blue-600 text-white font-bold shadow-sm shadow-sky-500/30 ring-2 ring-sky-400/50 hover:ring-sky-400 transition-all cursor-pointer text-xs sm:text-sm"
                       >
                         {user.name.charAt(0).toLocaleUpperCase()}
                       </Avatar>
@@ -548,10 +582,11 @@ export const MainLayout: React.FC = () => {
             {!isMobile && <MultiTabBar />}
           </div>
           <Content
-            className="m-2 sm:m-3 md:m-6 p-3 sm:p-4 md:p-6 min-h-[280px] mb-24 md:mb-6"
+            className="m-2 sm:m-2.5 md:m-3.5 lg:m-6 p-2.5 sm:p-3 md:p-4 lg:p-6 min-h-[280px]"
             style={{
               background: colorBgContainer,
               borderRadius: borderRadiusLG,
+              marginBottom: isMobile ? 'calc(4rem + max(calc(env(safe-area-inset-bottom, 0px) - 16px), 8px))' : '1.5rem',
             }}
           >
             <TabContentRenderer />

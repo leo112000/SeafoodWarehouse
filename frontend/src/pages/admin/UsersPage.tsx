@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Tag, Button, Modal, Form, Input, Select, Switch, Space, App } from 'antd';
+import { Card, Table, Tag, Button, Modal, Form, Input, Select, Switch, Space, App, Pagination } from 'antd';
 import { UserAddOutlined, EditOutlined, SafetyCertificateOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
-import { userService, type UserRecord } from '../../services/userService';
-import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
-import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
+import { userService, type UserRecord } from '@/services/userService';
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit';
 
 export const UsersPage: React.FC = () => {
   const { message, modal } = App.useApp();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
@@ -249,38 +247,125 @@ export const UsersPage: React.FC = () => {
       <Card
         className="shadow-sm"
         title="Danh sách tài khoản nhân viên"
-        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
       >
-        <Table
-          dataSource={users}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            showSizeChanger: true,
-            pageSizeOptions: ['5', '10', '20', '50'],
-            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-          }}
-          scroll={{ x: 'max-content' }}
-        />
-      </Card>
+        {/* Mobile View: Dạng Card chạm lướt kiểu App như ở Dashboard */}
+        <div className="block sm:hidden space-y-2.5">
+          {users
+            .slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize)
+            .map((u) => {
+              const isHost = !u.tenantName || u.tenantName.includes('Host');
+              const isActive = u.status === 'Active';
+              return (
+                <div
+                  key={u.id}
+                  className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Tag color={isHost ? 'gold' : 'cyan'} className="font-medium text-xs m-0">
+                        {u.tenantName || '👑 Host'}
+                      </Tag>
+                      <Tag color={isActive ? 'success' : 'error'} className="font-semibold text-[10px] m-0">
+                        {isActive ? '● Hoạt động' : '○ Bị chặn'}
+                      </Tag>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EditOutlined className="text-sky-600" />}
+                        onClick={() => handleOpenEditModal(u)}
+                        className="h-7 w-7 p-0 flex items-center justify-center hover:bg-sky-50 dark:hover:bg-slate-800 rounded-lg"
+                      />
+                      <Button
+                        type="text"
+                        danger
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleDeleteUser(u)}
+                        className="h-7 w-7 p-0 flex items-center justify-center hover:bg-rose-50 dark:hover:bg-slate-800 rounded-lg"
+                      />
+                    </div>
+                  </div>
 
-      <ZoomViewerModal
-        open={isZoomOpen}
-        onClose={() => setIsZoomOpen(false)}
-        title="Danh sách tài khoản nhân viên"
-      >
-        <Table
-          dataSource={users}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          pagination={false}
-          scroll={{ x: 'max-content' }}
-        />
-      </ZoomViewerModal>
+                  <div className="font-bold text-sm text-slate-900 dark:text-slate-100 mb-0.5">
+                    {u.name}
+                  </div>
+                  <div className="text-xs text-gray-400 mb-2">
+                    {u.email}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1 mb-2">
+                    {(u.roles || []).map((role) => {
+                      let color = 'blue';
+                      let label = 'Quản trị viên';
+                      if (role === 'Thukho') {
+                        color = 'orange';
+                        label = 'Thủ kho';
+                      } else if (role === 'Nhanvien') {
+                        color = 'green';
+                        label = 'Nhân viên';
+                      }
+                      return (
+                        <Tag color={color} key={role} className="m-0 text-[10px] font-medium">
+                          {label}
+                        </Tag>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                    <span className="text-[11px] text-gray-400">Liên hệ: <span className="font-medium text-slate-700 dark:text-slate-300">{u.phone || u.email}</span></span>
+                    <Button
+                      type="link"
+                      danger={isActive}
+                      size="small"
+                      className="p-0 text-xs font-semibold"
+                      onClick={() => handleToggleStatus(u)}
+                    >
+                      {isActive ? 'Khóa tài khoản' : 'Mở khóa'}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+
+          {users.length === 0 && (
+            <div className="text-center py-8 text-gray-400 text-xs">Chưa có tài khoản nào</div>
+          )}
+
+          {users.length > 0 && (
+            <div className="flex justify-center pt-2">
+              <Pagination
+                size="small"
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                total={users.length}
+                onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block">
+          <Table
+            dataSource={users}
+            columns={columns}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              showSizeChanger: true,
+              pageSizeOptions: ['5', '10', '20', '50'],
+              onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+            }}
+            scroll={{ x: 'max-content' }}
+          />
+        </div>
+      </Card>
 
       <Modal
         title={

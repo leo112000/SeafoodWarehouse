@@ -1,12 +1,11 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { DownloadOutlined, EyeOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { Button, Card, DatePicker, Descriptions, Drawer, Input, Select, Space, Table, Tag, App } from 'antd';
+import { Button, Card, DatePicker, Descriptions, Modal, Input, Select, Space, Table, Tag, App, Pagination } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
-import type { AuditLog } from '../../types/seafood';
-import { auditLogService } from '../../services/auditLogService';
-import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
-import { formatDateTime, formatDate } from '../../utils/dateUtils';
+import type { AuditLog } from '@/types/seafood';
+import { auditLogService } from '@/services/auditLogService';
+import { formatDateTime, formatDate } from '@/utils/dateUtils';
 
 const { RangePicker } = DatePicker;
 
@@ -34,7 +33,6 @@ export const AuditLogPage: React.FC = () => {
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [selected, setSelected] = useState<AuditLog | null>(null);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
-  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -120,7 +118,6 @@ export const AuditLogPage: React.FC = () => {
       <Card
         className="shadow-sm"
         title="Nhật ký hoạt động & bảo mật"
-        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
       >
         <div className="grid grid-cols-2 lg:flex gap-2 mb-4 items-center">
           <Input
@@ -169,54 +166,124 @@ export const AuditLogPage: React.FC = () => {
           />
           <Button icon={<ReloadOutlined />} onClick={reset} className="col-span-1 lg:w-auto">Đặt lại</Button>
         </div>
-        <Table
-          columns={columns}
-          dataSource={filtered}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            showSizeChanger: true,
-            pageSizeOptions: ['5', '10', '20', '50'],
-            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-            showTotal: (total) => `${total} bản ghi`,
-          }}
-          scroll={{ x: 1120 }}
-        />
+        {/* Mobile View: Dạng Card chạm lướt kiểu App như ở Dashboard */}
+        <div className="block sm:hidden space-y-2.5">
+          {filtered
+            .slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize)
+            .map((log) => (
+              <div
+                key={log.id}
+                className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition-colors"
+              >
+                <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                  <div className="flex items-center gap-1">
+                    <Tag color={actionMeta[log.action]?.color || 'blue'} className="m-0 text-[10px] font-semibold">
+                      {actionMeta[log.action]?.label || log.action}
+                    </Tag>
+                    <Tag color={log.status === 'SUCCESS' ? 'success' : 'error'} className="m-0 text-[10px]">
+                      {log.status === 'SUCCESS' ? 'Thành công' : 'Thất bại'}
+                    </Tag>
+                  </div>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<EyeOutlined className="text-sky-600" />}
+                    onClick={() => setSelected(log)}
+                    className="h-7 w-7 p-0 flex items-center justify-center hover:bg-sky-50 dark:hover:bg-slate-800 rounded-lg"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-2 text-xs mb-1">
+                  <div className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                    {log.userName}
+                    <span className="font-normal text-gray-400 ml-1">({log.userRole})</span>
+                  </div>
+                  <span className="text-[11px] text-gray-400 shrink-0">
+                    {formatDateTime(log.timestamp)}
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 my-1">
+                  {log.description}
+                </p>
+
+                <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[11px] text-gray-400">
+                  <span>Module: <strong className="text-slate-600 dark:text-slate-300">{log.module}</strong></span>
+                  <span>IP: {log.ipAddress}</span>
+                </div>
+              </div>
+            ))}
+
+          {filtered.length === 0 && (
+            <div className="text-center py-8 text-gray-400 text-xs">Không tìm thấy nhật ký nào</div>
+          )}
+
+          {filtered.length > 0 && (
+            <div className="flex justify-center pt-2">
+              <Pagination
+                size="small"
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                total={filtered.length}
+                onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block">
+          <Table
+            columns={columns}
+            dataSource={filtered}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              showSizeChanger: true,
+              pageSizeOptions: ['5', '10', '20', '50'],
+              onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+              showTotal: (total) => `${total} bản ghi`,
+            }}
+            scroll={{ x: 1120 }}
+          />
+        </div>
       </Card>
 
-      <ZoomViewerModal
-        open={isZoomOpen}
-        onClose={() => setIsZoomOpen(false)}
-        title="Nhật ký hoạt động & bảo mật"
+      <Modal
+        title="Chi tiết nhật ký hệ thống"
+        open={!!selected}
+        onCancel={() => setSelected(null)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setSelected(null)}>
+            Đóng
+          </Button>,
+        ]}
+        width={620}
+        centered
       >
-        <Table
-          columns={columns}
-          dataSource={filtered}
-          rowKey="id"
-          loading={loading}
-          pagination={false}
-          scroll={{ x: 'max-content' }}
-        />
-      </ZoomViewerModal>
-
-      <Drawer title="Chi tiết nhật ký" styles={{ wrapper: { width: 620 } }} open={!!selected} onClose={() => setSelected(null)}>
         {selected && (
-          <Space orientation="vertical" size="large" className="w-full">
-            <Descriptions column={1} bordered size="small" items={[
-              { key: 'time', label: 'Thời gian', children: formatDateTime(selected.timestamp) },
-              { key: 'user', label: 'Người thực hiện', children: `${selected.userName} (${selected.userRole})` },
-              { key: 'action', label: 'Hành động', children: <Tag color={actionMeta[selected.action]?.color || 'blue'}>{actionMeta[selected.action]?.label || selected.action}</Tag> },
-              { key: 'module', label: 'Module', children: selected.module },
-              { key: 'description', label: 'Mô tả', children: selected.description },
-              { key: 'ip', label: 'Địa chỉ IP', children: selected.ipAddress },
-              { key: 'browser', label: 'Trình duyệt / thiết bị', children: selected.browser },
-              { key: 'status', label: 'Trạng thái', children: <Tag color={selected.status === 'SUCCESS' ? 'success' : 'error'}>{selected.status === 'SUCCESS' ? 'Thành công' : 'Thất bại'}</Tag> },
-            ]} />
-          </Space>
+          <div className="py-2">
+            <Descriptions
+              column={{ xs: 1, sm: 2 }}
+              bordered
+              size="small"
+              items={[
+                { key: 'time', label: 'Thời gian', children: formatDateTime(selected.timestamp), span: 2 },
+                { key: 'user', label: 'Người thực hiện', children: `${selected.userName} (${selected.userRole})` },
+                { key: 'action', label: 'Hành động', children: <Tag color={actionMeta[selected.action]?.color || 'blue'}>{actionMeta[selected.action]?.label || selected.action}</Tag> },
+                { key: 'module', label: 'Module', children: selected.module },
+                { key: 'status', label: 'Trạng thái', children: <Tag color={selected.status === 'SUCCESS' ? 'success' : 'error'}>{selected.status === 'SUCCESS' ? 'Thành công' : 'Thất bại'}</Tag> },
+                { key: 'ip', label: 'Địa chỉ IP', children: selected.ipAddress },
+                { key: 'browser', label: 'Thiết bị / Trình duyệt', children: selected.browser },
+                { key: 'description', label: 'Mô tả chi tiết', children: selected.description, span: 2 },
+              ]}
+            />
+          </div>
         )}
-      </Drawer>
+      </Modal>
     </div>
   );
 };

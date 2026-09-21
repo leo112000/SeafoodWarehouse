@@ -9,8 +9,8 @@ import {
   CheckCircleOutlined,
   LockOutlined,
 } from '@ant-design/icons';
-import { useServerStatusStore } from '../../stores/useServerStatusStore';
-import { formatDateTime } from '../../utils/dateUtils';
+import { useServerStatusStore } from '@/stores/useServerStatusStore';
+import { formatDateTime } from '@/utils/dateUtils';
 
 export const AbpErrorModal: React.FC = () => {
   const {
@@ -55,6 +55,7 @@ export const AbpErrorModal: React.FC = () => {
           role="status"
           aria-label="Thông báo khôi phục kết nối"
           className="fixed top-0 left-0 right-0 z-[99999] bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white shadow-xl px-4 py-2.5 flex items-center justify-center animate-slideDown border-b border-emerald-400"
+          style={{ paddingTop: 'calc(0.6rem + env(safe-area-inset-top, 0px))' }}
         >
           <div className="flex items-center gap-3 text-xs sm:text-sm font-semibold">
             <CheckCircleOutlined className="text-lg text-emerald-200" />

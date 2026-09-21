@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Row, Col, DatePicker, Input, Button, Modal, Card } from 'antd';
 import { PrinterOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
-import type { OutboundTransaction } from '../../stores/useOutboundStore';
-import InvoiceModal from '../../components/invoice/InvoiceModal';
-import { formatCurrency, formatWeight, formatDate, formatDateTime } from '../../utils/format';
-import { useOutboundStore } from '../../stores/useOutboundStore';
-import { exportToExcel } from '../../utils/exportUtils';
-import type { InvoicePrintData } from '../../types';
+import type { OutboundTransaction } from '@/stores/useOutboundStore';
+import InvoiceModal from '@/components/invoice/InvoiceModal';
+import { formatCurrency, formatWeight, formatDate, formatDateTime } from '@/utils/format';
+import { useOutboundStore } from '@/stores/useOutboundStore';
+import { exportToExcel } from '@/utils/exportUtils';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+import type { InvoicePrintData } from '@/types';
 
 const { RangePicker } = DatePicker;
 
@@ -55,7 +55,6 @@ const OutboundHistoryPage: React.FC = () => {
   const [selectedTx, setSelectedTx] = useState<OutboundTransaction | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [printVisible, setPrintVisible] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
   const [filtered, setFiltered] = useState<OutboundTransaction[]>([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [customerFilter, setCustomerFilter] = useState<string>('');
@@ -303,16 +302,7 @@ const OutboundHistoryPage: React.FC = () => {
         title="📤 Danh Sách Phiếu Xuất Kho Hải Sản"
         extra={
           <div className="flex items-center gap-2">
-            <Button
-              size="small"
-              onClick={handleExportExcel}
-              className="text-xs flex items-center gap-1 border-slate-200 dark:border-slate-700 font-medium"
-            >
-              <span>📥</span>
-              <span className="hidden sm:inline">Xuất Excel</span>
-              <span className="sm:hidden">Excel</span>
-            </Button>
-            <ZoomButton onClick={() => setIsZoomed(true)} />
+            <ExportExcelButton onExport={handleExportExcel} />
           </div>
         }
         className="shadow-sm rounded-2xl"
@@ -399,33 +389,6 @@ const OutboundHistoryPage: React.FC = () => {
           data={toInvoiceData(selectedTx)}
         />
       )}
-
-      {/* Modal Phóng To Bảng Xuất Kho & Quay Ngang */}
-      <ZoomViewerModal
-        open={isZoomed}
-        onClose={() => setIsZoomed(false)}
-        title="📤 Lịch Sử Phiếu Xuất Kho Hải Sản"
-        subtitle={`Hiển thị ${filtered.length} phiếu xuất kho chi tiết`}
-      >
-        {({ isRotated }) => (
-          <div className="w-full h-full flex flex-col">
-            <Table
-              rowKey="id"
-              dataSource={filtered}
-              columns={columns}
-              pagination={{
-                current: pagination.current,
-                pageSize: pagination.pageSize,
-                showSizeChanger: true,
-                pageSizeOptions: ['5', '10', '20', '50'],
-                onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-              }}
-              scroll={{ x: 1000, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
-              size="middle"
-            />
-          </div>
-        )}
-      </ZoomViewerModal>
     </div>
   );
 };

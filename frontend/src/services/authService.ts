@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { UserInfo } from '../stores/useAuthStore';
+import type { UserInfo } from '@/stores/useAuthStore';
 
 export interface IsTenantAvailableInput {
   tenancyName?: string;

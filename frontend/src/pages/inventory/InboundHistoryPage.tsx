@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Card, Table, Tag, Button, Modal, DatePicker, Input, Space, Row, Col, Typography } from 'antd';
 import { EyeOutlined, PrinterOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
-import { useInboundStore } from '../../stores/useInboundStore';
-import { exportToExcel } from '../../utils/exportUtils';
-import type { InboundReceipt } from '../../stores/useInboundStore';
-import { formatCurrency, formatWeight, formatDate, formatDateTime } from '../../utils/format';
-import { InvoiceModal } from '../../components/invoice/InvoiceModal';
-import type { InvoicePrintData } from '../../types';
-import { useAuthStore } from '../../stores/useAuthStore';
+import { useInboundStore } from '@/stores/useInboundStore';
+import { exportToExcel } from '@/utils/exportUtils';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+import type { InboundReceipt } from '@/stores/useInboundStore';
+import { formatCurrency, formatWeight, formatDate, formatDateTime } from '@/utils/format';
+import { InvoiceModal } from '@/components/invoice/InvoiceModal';
+import type { InvoicePrintData } from '@/types';
+import { useAuthStore } from '@/stores/useAuthStore';
 import dayjs from 'dayjs';
-import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 const { Title } = Typography;
 
@@ -57,7 +57,6 @@ export const InboundHistoryPage: React.FC = () => {
   // Invoice print modal state
   const [invoiceData, setInvoiceData] = useState<InvoicePrintData | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
 
   // Filters state
   const [supplierQuery, setSupplierQuery] = useState('');
@@ -295,16 +294,7 @@ export const InboundHistoryPage: React.FC = () => {
         title="📥 Danh Sách Phiếu Nhập Kho"
         extra={
           <div className="flex items-center gap-2">
-            <Button
-              size="small"
-              onClick={handleExportExcel}
-              className="text-xs flex items-center gap-1 border-slate-200 dark:border-slate-700 font-medium"
-            >
-              <span>📥</span>
-              <span className="hidden sm:inline">Xuất Excel</span>
-              <span className="sm:hidden">Excel</span>
-            </Button>
-            <ZoomButton onClick={() => setIsZoomed(true)} />
+            <ExportExcelButton onExport={handleExportExcel} />
           </div>
         }
         className="shadow-sm rounded-2xl"
@@ -396,33 +386,6 @@ export const InboundHistoryPage: React.FC = () => {
         data={invoiceData}
         onClose={() => setIsInvoiceModalOpen(false)}
       />
-
-      {/* Modal Phóng To Bảng Nhập Kho & Quay Ngang */}
-      <ZoomViewerModal
-        open={isZoomed}
-        onClose={() => setIsZoomed(false)}
-        title="📥 Lịch Sử Phiếu Nhập Kho Hải Sản"
-        subtitle={`Hiển thị ${filteredReceipts.length} phiếu nhập kho chi tiết`}
-      >
-        {({ isRotated }) => (
-          <div className="w-full h-full flex flex-col">
-            <Table
-              dataSource={filteredReceipts}
-              columns={columns}
-              rowKey="id"
-              pagination={{
-                current: pagination.current,
-                pageSize: pagination.pageSize,
-                showSizeChanger: true,
-                pageSizeOptions: ['5', '10', '20', '50'],
-                onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-              }}
-              scroll={{ x: 1000, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
-              size="middle"
-            />
-          </div>
-        )}
-      </ZoomViewerModal>
     </div>
   );
 };

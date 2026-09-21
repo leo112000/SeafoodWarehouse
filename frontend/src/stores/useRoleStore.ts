@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { Permission, Role } from '../types/seafood';
-import { roleService } from '../services/roleService';
+import type { Permission, Role } from '@/types/seafood';
+import { roleService } from '@/services/roleService';
 
 export const PERMISSION_CATEGORIES = ['Danh mục', 'Kho', 'Báo cáo', 'Hệ thống'] as const;
 

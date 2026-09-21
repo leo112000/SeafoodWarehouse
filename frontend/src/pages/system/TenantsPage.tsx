@@ -1,24 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Tag, Space, App, Badge, Row, Col, Popconfirm, Tooltip } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Tag, Space, App, Badge, Row, Col, Tooltip, Pagination } from 'antd';
 import { ShopOutlined, PlusOutlined, EditOutlined, DeleteOutlined, PhoneOutlined, MailOutlined, HomeOutlined, NumberOutlined, LoginOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { tenantService, type TenantItem, type CreateTenantDto } from '../../services/tenantService';
-import { generateCodeFromName } from '../../utils/codeGenerator';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { useTenantStore } from '../../stores/useTenantStore';
-import { authService } from '../../services/authService';
-import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
-import { getErrorMessage } from '../../services/api';
+import { tenantService, type TenantItem, type CreateTenantDto } from '@/services/tenantService';
+import { generateCodeFromName } from '@/utils/codeGenerator';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { useTenantStore } from '@/stores/useTenantStore';
+import { authService } from '@/services/authService';
+import { getErrorMessage } from '@/services/api';
 
 export const TenantsPage: React.FC = () => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const navigate = useNavigate();
   const { login } = useAuthStore();
   const { tenants, fetchTenants, setActiveTenantByCode } = useTenantStore();
   const [loading, setLoading] = useState<boolean>(false);
   const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
-  const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
   const [editingTenant, setEditingTenant] = useState<TenantItem | null>(null);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [form] = Form.useForm();
@@ -57,16 +55,26 @@ export const TenantsPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (tenant: TenantItem) => {
-    try {
-      setLoading(true);
-      await tenantService.delete(tenant.id);
-      await fetchTenants();
-    } catch (err: any) {
-      message.error(err?.message || 'Có lỗi xảy ra khi xóa đơn vị thuê.');
-    } finally {
-      setLoading(false);
-    }
+  const handleDelete = (tenant: TenantItem) => {
+    modal.confirm({
+      title: 'Xác nhận xóa đơn vị thuê',
+      content: `Bạn có chắc chắn muốn xóa doanh nghiệp "${tenant.name}" (${tenant.code})? Toàn bộ dữ liệu của doanh nghiệp này sẽ chuyển sang trạng thái đã xóa.`,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          setLoading(true);
+          await tenantService.delete(tenant.id);
+          message.success('Đã xóa đơn vị thuê thành công');
+          await fetchTenants();
+        } catch (err: any) {
+          message.error(err?.message || 'Có lỗi xảy ra khi xóa đơn vị thuê.');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleSave = async () => {
@@ -179,18 +187,9 @@ export const TenantsPage: React.FC = () => {
           <Button size="small" icon={<EditOutlined />} onClick={() => handleOpenModal(record)}>
             Sửa
           </Button>
-          <Popconfirm
-            title={`Xác nhận xóa doanh nghiệp "${record.name}"?`}
-            description="Toàn bộ dữ liệu của doanh nghiệp này sẽ được chuyển sang trạng thái đã xóa."
-            onConfirm={() => handleDelete(record)}
-            okText="Xóa"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-          >
-            <Button size="small" danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
-          </Popconfirm>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
+            Xóa
+          </Button>
         </Space>
       ),
     },
@@ -212,36 +211,129 @@ export const TenantsPage: React.FC = () => {
       <Card
         className="shadow-sm"
         title="Danh sách doanh nghiệp & chi nhánh"
-        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
       >
-        <Table
-          dataSource={tenants}
-          columns={columns}
-          rowKey="id"
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            showSizeChanger: true,
-            pageSizeOptions: ['5', '10', '20', '50'],
-            onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-          }}
-          scroll={{ x: 850 }}
-        />
-      </Card>
+        {/* Mobile View: Dạng Card chạm lướt kiểu App như ở Dashboard */}
+        <div className="block sm:hidden space-y-2.5">
+          {tenants
+            .slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize)
+            .map((t) => (
+              <div
+                key={t.id}
+                className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition-colors"
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Tag color="cyan" className="font-mono font-bold text-xs m-0">
+                      {t.code}
+                    </Tag>
+                    <Tag color={t.isActive ? 'success' : 'default'} className="m-0 text-[10px] font-semibold">
+                      {t.isActive ? '● Hoạt động' : '○ Tạm dừng'}
+                    </Tag>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Tooltip title="Chuyển không gian làm việc">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<LoginOutlined className="text-sky-600" />}
+                        loading={impersonatingId === t.id}
+                        onClick={() => handleLoginToTenant(t)}
+                        className="h-7 w-7 p-0 flex items-center justify-center hover:bg-sky-50 dark:hover:bg-slate-800 rounded-lg"
+                      />
+                    </Tooltip>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<EditOutlined className="text-amber-600" />}
+                      onClick={() => handleOpenModal(t)}
+                      className="h-7 w-7 p-0 flex items-center justify-center hover:bg-amber-50 dark:hover:bg-slate-800 rounded-lg"
+                    />
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDelete(t)}
+                      className="h-7 w-7 p-0 flex items-center justify-center hover:bg-rose-50 dark:hover:bg-slate-800 rounded-lg"
+                    />
+                  </div>
+                </div>
 
-      <ZoomViewerModal
-        open={isZoomOpen}
-        onClose={() => setIsZoomOpen(false)}
-        title="Danh sách doanh nghiệp & chi nhánh"
-      >
-        <Table
-          dataSource={tenants}
-          columns={columns}
-          rowKey="id"
-          pagination={false}
-          scroll={{ x: 'max-content' }}
-        />
-      </ZoomViewerModal>
+                <div className="font-bold text-sm text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-1.5">
+                  <ShopOutlined className="text-sky-600 shrink-0" />
+                  <span className="truncate">{t.name}</span>
+                </div>
+
+                <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  {t.address && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <HomeOutlined className="text-slate-400 shrink-0" />
+                      <span className="truncate">{t.address}</span>
+                    </div>
+                  )}
+                  {t.phone && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <PhoneOutlined className="text-emerald-500 shrink-0" />
+                      <span className="truncate">{t.phone}</span>
+                    </div>
+                  )}
+                  {t.email && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <MailOutlined className="text-blue-500 shrink-0" />
+                      <span className="truncate">{t.email}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  <span className="text-[11px] text-gray-400">Mã định danh: #{t.id}</span>
+                  <Button
+                    type="link"
+                    size="small"
+                    className="p-0 text-xs text-sky-600 font-semibold"
+                    onClick={() => handleLoginToTenant(t)}
+                  >
+                    Vào chi nhánh →
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+          {tenants.length === 0 && (
+            <div className="text-center py-8 text-gray-400 text-xs">Chưa có chi nhánh nào</div>
+          )}
+
+          {tenants.length > 0 && (
+            <div className="flex justify-center pt-2">
+              <Pagination
+                size="small"
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                total={tenants.length}
+                onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block">
+          <Table
+            dataSource={tenants}
+            columns={columns}
+            rowKey="id"
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              showSizeChanger: true,
+              pageSizeOptions: ['5', '10', '20', '50'],
+              onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+            }}
+            scroll={{ x: 850 }}
+          />
+        </div>
+      </Card>
 
       <Modal
         title={editingTenant ? `Sửa Thông Tin ${editingTenant.name}` : 'Thêm Cửa Hàng / Chi Nhánh Mới'}
@@ -267,7 +359,7 @@ export const TenantsPage: React.FC = () => {
           </Form.Item>
 
           {!editingTenant && (
-            <Form.Item name="code" label="Mã chi nhánh (Tự sinh theo tên)" rules={[{ required: true, message: 'Vui lòng nhập mã chi nhánh!' }]}>
+            <Form.Item name="code" label="Mã chi nhánh" rules={[{ required: true, message: 'Vui lòng nhập mã chi nhánh!' }]}>
               <Input placeholder="Tự động sinh (VD: CN-BIEN-DONG)" className="uppercase font-mono bg-slate-50 dark:bg-slate-800/60" />
             </Form.Item>
           )}

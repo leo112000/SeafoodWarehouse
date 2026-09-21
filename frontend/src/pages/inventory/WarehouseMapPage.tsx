@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Select, Button, Spin } from 'antd';
 import { ReloadOutlined, TableOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { WarehouseVisualMap } from '../../components/warehouse/WarehouseVisualMap';
-import { useInventoryStore } from '../../stores/useInventoryStore';
-import { useWarehouseStore } from '../../stores/useWarehouseStore';
-import type { InventoryItemDto } from '../../services/inventoryService';
+import { WarehouseVisualMap } from '@/components/warehouse/WarehouseVisualMap';
+import { useInventoryStore } from '@/stores/useInventoryStore';
+import { useWarehouseStore } from '@/stores/useWarehouseStore';
+import type { InventoryItemDto } from '@/services/inventoryService';
 
 export const WarehouseMapPage: React.FC = () => {
   const navigate = useNavigate();

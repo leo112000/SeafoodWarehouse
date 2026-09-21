@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { packagingReturnService } from '../services/packagingReturnService';
-import type { PartnerType } from '../constants';
+import { packagingReturnService } from '@/services/packagingReturnService';
+import type { PartnerType } from '@/constants';
 
 // ---------- types ----------
 

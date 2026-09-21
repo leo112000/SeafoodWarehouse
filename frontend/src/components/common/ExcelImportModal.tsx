@@ -1,46 +1,90 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
-  Modal, Upload, Button, Table, Tag, Space, Alert,
-  Typography, Tooltip, App, Radio
+  Modal, Upload, Button, Table, Space, Typography, App, Radio,
+  type TableColumnsType,
 } from 'antd';
 import {
   InboxOutlined, DownloadOutlined, CheckCircleOutlined,
-  CloseCircleOutlined, ReloadOutlined, FileExcelOutlined
+  ReloadOutlined, FileExcelOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
-import { partnerService, type CreatePartnerDto } from '../../services/partnerService';
 
 const { Dragger } = Upload;
 const { Text } = Typography;
 
-interface ParsedPartnerRow {
+export interface ParsedImportRow<T = any> {
   key: string;
   rowIndex: number;
-  code: string;
-  name: string;
-  contactPerson?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  taxCode?: string;
-  note?: string;
   isValid: boolean;
   errors: string[];
+  data: T;
 }
 
-interface PartnerImportModalProps {
+export interface ExcelImportModalProps<T = any> {
   open: boolean;
   onClose: () => void;
+  title: string;
+  entityName: string;
+  templateUrl?: string;
+  templateConfig?: {
+    fileName: string;
+    sheetName?: string;
+    headers: string[];
+    sampleRows?: any[][];
+  };
+  instructionTitle?: string;
+  instructionSubtitle?: string;
+  parseAndValidateRow: (
+    rawRow: Record<string, any>,
+    rowIndex: number,
+    helpers: {
+      cleanStr: (v: any) => string;
+      getFieldVal: (row: Record<string, any>, possibleKeys: string[]) => any;
+    }
+  ) => { isValid: boolean; errors: string[]; data: T };
+  previewColumns: TableColumnsType<ParsedImportRow<T>>;
+  onImport: (validItems: T[]) => Promise<void>;
   onSuccess?: () => void;
+  width?: number;
 }
 
-export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
+export const cleanStr = (val: any): string =>
+  val !== undefined && val !== null ? String(val).trim() : '';
+
+export const getFieldVal = (
+  row: Record<string, any>,
+  possibleKeys: string[]
+): any => {
+  const keys = Object.keys(row);
+  for (const p of possibleKeys) {
+    const pNorm = p.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const foundKey = keys.find(
+      (k) => k.toLowerCase().replace(/[^a-z0-9]/g, '') === pNorm
+    );
+    if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+      return row[foundKey];
+    }
+  }
+  return '';
+};
+
+export function ExcelImportModal<T = any>({
   open,
   onClose,
+  title,
+  entityName,
+  templateUrl,
+  templateConfig,
+  instructionTitle = 'Nhập danh sách từ tệp Excel một lần',
+  instructionSubtitle = 'Tải file mẫu để điền dữ liệu đúng định dạng hệ thống yêu cầu.',
+  parseAndValidateRow,
+  previewColumns,
+  onImport,
   onSuccess,
-}) => {
-  const { message, notification } = App.useApp();
-  const [parsedRows, setParsedRows] = useState<ParsedPartnerRow[]>([]);
+  width = 950,
+}: ExcelImportModalProps<T>) {
+  const { message } = App.useApp();
+  const [parsedRows, setParsedRows] = useState<ParsedImportRow<T>[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [filterView, setFilterView] = useState<'ALL' | 'VALID' | 'ERROR'>('ALL');
   const [importLoading, setImportLoading] = useState(false);
@@ -53,32 +97,38 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
     onClose();
   };
 
-  const cleanStr = (val: any): string => (val !== undefined && val !== null ? String(val).trim() : '');
-
-  const getFieldVal = (row: Record<string, any>, possibleKeys: string[]): any => {
-    const keys = Object.keys(row);
-    for (const p of possibleKeys) {
-      const pNorm = p.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const foundKey = keys.find(
-        (k) => k.toLowerCase().replace(/[^a-z0-9]/g, '') === pNorm
-      );
-      if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
-        return row[foundKey];
-      }
-    }
-    return '';
-  };
-
   const handleDownloadTemplate = () => {
     try {
-      const link = document.createElement('a');
-      link.href = '/templates/Mau_Import_Nha_Cung_Cap.xlsx';
-      link.download = 'Mau_Import_Nha_Cung_Cap.xlsx';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      message.success('Đã tải xuống file mẫu Nhà Cung Cấp!');
-    } catch {
+      if (templateUrl) {
+        const link = document.createElement('a');
+        link.href = templateUrl;
+        link.download = templateUrl.split('/').pop() || 'Mau_Nhap_Du_Lieu.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+
+      if (templateConfig) {
+        const wb = XLSX.utils.book_new();
+        const aoaData = [
+          templateConfig.headers,
+          ...(templateConfig.sampleRows || []),
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(aoaData);
+        XLSX.utils.book_append_sheet(
+          wb,
+          ws,
+          templateConfig.sheetName || 'Mau_Nhap'
+        );
+        XLSX.writeFile(wb, templateConfig.fileName || 'Mau_Nhap_Du_Lieu.xlsx');
+        message.success('Đã tải file Excel mẫu!');
+        return;
+      }
+
+      message.warning('Chưa có file mẫu được cấu hình.');
+    } catch (err: any) {
+      console.error('Download template error:', err);
       message.error('Không thể tải file mẫu.');
     }
   };
@@ -108,43 +158,22 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
           return;
         }
 
-        const rows: ParsedPartnerRow[] = rawJson.map((r, index) => {
+        const helpers = { cleanStr, getFieldVal };
+        const rows: ParsedImportRow<T>[] = rawJson.map((r, index) => {
           const rowIndex = index + 2;
-          const errors: string[] = [];
-
-          const rawName = cleanStr(getFieldVal(r, ['Tên nhà cung cấp (*)', 'Tên nhà cung cấp', 'Tên đối tác', 'Name', 'PartnerName']));
-          const rawCode = cleanStr(getFieldVal(r, ['Mã nhà cung cấp', 'Mã đối tác', 'Code', 'PartnerCode']));
-          const contact = cleanStr(getFieldVal(r, ['Người liên hệ', 'Liên hệ', 'Contact', 'ContactPerson']));
-          const phone = cleanStr(getFieldVal(r, ['Số điện thoại', 'Điện thoại', 'Phone', 'SDT']));
-          const email = cleanStr(getFieldVal(r, ['Email', 'Thư điện tử']));
-          const address = cleanStr(getFieldVal(r, ['Địa chỉ', 'Address']));
-          const taxCode = cleanStr(getFieldVal(r, ['Mã số thuế', 'MST', 'TaxCode']));
-          const note = cleanStr(getFieldVal(r, ['Ghi chú', 'Mô tả', 'Note']));
-
-          if (!rawName) {
-            errors.push('Tên nhà cung cấp không được để trống.');
-          }
-
-          const isValid = errors.length === 0;
-
+          const { isValid, errors, data } = parseAndValidateRow(r, rowIndex, helpers);
           return {
             key: `row-${rowIndex}`,
             rowIndex,
-            code: rawCode || '',
-            name: rawName,
-            contactPerson: contact,
-            phone,
-            email,
-            address,
-            taxCode,
-            note,
             isValid,
             errors,
+            data,
           };
         });
 
         setParsedRows(rows);
-        message.success(`Đã đọc ${rows.length} dòng nhà cung cấp từ file!`);
+        const validCount = rows.filter((r) => r.isValid).length;
+        message.success(`Đã đọc ${rows.length} dòng từ file (${validCount} hợp lệ)!`);
       } catch (err: any) {
         message.error(`Lỗi phân tích tệp: ${err?.message || 'Định dạng không hợp lệ'}`);
       } finally {
@@ -171,126 +200,31 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
       return;
     }
 
-    setImportLoading(true);
-    let successCount = 0;
-    const errors: string[] = [];
-
-    for (const r of validRows) {
-      try {
-        const dto: CreatePartnerDto = {
-          code: r.code,
-          name: r.name,
-          type: 'SUPPLIER',
-          contactPerson: r.contactPerson,
-          phone: r.phone,
-          email: r.email,
-          address: r.address,
-          taxCode: r.taxCode,
-          note: r.note,
-          isActive: true,
-        };
-        await partnerService.create(dto);
-        successCount++;
-      } catch (err: any) {
-        errors.push(`${r.name}: ${err?.message || 'Lỗi lưu'}`);
-      }
+    try {
+      setImportLoading(true);
+      await onImport(validRows.map((r) => r.data));
+      message.success(`Nhập thành công ${validRows.length} ${entityName}!`);
+      handleClose();
+      onSuccess?.();
+    } catch (err: any) {
+      console.error('Import error:', err);
+      message.error(`Lỗi khi nhập dữ liệu: ${err?.message || 'Vui lòng thử lại'}`);
+    } finally {
+      setImportLoading(false);
     }
-
-    notification.success({
-      message: 'Nhập Nhà Cung Cấp Thành Công!',
-      description: `Đã thêm thành công ${successCount}/${validRows.length} nhà cung cấp vào hệ thống.`,
-    });
-
-    if (onSuccess) onSuccess();
-    handleClose();
-    setImportLoading(false);
   };
-
-  const columns = [
-    {
-      title: 'STT / Dòng',
-      dataIndex: 'rowIndex',
-      key: 'rowIndex',
-      width: 90,
-      render: (val: number, r: ParsedPartnerRow) => (
-        <Space direction="vertical" size={2}>
-          <Text strong>Dòng {val}</Text>
-          {r.isValid ? (
-            <Tag color="success" icon={<CheckCircleOutlined />}>
-              Hợp lệ
-            </Tag>
-          ) : (
-            <Tooltip title={r.errors.join('; ')}>
-              <Tag color="error" icon={<CloseCircleOutlined />} className="cursor-pointer">
-                Lỗi
-              </Tag>
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'Mã NCC',
-      dataIndex: 'code',
-      key: 'code',
-      width: 130,
-      render: (c: string) => (c ? <Tag color="blue">{c}</Tag> : <Tag className="italic">(Tự sinh)</Tag>),
-    },
-    {
-      title: 'Tên Nhà Cung Cấp',
-      dataIndex: 'name',
-      key: 'name',
-      width: 240,
-      render: (n: string, r: ParsedPartnerRow) => (
-        <div>
-          <div className="font-semibold text-slate-800 dark:text-slate-100">{n || <Text type="danger">(Chưa có tên)</Text>}</div>
-          {r.note && <div className="text-xs text-gray-400">{r.note}</div>}
-        </div>
-      ),
-    },
-    {
-      title: 'Người liên hệ',
-      dataIndex: 'contactPerson',
-      key: 'contactPerson',
-      width: 140,
-    },
-    {
-      title: 'Điện thoại',
-      dataIndex: 'phone',
-      key: 'phone',
-      width: 120,
-    },
-    {
-      title: 'Email',
-      dataIndex: 'email',
-      key: 'email',
-      width: 160,
-    },
-    {
-      title: 'Địa chỉ',
-      dataIndex: 'address',
-      key: 'address',
-      width: 220,
-    },
-    {
-      title: 'Mã số thuế',
-      dataIndex: 'taxCode',
-      key: 'taxCode',
-      width: 120,
-    },
-  ];
 
   return (
     <Modal
       title={
         <div className="flex items-center gap-2 text-base font-bold text-slate-800 dark:text-slate-100">
           <FileExcelOutlined className="text-emerald-600 text-lg" />
-          <span>Nhập Danh Sách Nhà Cung Cấp từ Excel (.xlsx, .xls)</span>
+          <span>{title}</span>
         </div>
       }
       open={open}
       onCancel={handleClose}
-      width={1050}
+      width={width}
       destroyOnClose
       footer={
         <div className="flex items-center justify-between">
@@ -318,7 +252,7 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
               onClick={handleConfirmImport}
               className="bg-emerald-600 hover:bg-emerald-500"
             >
-              Xác nhận nhập ({validRows.length}) nhà cung cấp
+              Xác nhận nhập ({validRows.length}) {entityName}
             </Button>
           </Space>
         </div>
@@ -328,10 +262,10 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
         <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <div className="font-semibold text-emerald-800 dark:text-emerald-200 text-sm">
-              Nhập hàng loạt đối tác / nhà cung cấp từ file Excel
+              {instructionTitle}
             </div>
             <div className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
-              Tải file Excel mẫu chuẩn đã có sẵn tiêu đề và dữ liệu thực tế để điền danh sách nhanh chóng.
+              {instructionSubtitle}
             </div>
           </div>
           <Button
@@ -356,10 +290,10 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
               <InboxOutlined />
             </p>
             <p className="ant-upload-text font-semibold text-slate-700 dark:text-slate-200 text-base">
-              Nhấp hoặc kéo thả file Excel Nhà Cung Cấp vào đây
+              Nhấp hoặc kéo thả file Excel {title} vào đây
             </p>
-            <p className="ant-upload-hint text-xs text-gray-500">
-              Hỗ trợ tệp định dạng .xlsx, .xls, .csv.
+            <p className="ant-upload-hint text-xs text-gray-500 mt-1">
+              Hỗ trợ định dạng .xlsx, .xls, .csv. Dung lượng tối đa 10MB.
             </p>
           </Dragger>
         )}
@@ -386,27 +320,20 @@ export const PartnerImportModal: React.FC<PartnerImportModalProps> = ({
               </div>
             </div>
 
-            {errorRows.length > 0 && (
-              <Alert
-                message={`Có ${errorRows.length} dòng bị thiếu tên nhà cung cấp và sẽ bị bỏ qua khi nhập.`}
-                type="warning"
-                showIcon
-              />
-            )}
-
-            <Table
-              columns={columns}
+            <Table<ParsedImportRow<T>>
+              columns={previewColumns}
               dataSource={displayedRows}
               rowKey="key"
               size="small"
               pagination={{ pageSize: 8, showSizeChanger: false }}
-              scroll={{ x: 950, y: 320 }}
+              scroll={{ x: 850, y: 300 }}
               className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden"
-              rowClassName={(r) => (!r.isValid ? 'bg-red-50/40' : '')}
             />
           </div>
         )}
       </div>
     </Modal>
   );
-};
+}
+
+export default ExcelImportModal;

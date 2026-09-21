@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { batchService, type BatchItem } from '../services/batchService';
+import { batchService, type BatchItem } from '@/services/batchService';
 
 export interface Batch {
   batchCode: string;

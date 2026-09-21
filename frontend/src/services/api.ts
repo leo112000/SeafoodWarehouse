@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { QueryClient } from '@tanstack/react-query';
-import { useAuthStore, isTokenExpired } from '../stores/useAuthStore';
-import { useServerStatusStore } from '../stores/useServerStatusStore';
+import { useAuthStore, isTokenExpired } from '@/stores/useAuthStore';
+import { useServerStatusStore } from '@/stores/useServerStatusStore';
 
 // Configure default Axios instance
 export const api = axios.create({

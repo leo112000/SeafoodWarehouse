@@ -1,19 +1,17 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { App, Button, Card, Checkbox, Form, Input, Modal, Popconfirm, Space, Table, Tag } from 'antd';
+import { App, Button, Card, Checkbox, Form, Input, Modal, Space, Table, Tag } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, SafetyCertificateOutlined, ReloadOutlined } from '@ant-design/icons';
-import type { Role } from '../../types/seafood';
-import { PERMISSION_CATEGORIES, PERMISSIONS } from '../../stores/useRoleStore';
-import { roleService } from '../../services/roleService';
-import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
-import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
+import type { Role } from '@/types/seafood';
+import { PERMISSION_CATEGORIES, PERMISSIONS } from '@/stores/useRoleStore';
+import { roleService } from '@/services/roleService';
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit';
 
 type RoleFormValues = Pick<Role, 'name' | 'description' | 'permissions'>;
 
 export const RolesPage: React.FC = () => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [form] = Form.useForm<RoleFormValues>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -75,14 +73,23 @@ export const RolesPage: React.FC = () => {
     }
   });
 
-  const handleDelete = async (id: string) => {
-    try {
-      await roleService.delete(id);
-      message.success('Đã xóa vai trò thành công!');
-      fetchRoles();
-    } catch (err: any) {
-      message.error(err.message || 'Không thể xóa vai trò mặc định.');
-    }
+  const handleDelete = (role: Role) => {
+    modal.confirm({
+      title: 'Xác nhận xóa vai trò',
+      content: `Bạn có chắc muốn xóa vai trò "${role.name}" khỏi hệ thống không?`,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await roleService.delete(role.id);
+          message.success('Đã xóa vai trò thành công!');
+          fetchRoles();
+        } catch (err: any) {
+          message.error(err.message || 'Không thể xóa vai trò.');
+        }
+      },
+    });
   };
 
   const columns = [
@@ -108,9 +115,7 @@ export const RolesPage: React.FC = () => {
         <Space>
           <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(role)} />
           {!role.isSystemDefault && (
-            <Popconfirm title="Xóa vai trò" description="Bạn có chắc muốn xóa vai trò này không?" onConfirm={() => handleDelete(role.id)} okText="Xóa" cancelText="Hủy">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
+            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(role)} />
           )}
         </Space>
       ),
@@ -136,18 +141,68 @@ export const RolesPage: React.FC = () => {
       <Card
         className="shadow-sm"
         title="Danh sách vai trò & quyền hạn"
-        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
       >
-        <Table dataSource={roles} columns={columns} rowKey="id" loading={loading} pagination={false} scroll={{ x: 700 }} />
-      </Card>
+        {/* Mobile View: Dạng Card chạm lướt kiểu App như ở Dashboard */}
+        <div className="block sm:hidden space-y-2.5">
+          {roles.map((role) => (
+            <div
+              key={role.id}
+              className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition-colors"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <SafetyCertificateOutlined className="text-sky-600" />
+                  <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{role.name}</span>
+                  {role.isSystemDefault && (
+                    <Tag color="blue" className="m-0 text-[10px] font-semibold">Mặc định</Tag>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<EditOutlined className="text-amber-600" />}
+                    onClick={() => openEdit(role)}
+                    className="h-7 w-7 p-0 flex items-center justify-center hover:bg-amber-50 dark:hover:bg-slate-800 rounded-lg"
+                  />
+                  {!role.isSystemDefault && (
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDelete(role)}
+                      className="h-7 w-7 p-0 flex items-center justify-center hover:bg-rose-50 dark:hover:bg-slate-800 rounded-lg"
+                    />
+                  )}
+                </div>
+              </div>
 
-      <ZoomViewerModal
-        open={isZoomOpen}
-        onClose={() => setIsZoomOpen(false)}
-        title="Danh sách vai trò & quyền hạn"
-      >
-        <Table dataSource={roles} columns={columns} rowKey="id" loading={loading} pagination={false} scroll={{ x: 'max-content' }} />
-      </ZoomViewerModal>
+              {role.description && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-2">
+                  {role.description}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                <span className="text-[11px] text-gray-400">Phân quyền:</span>
+                <Tag color="purple" className="m-0 text-[11px] font-medium">
+                  {(role.permissions || []).length} / {PERMISSIONS.length} quyền
+                </Tag>
+              </div>
+            </div>
+          ))}
+
+          {roles.length === 0 && (
+            <div className="text-center py-8 text-gray-400 text-xs">Chưa có vai trò nào</div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block">
+          <Table dataSource={roles} columns={columns} rowKey="id" loading={loading} pagination={false} scroll={{ x: 700 }} />
+        </div>
+      </Card>
 
       <Modal
         title={

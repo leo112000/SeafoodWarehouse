@@ -13,11 +13,11 @@ import {
   InfoCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { useTenantStore } from '../../stores/useTenantStore';
-import { useThemeStore } from '../../stores/useThemeStore';
-import { authService, TenantAvailabilityState } from '../../services/authService';
-import { getErrorMessage } from '../../services/api';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { useTenantStore } from '@/stores/useTenantStore';
+import { useThemeStore } from '@/stores/useThemeStore';
+import { authService, TenantAvailabilityState } from '@/services/authService';
+import { getErrorMessage } from '@/services/api';
 
 export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -137,10 +137,16 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen relative flex items-center justify-center p-4 md:p-8 overflow-hidden transition-colors duration-500 ${isDark
+      className={`min-h-screen relative flex items-center justify-center p-3 sm:p-6 md:p-8 overflow-x-hidden transition-colors duration-500 ${isDark
         ? 'bg-[#0b1329] text-slate-100'
         : 'bg-gradient-to-br from-[#f0f9ff] via-[#e0f2fe] to-[#eff6ff] text-slate-800'
         }`}
+      style={{
+        paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))',
+        paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))',
+        paddingLeft: 'calc(0.75rem + env(safe-area-inset-left, 0px))',
+        paddingRight: 'calc(0.75rem + env(safe-area-inset-right, 0px))',
+      }}
     >
       {/* Dynamic Animated Ambient Background Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-sky-400/20 dark:bg-sky-500/10 blur-[130px] pointer-events-none animate-pulse" />
@@ -158,14 +164,14 @@ export const LoginPage: React.FC = () => {
 
       {/* Main Glassmorphism Presentation Container */}
       <div
-        className={`relative z-10 w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border transition-all duration-300 backdrop-blur-xl ${isDark
+        className={`relative z-10 w-full max-w-md lg:max-w-5xl rounded-3xl overflow-hidden shadow-2xl border transition-all duration-300 backdrop-blur-xl ${isDark
           ? 'bg-slate-900/80 border-slate-700/60 shadow-black/40'
           : 'bg-white/90 border-sky-100/90 shadow-sky-900/10'
           }`}
       >
         <div className="grid grid-cols-1 lg:grid-cols-12">
-          {/* Left Column: Visual Showcase & Smart Cold Storage Hero */}
-          <div className="relative lg:col-span-6 flex flex-col justify-between p-8 md:p-12 overflow-hidden bg-slate-950 min-h-[460px] lg:min-h-[640px]">
+          {/* Left Column: Visual Showcase & Smart Cold Storage Hero - Chỉ hiển thị trên PC/Tablet màn hình lớn */}
+          <div className="relative lg:col-span-6 hidden lg:flex flex-col justify-between p-8 md:p-12 overflow-hidden bg-slate-950 min-h-[640px]">
             {/* High-Resolution Hero Cold Chain Terminal Background */}
             <div
               className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 scale-105 hover:scale-100 opacity-60 mix-blend-luminosity"
@@ -196,8 +202,8 @@ export const LoginPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Center Floating Glass Telemetry Cards */}
-            <div className="relative z-10 my-8 space-y-3 hidden sm:block">
+            {/* Center Floating Glass Telemetry Cards - Hiển thị trên màn hình lớn */}
+            <div className="relative z-10 my-8 space-y-3">
               {/* Floating Badge 1: Temperature Monitor */}
               <div className="animate-float-slow backdrop-blur-md bg-slate-900/60 border border-sky-500/20 rounded-2xl p-3 max-w-xs shadow-lg shadow-sky-950/50 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300 text-lg">
@@ -227,7 +233,7 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Bottom Capabilities Tags */}
+            {/* Bottom Capabilities Tags - Hiển thị trên màn hình lớn */}
             <div className="relative z-10 flex flex-wrap gap-2 pt-4 border-t border-slate-800/80">
               <span className="text-[11px] px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-300 border border-slate-700/60 flex items-center gap-1">
                 <CheckCircleFilled className="text-emerald-400 text-xs" />
@@ -244,10 +250,10 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column: Modern Authentication Form */}
-          <div className="relative lg:col-span-6 p-8 md:p-12 flex flex-col justify-center">
+          {/* Right Column: Modern Authentication Form - Chiếm trọn card trên mobile */}
+          <div className="relative lg:col-span-6 p-6 sm:p-8 md:p-12 flex flex-col justify-center">
             {/* Nút Giao diện Sáng/Tối đặt ở góc trên bên phải của thẻ login */}
-            <div className="absolute top-5 right-5 md:top-8 md:right-8 z-20">
+            <div className="absolute top-4 right-4 sm:top-5 sm:right-5 md:top-8 md:right-8 z-20">
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -263,16 +269,31 @@ export const LoginPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="mb-6 pr-24 sm:pr-0">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-2">
+            {/* Nhận diện thương hiệu nhỏ gọn chỉ hiện trên điện thoại */}
+            <div className="lg:hidden flex items-center gap-2.5 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white text-xl shadow-md shadow-sky-500/25">
+                🚢
+              </div>
+              <div>
+                <div className="font-black text-sm text-sky-600 dark:text-sky-400 tracking-wide leading-none">
+                  KHO HẢI SẢN
+                </div>
+                <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  Hệ thống Quản lý Chuỗi lạnh
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-5 pr-20 sm:pr-0">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-1.5">
                 <ThunderboltFilled />
                 <span>Cổng Xác Thực An Toàn</span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-white m-0">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-white m-0">
                 Đăng Nhập
               </h1>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Vui lòng điền thông tin tài khoản và chi nhánh để tiếp tục truy cập.
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 mb-0">
+                Vui lòng điền thông tin tài khoản để truy cập hệ thống.
               </p>
             </div>
 

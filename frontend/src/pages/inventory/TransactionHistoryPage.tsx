@@ -2,22 +2,22 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Table, Tag, Button, Modal, DatePicker, Input, Row, Col, Typography, Tabs, Badge, Pagination, Tooltip, App } from 'antd';
 import { PrinterOutlined, SearchOutlined, ReloadOutlined, InboxOutlined, UploadOutlined, CloseCircleOutlined, ExclamationCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useInboundStore } from '../../stores/useInboundStore';
-import { useOutboundStore } from '../../stores/useOutboundStore';
-import { exportToExcel } from '../../utils/exportUtils';
-import { formatCurrency, formatWeight, formatDate, formatDateTime } from '../../utils/format';
-import { InvoiceModal } from '../../components/invoice/InvoiceModal';
-import type { InvoicePrintData } from '../../types';
+import { useInboundStore } from '@/stores/useInboundStore';
+import { useOutboundStore } from '@/stores/useOutboundStore';
+import { exportToExcel } from '@/utils/exportUtils';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+import { formatCurrency, formatWeight, formatDate, formatDateTime } from '@/utils/format';
+import { InvoiceModal } from '@/components/invoice/InvoiceModal';
+import type { InvoicePrintData } from '@/types';
 import {
   TRANSACTION_STATUS,
   TRANSACTION_TYPE,
   type TransactionStatus,
   type TransactionType,
   type PartnerType,
-} from '../../constants';
-import { useAuthStore } from '../../stores/useAuthStore';
+} from '@/constants';
+import { useAuthStore } from '@/stores/useAuthStore';
 import dayjs from 'dayjs';
-import { ZoomViewerModal, ZoomButton } from '../../components/common/ZoomViewerModal';
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -120,7 +120,6 @@ export const TransactionHistoryPage: React.FC = () => {
 
   const [selectedTx, setSelectedTx] = useState<UnifiedTransactionItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
 
   // Invoice print modal state
   const [invoiceData, setInvoiceData] = useState<InvoicePrintData | null>(null);
@@ -770,16 +769,7 @@ export const TransactionHistoryPage: React.FC = () => {
               💡 <span>Nhấp vào dòng để xem chi tiết phiếu</span>
             </span>
             <span className="text-xs text-gray-400 hidden sm:inline">Tổng {filteredTransactions.length} giao dịch</span>
-            <Button
-              size="small"
-              onClick={handleExportExcel}
-              className="text-xs flex items-center gap-1 border-slate-200 dark:border-slate-700 font-medium"
-            >
-              <span>📥</span>
-              <span className="hidden sm:inline">Xuất Excel</span>
-              <span className="sm:hidden">Excel</span>
-            </Button>
-            <ZoomButton onClick={() => setIsZoomed(true)} />
+            <ExportExcelButton onExport={handleExportExcel} />
           </div>
         }
         className="shadow-sm rounded-2xl overflow-hidden"
@@ -1153,41 +1143,6 @@ export const TransactionHistoryPage: React.FC = () => {
         data={invoiceData}
         onClose={() => setIsInvoiceModalOpen(false)}
       />
-
-      {/* Modal Phóng To Bảng Lịch Sử & Quay Ngang */}
-      <ZoomViewerModal
-        open={isZoomed}
-        onClose={() => setIsZoomed(false)}
-        title="📋 Lịch Sử Giao Dịch Nhập - Xuất Kho"
-        subtitle={`Hiển thị ${filteredTransactions.length} giao dịch chi tiết`}
-      >
-        {({ isRotated }) => (
-          <div className="w-full h-full flex flex-col">
-            <Table
-              dataSource={filteredTransactions}
-              columns={columns}
-              rowKey="id"
-              onRow={(record: UnifiedTransactionItem) => ({
-                onClick: () => handleOpenDetail(record),
-                className: `cursor-pointer transition-colors ${
-                  record.status === TRANSACTION_STATUS.CANCELLED
-                    ? 'opacity-70 bg-red-50/20 dark:bg-red-950/15 hover:bg-red-50/40 dark:hover:bg-red-950/30'
-                    : 'hover:bg-sky-50/60 dark:hover:bg-slate-800/60'
-                }`,
-              })}
-              pagination={{
-                current: pagination.current,
-                pageSize: pagination.pageSize,
-                showSizeChanger: true,
-                pageSizeOptions: ['10', '20', '50'],
-                onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
-              }}
-              scroll={{ x: 1000, y: isRotated ? 'calc(100vw - 190px)' : 'calc(100vh - 240px)' }}
-              size="middle"
-            />
-          </div>
-        )}
-      </ZoomViewerModal>
     </div>
   );
 };

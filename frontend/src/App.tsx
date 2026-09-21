@@ -56,6 +56,10 @@ const App: React.FC = () => {
             Card: {
               headerFontSize: 15,
             },
+            Input: {
+              controlHeight: 36,
+              borderRadius: 8,
+            },
             Button: {
               controlHeight: 36,
               borderRadius: 8,
@@ -66,7 +70,10 @@ const App: React.FC = () => {
           }
         }}
       >
-        <AntdApp>
+        <AntdApp
+          message={{ top: 72 }}
+          notification={{ top: 72, placement: 'topRight' }}
+        >
           <ServerStatusBanner />
           <RouterProvider router={router} />
         </AntdApp>

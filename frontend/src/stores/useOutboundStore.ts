@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { transactionService, type OutboundReceiptPayload } from '../services/transactionService';
-import type { TransactionStatus } from '../constants';
+import { transactionService, type OutboundReceiptPayload } from '@/services/transactionService';
+import type { TransactionStatus } from '@/constants';
 
 export interface OutboundBatch {
   batchCode: string;

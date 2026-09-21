@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Form, Input, InputNumber, Button, Typography, Space, App, Divider, Row, Col, Alert, Tooltip, Upload } from 'antd';
 import { SettingOutlined, SaveOutlined, UndoOutlined, InfoCircleOutlined, AlertOutlined, ShopOutlined, PictureOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons';
-import { settingService, type SystemSetting } from '../../services/settingService';
-import { useBrandStore } from '../../stores/useBrandStore';
+import { settingService, type SystemSetting } from '@/services/settingService';
+import { useBrandStore } from '@/stores/useBrandStore';
 
 const { Title, Text } = Typography;
 

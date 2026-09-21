@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { notification as antdNotification } from 'antd';
-import { useAuthStore } from '../stores/useAuthStore';
-import { signalRService, type RealtimeNotification } from '../services/signalrService';
-import { notificationService, type UserNotificationItem } from '../services/notificationService';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { signalRService, type RealtimeNotification } from '@/services/signalrService';
+import { notificationService, type UserNotificationItem } from '@/services/notificationService';
 import dayjs from 'dayjs';
 
 export interface SystemNotification {

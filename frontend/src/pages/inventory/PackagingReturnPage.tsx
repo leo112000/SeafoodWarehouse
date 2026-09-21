@@ -9,12 +9,11 @@ import {
   EyeOutlined, AppstoreOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { formatDateTime } from '../../utils/dateUtils';
-import { usePackagingReturnStore, type PackagingLoan } from '../../stores/usePackagingReturnStore';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { usePackagingStore } from '../../stores/usePackagingStore';
-import { ZoomButton, ZoomViewerModal } from '../../components/common/ZoomViewerModal';
-import { useAsyncSubmit } from '../../hooks/useAsyncSubmit';
+import { formatDateTime } from '@/utils/dateUtils';
+import { usePackagingReturnStore, type PackagingLoan } from '@/stores/usePackagingReturnStore';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { usePackagingStore } from '@/stores/usePackagingStore';
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,7 +45,6 @@ const PackagingReturnPage: React.FC = () => {
   const [selectedLoan, setSelectedLoan] = useState<PackagingLoan | null>(null);
   const [partnerFilter, setPartnerFilter] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState('ledger');
-  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   const [returnForm] = Form.useForm();
   const [loanForm] = Form.useForm();
@@ -171,6 +169,7 @@ const PackagingReturnPage: React.FC = () => {
 
   const [loanPagination, setLoanPagination] = useState({ current: 1, pageSize: 10 });
   const [returnPagination, setReturnPagination] = useState({ current: 1, pageSize: 10 });
+  const [summaryPagination, setSummaryPagination] = useState({ current: 1, pageSize: 6 });
 
   const pagedLoans = useMemo(() => {
     const start = (loanPagination.current - 1) * loanPagination.pageSize;
@@ -181,6 +180,11 @@ const PackagingReturnPage: React.FC = () => {
     const start = (returnPagination.current - 1) * returnPagination.pageSize;
     return returns.slice(start, start + returnPagination.pageSize);
   }, [returns, returnPagination.current, returnPagination.pageSize]);
+
+  const pagedPackagingSummary = useMemo(() => {
+    const start = (summaryPagination.current - 1) * summaryPagination.pageSize;
+    return packagingSummary.slice(start, start + summaryPagination.pageSize);
+  }, [packagingSummary, summaryPagination.current, summaryPagination.pageSize]);
 
   // ── loan table columns ────────────────────────────────────────────────────────
 
@@ -305,11 +309,11 @@ const PackagingReturnPage: React.FC = () => {
     { title: 'Đối Tác', dataIndex: 'partnerName', key: 'partnerName', render: (n: string) => <strong>{n}</strong> },
     { title: 'Loại Khay', dataIndex: 'packagingName', key: 'packagingName' },
     { title: 'Số Lượng Trả', dataIndex: 'returnedQty', key: 'returnedQty', align: 'right' as const, render: (q: number) => <span className="font-semibold text-green-600">{q} cái</span> },
-    { 
-      title: 'Ngày Trả', 
-      dataIndex: 'returnDate', 
-      key: 'returnDate', 
-      render: (d: string) => <span className="text-slate-600 font-medium text-xs">{formatDateTime(d)}</span> 
+    {
+      title: 'Ngày Trả',
+      dataIndex: 'returnDate',
+      key: 'returnDate',
+      render: (d: string) => <span className="text-slate-600 font-medium text-xs">{formatDateTime(d)}</span>
     },
     { title: 'Người Ghi Nhận', dataIndex: 'recordedBy', key: 'recordedBy' },
   ];
@@ -574,7 +578,6 @@ const PackagingReturnPage: React.FC = () => {
       <Card
         variant="borderless"
         className="shadow-sm"
-        extra={<ZoomButton onClick={() => setIsZoomOpen(true)} />}
       >
         <Tabs
           activeKey={activeTab}
@@ -584,7 +587,7 @@ const PackagingReturnPage: React.FC = () => {
               key: 'ledger',
               label: (
                 <span>
-                  Bảng Công Nợ Vỏ Sọt
+                  Công Nợ
                   {pendingLoans > 0 && (
                     <Badge count={pendingLoans} className="ml-2" />
                   )}
@@ -707,19 +710,138 @@ const PackagingReturnPage: React.FC = () => {
               label: (
                 <span>
                   <AppstoreOutlined className="mr-1" />
-                  Tồn Kho & Luân Chuyển Theo Loại Sọt ({packagings.length})
+                  Tồn Kho ({packagings.length})
                 </span>
               ),
               children: (
                 <div className="space-y-3">
-                  <Table
-                    columns={summaryColumns}
-                    dataSource={packagingSummary}
-                    rowKey="id"
-                    pagination={false}
-                    className="rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800"
-                    scroll={{ x: 850 }}
-                  />
+                  {/* Mobile View: Dạng Thẻ Tồn Kho Từng Loại Sọt Kiểu App */}
+                  <div className="block sm:hidden space-y-2.5">
+                    {packagingSummary.length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 text-xs">Chưa có dữ liệu loại sọt</div>
+                    ) : (
+                      pagedPackagingSummary.map((item: any) => (
+                        <div
+                          key={item.id}
+                          className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition-colors"
+                        >
+                          {/* Dòng 1: Mã & Tên sọt + Phân loại */}
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Tag color={item.category === 'CONTAINER' ? 'blue' : 'default'} className="font-mono font-bold text-xs m-0">
+                                {item.code}
+                              </Tag>
+                              <span className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                                {item.name}
+                              </span>
+                            </div>
+                            <Tag color={item.category === 'CONTAINER' ? 'cyan' : 'orange'} className="text-[10px] m-0 shrink-0 font-medium">
+                              {item.category === 'CONTAINER' ? 'Luân chuyển' : '1 lần'}
+                            </Tag>
+                          </div>
+
+                          <div className="text-[11px] text-gray-400 mb-2">
+                            Bì chuẩn: {item.defaultTareWeight} kg • ĐVT: {item.unit}
+                          </div>
+
+                          {/* Grid 4 chỉ số số liệu trực quan */}
+                          <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs mb-2.5">
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-semibold">Tồn tại kho:</span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                {item.inStock.toLocaleString()} {item.unit}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-semibold">Đang cho mượn:</span>
+                              <span className={`font-bold text-sm ${item.activeDebt > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+                                {item.activeDebt.toLocaleString()} {item.unit}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-semibold">Đã thu hồi:</span>
+                              <span className="font-semibold text-slate-600 dark:text-slate-300 text-xs">
+                                {item.totalReturned.toLocaleString()} {item.unit}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-semibold">Tổng tài sản sọt:</span>
+                              <span className="font-black text-slate-900 dark:text-slate-100 text-xs">
+                                {item.totalAssets.toLocaleString()} {item.unit}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Thanh luân chuyển tỷ lệ */}
+                          <div className="mb-2 px-0.5">
+                            <div className="flex justify-between text-[11px] text-slate-500 mb-1 font-medium">
+                              <span className="text-amber-600 font-semibold">Đang mượn: {item.loanPercent}%</span>
+                              <span className="text-emerald-600 font-semibold">Tại kho: {100 - item.loanPercent}%</span>
+                            </div>
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden flex">
+                              <div
+                                className="bg-amber-500 h-full transition-all"
+                                style={{ width: `${Math.min(100, item.loanPercent)}%` }}
+                              />
+                              <div
+                                className="bg-emerald-500 h-full transition-all"
+                                style={{ width: `${Math.max(0, 100 - item.loanPercent)}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Footer tác vụ */}
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                            <span className="text-[11px] text-gray-400">
+                              {item.activeBorrowersCount > 0 ? (
+                                <span className="text-amber-600 font-medium">
+                                  {item.activeBorrowersCount} đối tác còn nợ
+                                </span>
+                              ) : (
+                                <span className="text-emerald-600 font-medium">Đủ sọt tại kho</span>
+                              )}
+                            </span>
+                            {item.activeDebt > 0 && (
+                              <Button
+                                size="small"
+                                type="link"
+                                icon={<EyeOutlined />}
+                                className="p-0 text-xs text-sky-600 font-semibold"
+                                onClick={() => setActiveTab('ledger')}
+                              >
+                                Xem đối tác nợ →
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+
+                    {packagingSummary.length > summaryPagination.pageSize && (
+                      <div className="flex justify-center pt-2">
+                        <Pagination
+                          size="small"
+                          current={summaryPagination.current}
+                          pageSize={summaryPagination.pageSize}
+                          total={packagingSummary.length}
+                          onChange={(page, pageSize) => setSummaryPagination({ current: page, pageSize })}
+                          showSizeChanger={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop View */}
+                  <div className="hidden sm:block">
+                    <Table
+                      columns={summaryColumns}
+                      dataSource={packagingSummary}
+                      rowKey="id"
+                      pagination={false}
+                      className="rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800"
+                      scroll={{ x: 850 }}
+                    />
+                  </div>
                 </div>
               ),
             },
@@ -728,7 +850,7 @@ const PackagingReturnPage: React.FC = () => {
               label: (
                 <span>
                   <HistoryOutlined className="mr-1" />
-                  Lịch Sử Trả Vỏ ({returns.length})
+                  Lịch Sử Trả ({returns.length})
                 </span>
               ),
               children: (
@@ -800,46 +922,6 @@ const PackagingReturnPage: React.FC = () => {
           ]}
         />
       </Card>
-
-      <ZoomViewerModal
-        open={isZoomOpen}
-        onClose={() => setIsZoomOpen(false)}
-        title={
-          activeTab === 'ledger'
-            ? 'Bảng Công Nợ Vỏ Sọt'
-            : activeTab === 'by-packaging'
-              ? 'Tồn Kho & Luân Chuyển Theo Loại Sọt'
-              : 'Lịch Sử Trả Vỏ'
-        }
-      >
-        {activeTab === 'ledger' && (
-          <Table
-            columns={loanColumns}
-            dataSource={filteredLoans}
-            rowKey="id"
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-          />
-        )}
-        {activeTab === 'by-packaging' && (
-          <Table
-            columns={summaryColumns}
-            dataSource={packagingSummary}
-            rowKey="id"
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-          />
-        )}
-        {activeTab === 'history' && (
-          <Table
-            columns={returnColumns}
-            dataSource={returns}
-            rowKey="id"
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-          />
-        )}
-      </ZoomViewerModal>
 
       {/* ── Return Modal ── */}
       <Modal

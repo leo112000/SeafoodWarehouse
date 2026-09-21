@@ -1,7 +1,7 @@
 import React from 'react';
-import { formatCurrency, formatDateTime } from '../../utils/format';
-import type { InvoicePrintData } from '../../types';
-import { useTenantStore } from '../../stores/useTenantStore';
+import { formatCurrency, formatDateTime } from '@/utils/format';
+import type { InvoicePrintData } from '@/types';
+import { useTenantStore } from '@/stores/useTenantStore';
 
 
 /* =============================================

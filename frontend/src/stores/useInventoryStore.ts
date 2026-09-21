@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { inventoryService, type InventoryItemDto, type InventoryQueryParams } from '../services/inventoryService';
+import { inventoryService, type InventoryItemDto, type InventoryQueryParams } from '@/services/inventoryService';
 
 interface InventoryState {
   items: InventoryItemDto[];

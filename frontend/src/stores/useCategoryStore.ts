@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { Category } from '../types/seafood';
-import { categoryService } from '../services/categoryService';
+import type { Category } from '@/types/seafood';
+import { categoryService } from '@/services/categoryService';
 
 interface CategoryState {
   categories: Category[];

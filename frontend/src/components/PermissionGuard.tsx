@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button, Result } from 'antd';
 import { Link, Outlet } from 'react-router-dom';
-import { useAuthStore } from '../stores/useAuthStore';
-import { createDefaultRoles, useRoleStore } from '../stores/useRoleStore';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { createDefaultRoles, useRoleStore } from '@/stores/useRoleStore';
 
 interface PermissionGuardProps {
   permission: string;

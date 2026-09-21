@@ -7,7 +7,7 @@ import {
   WarningFilled,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { InventoryItemDto } from '../../services/inventoryService';
+import type { InventoryItemDto } from '@/services/inventoryService';
 
 export interface WarehouseZone {
   id: string;

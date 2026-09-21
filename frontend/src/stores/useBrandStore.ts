@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { settingService } from '../services/settingService';
+import { settingService } from '@/services/settingService';
 import { useAuthStore } from './useAuthStore';
 
 interface BrandState {
