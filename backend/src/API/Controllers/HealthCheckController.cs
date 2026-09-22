@@ -8,6 +8,7 @@ namespace SeafoodWarehouseManagement.API.Controllers;
 public class HealthCheckController : BaseApiController
 {
     [HttpGet]
+    [HttpHead]
     public IActionResult Get()
     {
         return Ok(new
