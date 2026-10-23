@@ -41,6 +41,9 @@ public class BigDataPerformanceTests : IAsyncLifetime
 
         _context = new ApplicationDbContext(options);
 
+        // Đảm bảo Database và Schema đã được tạo trên SQL Server (bắt buộc cho môi trường CI Runner mới)
+        await _context.Database.EnsureCreatedAsync();
+
         // Lấy hoặc tạo Product và Warehouse phục vụ test
         var product = await _context.Products.FirstOrDefaultAsync(p => !p.IsDeleted);
         if (product == null)

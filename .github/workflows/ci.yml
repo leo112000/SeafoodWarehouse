@@ -42,6 +42,11 @@ jobs:
       - name: Build Backend (Release)
         run: dotnet build backend --configuration Release --no-restore
 
+      - name: Start SQL Server LocalDB
+        run: |
+          sqllocaldb create mssqllocaldb -s || sqllocaldb start mssqllocaldb
+          sqllocaldb info mssqllocaldb
+
       - name: Run xUnit & Performance Tests
         run: dotnet test backend --configuration Release --no-build --verbosity normal
 
