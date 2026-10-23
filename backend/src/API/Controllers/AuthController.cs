@@ -81,6 +81,7 @@ public class AuthController : BaseApiController
     /// Đăng nhập trực tiếp vào tài khoản Admin của một Tenant (Impersonate)
     /// </summary>
     [HttpPost("impersonate-tenant/{tenantId:int}")]
+    [EnableRateLimiting("auth-limiter")]
     public async Task<ActionResult<Result<LoginResponseDto>>> ImpersonateTenant(int tenantId, CancellationToken cancellationToken = default)
     {
         var tenant = await _context.Tenants
@@ -142,11 +143,31 @@ public class AuthController : BaseApiController
             ? adminUser.UserRoles.Where(ur => ur.Role != null).Select(ur => ur.Role.Name).ToList()
             : new List<string> { "Admin" };
 
-        var token = _jwtTokenGenerator.GenerateToken(adminUser, roles, tenant);
+        var (token, jti) = _jwtTokenGenerator.GenerateAccessTokenWithJti(adminUser, roles, tenant);
+        var refreshTokenString = _jwtTokenGenerator.GenerateRefreshToken();
+        var refreshTokenExpiryDays = _jwtTokenGenerator.GetRefreshTokenExpiryDays();
+        var expiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
+
+        var refreshTokenEntity = new RefreshToken
+        {
+            UserId = adminUser.Id,
+            Token = refreshTokenString,
+            JwtId = jti,
+            ExpiresAt = expiresAt,
+            CreatedAt = DateTime.UtcNow,
+            CreatedByIp = GetClientIpAddress(),
+            TenantId = tenant.Id
+        };
+
+        _context.RefreshTokens.Add(refreshTokenEntity);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        SetRefreshTokenCookie(refreshTokenString, expiresAt);
 
         return Ok(Result<LoginResponseDto>.Success(new LoginResponseDto
         {
             Token = token,
+            RefreshToken = refreshTokenString,
             User = new UserInfoDto
             {
                 Id = adminUser.Id.ToString(),
@@ -226,11 +247,31 @@ public class AuthController : BaseApiController
                 ? await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == user.TenantId.Value && !t.IsDeleted, cancellationToken)
                 : null;
 
-            var token = _jwtTokenGenerator.GenerateToken(user, roles, tenant);
+            var (token, jti) = _jwtTokenGenerator.GenerateAccessTokenWithJti(user, roles, tenant);
+            var refreshTokenString = _jwtTokenGenerator.GenerateRefreshToken();
+            var refreshTokenExpiryDays = _jwtTokenGenerator.GetRefreshTokenExpiryDays();
+            var expiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
+
+            var refreshTokenEntity = new RefreshToken
+            {
+                UserId = user.Id,
+                Token = refreshTokenString,
+                JwtId = jti,
+                ExpiresAt = expiresAt,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByIp = GetClientIpAddress(),
+                TenantId = user.TenantId
+            };
+
+            _context.RefreshTokens.Add(refreshTokenEntity);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            SetRefreshTokenCookie(refreshTokenString, expiresAt);
 
             return Ok(Result<LoginResponseDto>.Success(new LoginResponseDto
             {
                 Token = token,
+                RefreshToken = refreshTokenString,
                 User = new UserInfoDto
                 {
                     Id = user.Id.ToString(),
@@ -247,5 +288,162 @@ public class AuthController : BaseApiController
         }
 
         return BadRequest(Result<LoginResponseDto>.Failure("Tài khoản hoặc mật khẩu không chính xác."));
+    }
+
+    /// <summary>
+    /// Cấp mới Access Token bằng Refresh Token (Chuẩn JWT Refresh Token Rotation)
+    /// </summary>
+    [HttpPost("refresh-token")]
+    [EnableRateLimiting("auth-limiter")]
+    public async Task<ActionResult<Result<LoginResponseDto>>> RefreshToken([FromBody] RefreshTokenRequestDto? request, CancellationToken cancellationToken = default)
+    {
+        var rawToken = request?.RefreshToken?.Trim() ?? Request.Cookies["refreshToken"]?.Trim();
+        if (string.IsNullOrWhiteSpace(rawToken))
+        {
+            return Unauthorized(Result<LoginResponseDto>.Failure("Refresh Token không được để trống."));
+        }
+
+        var existingToken = await _context.RefreshTokens
+            .IgnoreQueryFilters()
+            .Include(rt => rt.User)
+                .ThenInclude(u => u!.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(rt => rt.Token == rawToken && !rt.IsDeleted, cancellationToken);
+
+        if (existingToken == null)
+        {
+            return Unauthorized(Result<LoginResponseDto>.Failure("Refresh Token không hợp lệ."));
+        }
+
+        // Phát hiện tái sử dụng Token đã bị thu hồi (Token Reuse / Theft Detection)
+        if (existingToken.IsRevoked)
+        {
+            var compromisedTokens = await _context.RefreshTokens
+                .IgnoreQueryFilters()
+                .Where(rt => rt.UserId == existingToken.UserId && !rt.IsDeleted && rt.RevokedAt == null)
+                .ToListAsync(cancellationToken);
+
+            foreach (var t in compromisedTokens)
+            {
+                t.RevokedAt = DateTime.UtcNow;
+                t.RevokedByIp = GetClientIpAddress();
+            }
+            await _context.SaveChangesAsync(cancellationToken);
+
+            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/" });
+            return Unauthorized(Result<LoginResponseDto>.Failure("Phát hiện Token đã bị thu hồi hoặc bị tái sử dụng trái phép. Vui lòng đăng nhập lại."));
+        }
+
+        if (existingToken.IsExpired)
+        {
+            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/" });
+            return Unauthorized(Result<LoginResponseDto>.Failure("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại."));
+        }
+
+        var user = existingToken.User;
+        if (user == null || user.IsDeleted || user.Status != "ACTIVE")
+        {
+            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/" });
+            return Unauthorized(Result<LoginResponseDto>.Failure("Tài khoản này hiện không khả dụng hoặc đã bị khóa."));
+        }
+
+        var roles = user.UserRoles != null && user.UserRoles.Count > 0
+            ? user.UserRoles.Where(ur => ur.Role != null).Select(ur => ur.Role.Name).ToList()
+            : new List<string> { user.Email.Contains("admin") ? "Admin" : (user.Email.Contains("kho") ? "Thukho" : "Nhanvien") };
+
+        var tenant = user.TenantId.HasValue
+            ? await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == user.TenantId.Value && !t.IsDeleted, cancellationToken)
+            : null;
+
+        // Sinh cặp Token mới (Rotate Refresh Token)
+        var (newAccessToken, newJti) = _jwtTokenGenerator.GenerateAccessTokenWithJti(user, roles, tenant);
+        var newRefreshTokenString = _jwtTokenGenerator.GenerateRefreshToken();
+        var refreshTokenExpiryDays = _jwtTokenGenerator.GetRefreshTokenExpiryDays();
+        var expiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
+
+        // Đánh dấu thu hồi token cũ và thay thế bằng token mới
+        existingToken.RevokedAt = DateTime.UtcNow;
+        existingToken.RevokedByIp = GetClientIpAddress();
+        existingToken.ReplacedByToken = newRefreshTokenString;
+
+        var newRefreshTokenEntity = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = newRefreshTokenString,
+            JwtId = newJti,
+            ExpiresAt = expiresAt,
+            CreatedAt = DateTime.UtcNow,
+            CreatedByIp = GetClientIpAddress(),
+            TenantId = user.TenantId
+        };
+
+        _context.RefreshTokens.Add(newRefreshTokenEntity);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        SetRefreshTokenCookie(newRefreshTokenString, expiresAt);
+
+        return Ok(Result<LoginResponseDto>.Success(new LoginResponseDto
+        {
+            Token = newAccessToken,
+            RefreshToken = newRefreshTokenString,
+            User = new UserInfoDto
+            {
+                Id = user.Id.ToString(),
+                Name = user.FullName,
+                Email = user.Email,
+                Roles = roles,
+                Phone = user.Phone,
+                Status = user.Status,
+                TenantId = user.TenantId,
+                TenantCode = tenant?.Code,
+                TenantName = tenant?.Name
+            }
+        }));
+    }
+
+    /// <summary>
+    /// Thu hồi Refresh Token khi đăng xuất an toàn (Revoke Token)
+    /// </summary>
+    [HttpPost("revoke")]
+    public async Task<ActionResult<Result<bool>>> RevokeToken([FromBody] RefreshTokenRequestDto? request, CancellationToken cancellationToken = default)
+    {
+        var rawToken = request?.RefreshToken?.Trim() ?? Request.Cookies["refreshToken"]?.Trim();
+        if (!string.IsNullOrWhiteSpace(rawToken))
+        {
+            var token = await _context.RefreshTokens
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(rt => rt.Token == rawToken && !rt.IsDeleted, cancellationToken);
+
+            if (token != null && token.RevokedAt == null)
+            {
+                token.RevokedAt = DateTime.UtcNow;
+                token.RevokedByIp = GetClientIpAddress();
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/" });
+        return Ok(Result<bool>.Success(true));
+    }
+
+    private void SetRefreshTokenCookie(string refreshToken, DateTime expiresAt)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Expires = expiresAt,
+            Secure = Request.IsHttps,
+            SameSite = SameSiteMode.Lax,
+            Path = "/"
+        };
+
+        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+    }
+
+    private string GetClientIpAddress()
+    {
+        return Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+               ?? HttpContext.Connection.RemoteIpAddress?.ToString()
+               ?? "unknown";
     }
 }

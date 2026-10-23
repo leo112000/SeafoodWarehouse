@@ -1,0 +1,80 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ==========================================
+  # 1. BACKEND CI (.NET 10, C# 13, Clean Architecture)
+  # ==========================================
+  backend:
+    name: Backend Build & Test (.NET 10)
+    # Dùng windows-latest để có sẵn SQL Server LocalDB cho bộ benchmark Big Data (50k Lots & 100k Transactions)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore Dependencies
+        run: dotnet restore backend
+
+      - name: Build Backend (Release)
+        run: dotnet build backend --configuration Release --no-restore
+
+      - name: Run xUnit & Performance Tests
+        run: dotnet test backend --configuration Release --no-build --verbosity normal
+
+  # ==========================================
+  # 2. FRONTEND CI (React 19, TypeScript, Vitest)
+  # ==========================================
+  frontend:
+    name: Frontend Lint, Typecheck & Test (React 19)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Type Check
+        run: npm run typecheck
+
+      - name: Rust Oxlint Code Quality Check
+        run: npm run lint
+
+      - name: Vitest Unit Tests
+        run: npm test -- --run

@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Table, Card, Row, Col, Input, Select, Tag, Button, Modal, Descriptions, Tooltip } from 'antd';
 import { SearchOutlined, ReloadOutlined, DatabaseOutlined, SafetyCertificateOutlined, AlertOutlined, EnvironmentOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useInventoryStore } from '@/stores/useInventoryStore';
 import { useWarehouseStore } from '@/stores/useWarehouseStore';
 import { useProductStore } from '@/stores/useProductStore';
+import { useTabStore } from '@/stores/useTabStore';
+import { signalRService } from '@/services/signalrService';
 import dayjs from 'dayjs';
 import type { InventoryItemDto } from '@/services/inventoryService';
 import { settingService } from '@/services/settingService';
@@ -15,6 +17,8 @@ export const InventoryStockPage: React.FC = () => {
   const { items, totalCount, loading, pageNumber, pageSize, fetchInventory } = useInventoryStore();
   const { warehouses, fetchWarehouses } = useWarehouseStore();
   const { products, fetchProducts } = useProductStore();
+  const activeKey = useTabStore((state) => state.activeKey);
+  const isFirstMountRef = useRef(true);
 
   const [selectedWarehouse, setSelectedWarehouse] = useState<number | undefined>(undefined);
   const [selectedProduct, setSelectedProduct] = useState<number | undefined>(undefined);
@@ -22,16 +26,55 @@ export const InventoryStockPage: React.FC = () => {
   const [detailItem, setDetailItem] = useState<InventoryItemDto | null>(null);
   const [expiringAlertDays, setExpiringAlertDays] = useState<number>(15);
 
+  // Khởi tạo và tự động refetch khi tab "Tồn kho hiện tại" được kích hoạt trở lại
   useEffect(() => {
-    fetchInventory();
-    fetchWarehouses();
-    fetchProducts();
-    settingService.getSettings().then(s => {
-      if (s && s.expiringAlertDays) {
-        setExpiringAlertDays(s.expiringAlertDays);
+    if (activeKey === '/inventory' || isFirstMountRef.current) {
+      if (isFirstMountRef.current) {
+        isFirstMountRef.current = false;
+        fetchInventory();
+        fetchWarehouses();
+        fetchProducts();
+        settingService.getSettings().then(s => {
+          if (s && s.expiringAlertDays) {
+            setExpiringAlertDays(s.expiringAlertDays);
+          }
+        }).catch(() => { });
+      } else if (activeKey === '/inventory') {
+        fetchInventory({
+          warehouseId: selectedWarehouse,
+          productId: selectedProduct,
+          search: searchText,
+        });
       }
-    }).catch(() => { });
-  }, []);
+    }
+  }, [activeKey, fetchInventory, fetchWarehouses, fetchProducts, selectedWarehouse, selectedProduct, searchText]);
+
+  // Lắng nghe sự kiện cập nhật tồn kho từ SignalR (khi hủy nhập, tạo nhập, hủy xuất, tạo xuất)
+  useEffect(() => {
+    const unsub = signalRService.onStockUpdated(() => {
+      fetchInventory({
+        warehouseId: selectedWarehouse,
+        productId: selectedProduct,
+        search: searchText,
+      });
+    });
+    return () => unsub();
+  }, [fetchInventory, selectedWarehouse, selectedProduct, searchText]);
+
+  // Tự động refetch khi người dùng quay lại cửa sổ trình duyệt
+  useEffect(() => {
+    const handleFocus = () => {
+      if (activeKey === '/inventory') {
+        fetchInventory({
+          warehouseId: selectedWarehouse,
+          productId: selectedProduct,
+          search: searchText,
+        });
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [activeKey, fetchInventory, selectedWarehouse, selectedProduct, searchText]);
 
   const handleSearch = () => {
     fetchInventory({

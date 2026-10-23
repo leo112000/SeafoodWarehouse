@@ -379,22 +379,6 @@ export const MainLayout: React.FC = () => {
             }}
           >
             <div className="flex flex-col h-full">
-              {/* User Profile Mini Card in Drawer */}
-              {user && (
-                <div className="p-3 border-b border-gray-100 dark:border-slate-800 bg-sky-50/50 dark:bg-slate-800/40 flex items-center gap-3">
-                  <Avatar size={40} className="bg-sky-500 font-bold shrink-0">
-                    {user.name.charAt(0).toLocaleUpperCase()}
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-xs text-gray-800 dark:text-gray-100 truncate">
-                      {user.name}
-                    </div>
-                    <div className="text-[11px] text-sky-600 dark:text-sky-400 truncate">
-                      {user.tenantName || tenantName || (user.tenantId ? `Tenant #${user.tenantId}` : 'Host Admin')}
-                    </div>
-                  </div>
-                </div>
-              )}
               <div className="flex-1 overflow-y-auto">
                 <Menu
                   theme={currentTheme === 'dark' ? 'dark' : 'light'}

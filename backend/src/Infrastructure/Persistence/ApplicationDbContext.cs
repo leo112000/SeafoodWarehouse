@@ -40,6 +40,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<OutboundReceipt> OutboundReceipts => Set<OutboundReceipt>();
     public DbSet<OutboundSupply> OutboundSupplies => Set<OutboundSupply>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

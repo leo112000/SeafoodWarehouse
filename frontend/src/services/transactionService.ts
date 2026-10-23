@@ -1,5 +1,23 @@
 import { api } from './api';
 
+export interface TransactionHistoryQueryParams {
+  pageNumber?: number;
+  pageSize?: number;
+  type?: 'ALL' | 'INBOUND' | 'OUTBOUND';
+  status?: 'ALL' | 'ACTIVE' | 'CANCELLED';
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface PagedTransactionHistoryResponse {
+  items: any[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface InboundReceiptPayload {
   supplier: string;
   inboundDate: string;
@@ -97,5 +115,15 @@ export const transactionService = {
   async cancelOutbound(refNo: string, reason: string): Promise<any> {
     const res = await api.post(`/outbound/cancel/${refNo}`, { reason });
     return res.data;
+  },
+
+  // Unified Transaction History with Server-Side Pagination
+  async getTransactionHistory(params?: TransactionHistoryQueryParams): Promise<PagedTransactionHistoryResponse> {
+    try {
+      const res = await api.get('/inventory/transactions-history', { params });
+      return res.data;
+    } catch {
+      return { items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0 };
+    }
   },
 };

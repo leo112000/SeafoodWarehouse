@@ -27,6 +27,7 @@ public interface IApplicationDbContext
     DbSet<UserNotification> UserNotifications { get; }
     DbSet<OutboundReceipt> OutboundReceipts { get; }
     DbSet<OutboundSupply> OutboundSupplies { get; }
+    DbSet<RefreshToken> RefreshTokens { get; }
 
     Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade Database { get; }
 

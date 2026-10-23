@@ -108,6 +108,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
             tableLots.Columns.Add("TareWeight", typeof(decimal));
             tableLots.Columns.Add("PackagingCode", typeof(string));
             tableLots.Columns.Add("PackagingQty", typeof(int));
+            tableLots.Columns.Add("Status", typeof(string));
             tableLots.Columns.Add("TenantId", typeof(int));
             tableLots.Columns.Add("CreatedAt", typeof(DateTime));
             tableLots.Columns.Add("IsDeleted", typeof(bool));
@@ -137,6 +138,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
                     2.5m,
                     "SOT-XANH",
                     10,
+                    hasStock ? "IN_STOCK" : "DEPLETED",
                     DBNull.Value,
                     prodDate,
                     false
@@ -185,6 +187,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
             tableTx.Columns.Add("TransactionDate", typeof(DateTime));
             tableTx.Columns.Add("CreatedBy", typeof(string));
             tableTx.Columns.Add("Note", typeof(string));
+            tableTx.Columns.Add("Status", typeof(string));
             tableTx.Columns.Add("TenantId", typeof(int));
             tableTx.Columns.Add("CreatedAt", typeof(DateTime));
             tableTx.Columns.Add("IsDeleted", typeof(bool));
@@ -218,6 +221,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
                     txDate,
                     "Benchmarker",
                     "Giao dịch tự động kiểm thử BigData",
+                    "ACTIVE",
                     DBNull.Value,
                     txDate,
                     false

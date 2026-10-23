@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { transactionService, type InboundReceiptPayload } from '@/services/transactionService';
 import type { TransactionStatus } from '@/constants';
+import { useInventoryStore } from './useInventoryStore';
 
 export interface InboundItem {
   seafoodName: string;
@@ -57,6 +58,7 @@ export const useInboundStore = create<InboundState>((set, get) => ({
     try {
       await transactionService.createInbound(receipt as InboundReceiptPayload);
       await get().fetchReceipts();
+      useInventoryStore.getState().fetchInventory();
     } catch {
       set((state) => ({
         receipts: [{ ...receipt, id: `PNK-${Date.now()}` }, ...state.receipts],
@@ -66,6 +68,7 @@ export const useInboundStore = create<InboundState>((set, get) => ({
   cancelReceipt: async (id, reason) => {
     const res = await transactionService.cancelInbound(id, reason);
     await get().fetchReceipts();
+    useInventoryStore.getState().fetchInventory();
     return res;
   },
 }));

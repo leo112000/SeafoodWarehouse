@@ -405,6 +405,29 @@ button, a, [role="button"], .ant-btn {
   margin: 0 auto !important;
 }
 
+/* App Launcher Clean Modal - Đồng bộ khung Modal phẳng phiu, bo góc 24px và triệt tiêu viền xanh */
+.app-launcher-clean-modal .ant-modal-content {
+  border-radius: 24px !important;
+  padding: 20px 16px !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.22) !important;
+}
+
+html.dark .app-launcher-clean-modal .ant-modal-content {
+  background: #0f172a !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7) !important;
+}
+
+.app-launcher-clean-modal,
+.app-launcher-clean-modal *,
+.app-launcher-clean-modal *:focus,
+.app-launcher-clean-modal *:focus-visible {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 @media screen and (max-width: 1024px) {
   .ant-modal {
     max-width: calc(100vw - 32px) !important;

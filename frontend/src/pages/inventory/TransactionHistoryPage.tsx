@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Table, Tag, Button, Modal, DatePicker, Input, Row, Col, Typography, Tabs, Badge, Pagination, Tooltip, App } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Table, Tag, Button, Modal, DatePicker, Input, Row, Col, Typography, Tabs, Pagination, Tooltip, App } from 'antd';
 import { PrinterOutlined, SearchOutlined, ReloadOutlined, InboxOutlined, UploadOutlined, CloseCircleOutlined, ExclamationCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useInboundStore } from '@/stores/useInboundStore';
-import { useOutboundStore } from '@/stores/useOutboundStore';
 import { exportToExcel } from '@/utils/exportUtils';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { formatCurrency, formatWeight, formatDate, formatDateTime } from '@/utils/format';
@@ -12,73 +10,43 @@ import type { InvoicePrintData } from '@/types';
 import {
   TRANSACTION_STATUS,
   TRANSACTION_TYPE,
-  type TransactionStatus,
   type TransactionType,
-  type PartnerType,
 } from '@/constants';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useTabStore } from '@/stores/useTabStore';
+import { signalRService } from '@/services/signalrService';
+import { transactionService } from '@/services/transactionService';
+import { useTransactionHistoryStore, type UnifiedTransactionItem } from '@/stores/useTransactionHistoryStore';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
 
-export interface UnifiedTransactionItem {
-  id: string; // Reference / Invoice No
-  type: TransactionType;
-  status?: TransactionStatus;
-  cancelledAt?: string;
-  cancelledBy?: string;
-  cancelReason?: string;
-  hasExports?: boolean;
-  canCancel?: boolean;
-  exportRefNos?: string[];
-  date: string;
-  partnerName: string; // Supplier for Inbound, Customer for Outbound
-  partnerType: PartnerType;
-  storageLocation?: string;
-  reason?: string;
-  totalWeightKg: number;
-  subTotal?: number;
-  suppliesTotal?: number;
-  discountAmount?: number;
-  discountReason?: string;
-  totalAmount: number;
-  createdBy: string;
-  supplies?: Array<{
-    name: string;
-    packagingCode?: string;
-    unit: string;
-    quantity: number;
-    unitPrice: number;
-    totalAmount: number;
-  }>;
-  items: Array<{
-    batchCode: string;
-    seafoodName: string;
-    storageCondition?: string;
-    grossWeight?: number;
-    tareWeight?: number;
-    netWeight: number;
-    packagingCode?: string;
-    packagingQty?: number;
-    expiryDate?: string;
-    unitPrice: number;
-    totalPrice: number;
-  }>;
-}
+export type { UnifiedTransactionItem };
 
 export const TransactionHistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
   const { message } = App.useApp();
 
-  const { receipts, fetchReceipts, cancelReceipt } = useInboundStore();
-  const { transactions: outboundTxs, fetchTransactions: fetchOutboundTxs, cancelTransaction } = useOutboundStore();
+  const {
+    items,
+    totalCount,
+    loading,
+    pageNumber,
+    pageSize,
+    type,
+    status,
+    search,
+    fromDate,
+    toDate,
+    fetchTransactions,
+    setFilter,
+    cancelTransaction,
+  } = useTransactionHistoryStore();
 
-  const [activeTab, setActiveTab] = useState<'ALL' | TransactionType>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | TransactionStatus>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
+  const [searchInput, setSearchInput] = useState(search || '');
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(
+    fromDate && toDate ? [dayjs(fromDate), dayjs(toDate)] : null
+  );
   const [quickDatePreset, setQuickDatePreset] = useState<string>('ALL');
 
   const rangePresets: { label: string; value: [dayjs.Dayjs, dayjs.Dayjs] }[] = [
@@ -91,29 +59,52 @@ export const TransactionHistoryPage: React.FC = () => {
     { label: 'Năm nay', value: [dayjs().startOf('year'), dayjs().endOf('year')] },
   ];
 
+  // Debounce search input
+  useEffect(() => {
+    setSearchInput(search || '');
+  }, [search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== search) {
+        setFilter({ search: searchInput, pageNumber: 1 });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const handleDateChange = (dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null, preset = 'CUSTOM') => {
+    setDateRange(dates);
+    setQuickDatePreset(preset);
+    setFilter({
+      fromDate: dates && dates[0] ? dates[0].startOf('day').toISOString() : undefined,
+      toDate: dates && dates[1] ? dates[1].endOf('day').toISOString() : undefined,
+      pageNumber: 1,
+    });
+  };
+
   const applyQuickDate = (key: string) => {
-    setQuickDatePreset(key);
     switch (key) {
       case 'TODAY':
-        setDateRange([dayjs().startOf('day'), dayjs().endOf('day')]);
+        handleDateChange([dayjs().startOf('day'), dayjs().endOf('day')], key);
         break;
       case 'YESTERDAY':
-        setDateRange([dayjs().subtract(1, 'day').startOf('day'), dayjs().subtract(1, 'day').endOf('day')]);
+        handleDateChange([dayjs().subtract(1, 'day').startOf('day'), dayjs().subtract(1, 'day').endOf('day')], key);
         break;
       case 'LAST_7_DAYS':
-        setDateRange([dayjs().subtract(7, 'day').startOf('day'), dayjs().endOf('day')]);
+        handleDateChange([dayjs().subtract(7, 'day').startOf('day'), dayjs().endOf('day')], key);
         break;
       case 'THIS_MONTH':
-        setDateRange([dayjs().startOf('month'), dayjs().endOf('month')]);
+        handleDateChange([dayjs().startOf('month'), dayjs().endOf('month')], key);
         break;
       case 'LAST_MONTH':
-        setDateRange([dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')]);
+        handleDateChange([dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')], key);
         break;
       case 'THIS_YEAR':
-        setDateRange([dayjs().startOf('year'), dayjs().endOf('year')]);
+        handleDateChange([dayjs().startOf('year'), dayjs().endOf('year')], key);
         break;
       default:
-        setDateRange(null);
+        handleDateChange(null, 'ALL');
         break;
     }
   };
@@ -131,10 +122,43 @@ export const TransactionHistoryPage: React.FC = () => {
   const [canceling, setCanceling] = useState(false);
   const isCancelingRef = React.useRef(false);
 
+  const activeKey = useTabStore((state) => state.activeKey);
+  const isFirstMountRef = React.useRef(true);
+
+  // Lần đầu mount hoặc khi chuyển tab quay lại trang Lịch sử giao dịch
   useEffect(() => {
-    fetchReceipts();
-    fetchOutboundTxs();
-  }, [fetchReceipts, fetchOutboundTxs]);
+    const isHistoryTab = activeKey === '/inventory/history' || activeKey === '/inventory/inbound-history' || activeKey === '/inventory/outbound-history';
+    if (isHistoryTab || isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      fetchTransactions();
+    }
+  }, [activeKey, fetchTransactions]);
+
+  // Lắng nghe SignalR real-time (tạo nhập, tạo xuất, hủy nhập, hủy xuất)
+  useEffect(() => {
+    const unsubStock = signalRService.onStockUpdated(() => {
+      fetchTransactions();
+    });
+    const unsubNotif = signalRService.onNotification(() => {
+      fetchTransactions();
+    });
+    return () => {
+      unsubStock();
+      unsubNotif();
+    };
+  }, [fetchTransactions]);
+
+  // Tự động refetch khi người dùng focus lại trình duyệt
+  useEffect(() => {
+    const handleFocus = () => {
+      const isHistoryTab = activeKey === '/inventory/history' || activeKey === '/inventory/inbound-history' || activeKey === '/inventory/outbound-history';
+      if (isHistoryTab) {
+        fetchTransactions();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [activeKey, fetchTransactions]);
 
   const handleConfirmCancel = async () => {
     if (!selectedTx) return;
@@ -147,11 +171,7 @@ export const TransactionHistoryPage: React.FC = () => {
     isCancelingRef.current = true;
     try {
       setCanceling(true);
-      if (selectedTx.type === 'INBOUND') {
-        await cancelReceipt(selectedTx.id, cancelReason.trim());
-      } else {
-        await cancelTransaction(selectedTx.id, cancelReason.trim());
-      }
+      await cancelTransaction(selectedTx.id, cancelReason.trim(), selectedTx.type);
 
       message.success(`Đã hủy phiếu ${selectedTx.id} và hoàn nguyên tồn kho thành công.`);
       setCancelModalOpen(false);
@@ -166,132 +186,18 @@ export const TransactionHistoryPage: React.FC = () => {
     }
   };
 
-  // Transform inbound & outbound into a unified list
-  const unifiedTransactions = useMemo<UnifiedTransactionItem[]>(() => {
-    const inboundItems: UnifiedTransactionItem[] = (receipts || []).map((r) => {
-      const items = r.items.map((item) => ({
-        batchCode: item.batchCode,
-        seafoodName: item.seafoodName,
-        storageCondition: item.storageCondition,
-        grossWeight: item.totalWeight,
-        tareWeight: item.tareWeight,
-        netWeight: item.netWeight,
-        expiryDate: item.expiryDate,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-      }));
-
-      const totalWeightKg = items.reduce((sum, item) => sum + item.netWeight, 0);
-
-      return {
-        id: r.id,
-        type: 'INBOUND',
-        status: r.status || 'ACTIVE',
-        cancelledAt: r.cancelledAt,
-        cancelledBy: r.cancelledBy,
-        cancelReason: r.cancelReason,
-        hasExports: r.hasExports,
-        canCancel: r.canCancel,
-        exportRefNos: r.exportRefNos,
-        date: formatDateTime(r.inboundDate),
-        partnerName: r.supplier,
-        partnerType: 'SUPPLIER',
-        storageLocation: r.storageLocation,
-        totalWeightKg,
-        totalAmount: r.totalAmount,
-        createdBy: user?.name ?? 'Thủ kho',
-        items,
-      };
-    });
-
-    const outboundItems: UnifiedTransactionItem[] = (outboundTxs || []).map((tx) => {
-      const items = tx.batches.map((b) => ({
-        batchCode: b.batchCode,
-        seafoodName: b.species,
-        storageCondition: 'Cấp đông',
-        netWeight: b.quantityKg,
-        expiryDate: b.expiryDate,
-        unitPrice: b.unitPrice,
-        totalPrice: b.amount,
-      }));
-
-      return {
-        id: tx.id,
-        type: 'OUTBOUND',
-        status: tx.status || 'ACTIVE',
-        cancelledAt: tx.cancelledAt,
-        cancelledBy: tx.cancelledBy,
-        cancelReason: tx.cancelReason,
-        date: formatDateTime(tx.date),
-        partnerName: tx.customerName,
-        partnerType: 'CUSTOMER',
-        reason: tx.reason,
-        totalWeightKg: tx.totalWeightKg,
-        subTotal: tx.subTotal,
-        suppliesTotal: tx.suppliesTotal,
-        discountAmount: tx.discountAmount,
-        discountReason: tx.discountReason,
-        totalAmount: tx.totalAmount,
-        createdBy: tx.createdBy,
-        supplies: tx.supplies,
-        items,
-      };
-    });
-
-    // Merge and sort descending by date/id
-    return [...inboundItems, ...outboundItems].sort((a, b) => {
-      const dateA = dayjs(a.date);
-      const dateB = dayjs(b.date);
-      return dateB.diff(dateA);
-    });
-  }, [receipts, outboundTxs, user?.name]);
-
-  // Filtering
-  const filteredTransactions = useMemo(() => {
-    return unifiedTransactions.filter((tx) => {
-      // 1. Tab filter
-      if (activeTab === 'INBOUND' && tx.type !== 'INBOUND') return false;
-      if (activeTab === 'OUTBOUND' && tx.type !== 'OUTBOUND') return false;
-
-      // 2. Search query filter
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchesId = tx.id.toLowerCase().includes(query);
-        const matchesPartner = tx.partnerName.toLowerCase().includes(query);
-        const matchesReason = (tx.reason || '').toLowerCase().includes(query);
-        const matchesBatchOrProduct = tx.items.some(
-          (i) => i.batchCode.toLowerCase().includes(query) || i.seafoodName.toLowerCase().includes(query)
-        );
-
-        if (!matchesId && !matchesPartner && !matchesReason && !matchesBatchOrProduct) {
-          return false;
-        }
-      }
-
-      // 3. Date range filter
-      if (dateRange && dateRange[0] && dateRange[1]) {
-        const txDate = dayjs(tx.date);
-        const startDate = dateRange[0].startOf('day');
-        const endDate = dateRange[1].endOf('day');
-        if (txDate.isBefore(startDate) || txDate.isAfter(endDate)) {
-          return false;
-        }
-      }
-
-      // 4. Status filter
-      if (statusFilter === TRANSACTION_STATUS.ACTIVE && tx.status === TRANSACTION_STATUS.CANCELLED) return false;
-      if (statusFilter === TRANSACTION_STATUS.CANCELLED && tx.status !== TRANSACTION_STATUS.CANCELLED) return false;
-
-      return true;
-    });
-  }, [unifiedTransactions, activeTab, searchQuery, dateRange, statusFilter]);
-
   const handleResetFilters = () => {
-    setSearchQuery('');
+    setSearchInput('');
     setDateRange(null);
     setQuickDatePreset('ALL');
-    setActiveTab('ALL');
-    setStatusFilter('ALL');
+    setFilter({
+      type: 'ALL',
+      status: 'ALL',
+      search: '',
+      fromDate: undefined,
+      toDate: undefined,
+      pageNumber: 1,
+    });
   };
 
   const handleOpenDetail = (tx: UnifiedTransactionItem) => {
@@ -327,7 +233,7 @@ export const TransactionHistoryPage: React.FC = () => {
       partnerName: tx.partnerName,
       storageLocation: tx.storageLocation,
       warehouseStaff: tx.createdBy,
-      note: tx.reason,
+      note: (tx as any).reason,
       items: printItems,
       supplies: tx.supplies || [],
       subTotal: tx.subTotal,
@@ -342,47 +248,61 @@ export const TransactionHistoryPage: React.FC = () => {
     setIsInvoiceModalOpen(true);
   };
 
-  const handleExportExcel = () => {
-    const exportData = filteredTransactions.flatMap((tx) =>
-      tx.items.map((item) => ({
-        id: tx.id,
-        type: tx.type === 'INBOUND' ? 'Nhập kho' : 'Xuất kho',
-        date: formatDate(tx.date),
-        partner: tx.partnerName,
-        partnerRole: tx.partnerType === 'SUPPLIER' ? 'Nhà cung cấp' : 'Khách hàng',
-        itemCount: tx.items.length,
-        reason: tx.reason || (tx.type === 'INBOUND' ? 'Nhập kho hải sản' : 'Bán hàng'),
-        createdBy: tx.createdBy,
-        batchCode: item.batchCode,
-        seafoodName: item.seafoodName,
-        netWeight: item.netWeight,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-      }))
-    );
+  const handleExportExcel = async () => {
+    try {
+      message.loading({ content: 'Đang tải dữ liệu xuất Excel...', key: 'exportExcel' });
+      const fullRes = await transactionService.getTransactionHistory({
+        pageNumber: 1,
+        pageSize: 2000,
+        type,
+        status,
+        search,
+        fromDate,
+        toDate,
+      });
+      const dataToExport = fullRes.items && fullRes.items.length > 0 ? fullRes.items : items;
+      const exportData = dataToExport.flatMap((tx) =>
+        tx.items.map((item: any) => ({
+          id: tx.id,
+          type: tx.type === 'INBOUND' ? 'Nhập kho' : 'Xuất kho',
+          date: formatDate(tx.date),
+          partner: tx.partnerName,
+          partnerRole: tx.partnerType === 'SUPPLIER' ? 'Nhà cung cấp' : 'Khách hàng',
+          itemCount: tx.items.length,
+          reason: (tx.type === 'INBOUND' ? 'Nhập kho hải sản' : 'Bán hàng'),
+          createdBy: tx.createdBy,
+          batchCode: item.batchCode,
+          seafoodName: item.seafoodName,
+          netWeight: item.netWeight,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+        }))
+      );
 
-    exportToExcel(
-      exportData,
-      [
-        { header: 'Mã Phiếu', key: 'id', width: 20 },
-        { header: 'Loại Giao Dịch', key: 'type', width: 15 },
-        { header: 'Ngày Thực Hiện', key: 'date', width: 15 },
-        { header: 'Đối Tác', key: 'partner', width: 25 },
-        { header: 'Vai Trò', key: 'partnerRole', width: 15 },
-        { header: 'Số Mặt Hàng', key: 'itemCount', width: 15 },
-        { header: 'Lý Do / Ghi Chú', key: 'reason', width: 20 },
-        { header: 'Người Lập Phiếu', key: 'createdBy', width: 18 },
-        { header: 'Mã Lô', key: 'batchCode', width: 18 },
-        { header: 'Tên Hải Sản', key: 'seafoodName', width: 22 },
-        { header: 'Số Kg Thực', key: 'netWeight', width: 15 },
-        { header: 'Đơn Giá (VNĐ)', key: 'unitPrice', width: 15, formatter: (val) => formatCurrency(val) },
-        { header: 'Thành Tiền (VNĐ)', key: 'totalPrice', width: 18, formatter: (val) => formatCurrency(val) },
-      ],
-      'LichSu_GiaoDich_NhapXuat_Kho'
-    );
+      exportToExcel(
+        exportData,
+        [
+          { header: 'Mã Phiếu', key: 'id', width: 20 },
+          { header: 'Loại Giao Dịch', key: 'type', width: 15 },
+          { header: 'Ngày Thực Hiện', key: 'date', width: 15 },
+          { header: 'Đối Tác', key: 'partner', width: 25 },
+          { header: 'Vai Trò', key: 'partnerRole', width: 15 },
+          { header: 'Số Mặt Hàng', key: 'itemCount', width: 15 },
+          { header: 'Lý Do / Ghi Chú', key: 'reason', width: 20 },
+          { header: 'Người Lập Phiếu', key: 'createdBy', width: 18 },
+          { header: 'Mã Lô', key: 'batchCode', width: 18 },
+          { header: 'Tên Hải Sản', key: 'seafoodName', width: 22 },
+          { header: 'Số Kg Thực', key: 'netWeight', width: 15 },
+          { header: 'Đơn Giá (VNĐ)', key: 'unitPrice', width: 15, formatter: (val) => formatCurrency(val) },
+          { header: 'Thành Tiền (VNĐ)', key: 'totalPrice', width: 18, formatter: (val) => formatCurrency(val) },
+        ],
+        'LichSu_GiaoDich_NhapXuat_Kho'
+      );
+      message.success({ content: 'Xuất Excel thành công!', key: 'exportExcel' });
+    } catch (err) {
+      message.error({ content: 'Không thể xuất Excel.', key: 'exportExcel' });
+    }
   };
-
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
   const columns = [
     {
@@ -390,7 +310,7 @@ export const TransactionHistoryPage: React.FC = () => {
       key: 'stt',
       width: 65,
       align: 'center' as const,
-      render: (_: unknown, __: unknown, index: number) => (pagination.current - 1) * pagination.pageSize + index + 1,
+      render: (_: unknown, __: unknown, index: number) => (pageNumber - 1) * pageSize + index + 1,
     },
     {
       title: 'Mã phiếu',
@@ -411,10 +331,10 @@ export const TransactionHistoryPage: React.FC = () => {
       title: 'Loại giao dịch',
       dataIndex: 'type',
       key: 'type',
-      render: (type: TransactionType, record: UnifiedTransactionItem) => (
+      render: (txType: TransactionType, record: UnifiedTransactionItem) => (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Tag color={type === TRANSACTION_TYPE.INBOUND ? 'blue' : 'green'} className="font-semibold px-2 py-0.5 m-0">
-            {type === TRANSACTION_TYPE.INBOUND ? '📥 NHẬP KHO' : '📤 XUẤT KHO'}
+          <Tag color={txType === TRANSACTION_TYPE.INBOUND ? 'blue' : 'green'} className="font-semibold px-2 py-0.5 m-0">
+            {txType === TRANSACTION_TYPE.INBOUND ? '📥 NHẬP KHO' : '📤 XUẤT KHO'}
           </Tag>
           {record.status === TRANSACTION_STATUS.CANCELLED && (
             <Tag color="error" className="font-bold text-xs px-1.5 py-0.5 m-0 border-0">
@@ -602,14 +522,6 @@ export const TransactionHistoryPage: React.FC = () => {
     },
   ];
 
-  const inboundCount = useMemo(() => unifiedTransactions.filter((t) => t.type === 'INBOUND').length, [unifiedTransactions]);
-  const outboundCount = useMemo(() => unifiedTransactions.filter((t) => t.type === 'OUTBOUND').length, [unifiedTransactions]);
-
-  const pagedTransactions = useMemo(() => {
-    const start = (pagination.current - 1) * pagination.pageSize;
-    return filteredTransactions.slice(start, start + pagination.pageSize);
-  }, [filteredTransactions, pagination.current, pagination.pageSize]);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -644,32 +556,20 @@ export const TransactionHistoryPage: React.FC = () => {
       {/* Tabs & Search Filters */}
       <Card className="shadow-sm">
         <Tabs
-          activeKey={activeTab}
-          onChange={(key) => setActiveTab(key as any)}
+          activeKey={type}
+          onChange={(key) => setFilter({ type: key as any, pageNumber: 1 })}
           items={[
             {
               key: 'ALL',
-              label: (
-                <span>
-                  Tất cả<Badge count={unifiedTransactions.length} overflowCount={999} showZero className="ml-2" color="blue" />
-                </span>
-              ),
+              label: 'Tất cả',
             },
             {
               key: 'INBOUND',
-              label: (
-                <span>
-                  📥 Nhập kho<Badge count={inboundCount} overflowCount={999} showZero className="ml-2" color="cyan" />
-                </span>
-              ),
+              label: '📥 Nhập kho',
             },
             {
               key: 'OUTBOUND',
-              label: (
-                <span>
-                  📤 Xuất kho<Badge count={outboundCount} overflowCount={999} showZero className="ml-2" color="green" />
-                </span>
-              ),
+              label: '📤 Xuất kho',
             },
           ]}
         />
@@ -700,22 +600,22 @@ export const TransactionHistoryPage: React.FC = () => {
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mr-1">Trạng thái:</span>
             <Tag.CheckableTag
-              checked={statusFilter === 'ALL'}
-              onChange={() => setStatusFilter('ALL')}
+              checked={status === 'ALL'}
+              onChange={() => setFilter({ status: 'ALL', pageNumber: 1 })}
               className="px-2.5 py-0.5 text-xs rounded-full cursor-pointer"
             >
               Tất cả
             </Tag.CheckableTag>
             <Tag.CheckableTag
-              checked={statusFilter === TRANSACTION_STATUS.ACTIVE}
-              onChange={() => setStatusFilter(TRANSACTION_STATUS.ACTIVE)}
+              checked={status === 'ACTIVE'}
+              onChange={() => setFilter({ status: 'ACTIVE', pageNumber: 1 })}
               className="px-2.5 py-0.5 text-xs rounded-full cursor-pointer text-emerald-700 dark:text-emerald-400"
             >
               Hiệu lực
             </Tag.CheckableTag>
             <Tag.CheckableTag
-              checked={statusFilter === TRANSACTION_STATUS.CANCELLED}
-              onChange={() => setStatusFilter(TRANSACTION_STATUS.CANCELLED)}
+              checked={status === 'CANCELLED'}
+              onChange={() => setFilter({ status: 'CANCELLED', pageNumber: 1 })}
               className="px-2.5 py-0.5 text-xs rounded-full cursor-pointer text-red-600 dark:text-red-400"
             >
               Đã hủy
@@ -728,8 +628,8 @@ export const TransactionHistoryPage: React.FC = () => {
             <Input
               placeholder="Tìm theo Mã phiếu, Đối tác, Mã lô, Tên hải sản..."
               prefix={<SearchOutlined className="text-gray-400" />}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               size="middle"
               allowClear
             />
@@ -741,8 +641,7 @@ export const TransactionHistoryPage: React.FC = () => {
               value={dateRange}
               presets={rangePresets}
               onChange={(dates) => {
-                setDateRange(dates as any);
-                setQuickDatePreset('CUSTOM');
+                handleDateChange(dates as any, 'CUSTOM');
               }}
               placeholder={['Từ ngày', 'Đến ngày']}
               format="DD/MM/YYYY"
@@ -750,7 +649,7 @@ export const TransactionHistoryPage: React.FC = () => {
           </Col>
           <Col xs={24} sm={10} md={6}>
             <div className="flex items-center justify-end gap-1.5 w-full">
-              {(searchQuery || dateRange || activeTab !== 'ALL' || statusFilter !== 'ALL') && (
+              {(searchInput || dateRange || type !== 'ALL' || status !== 'ALL') && (
                 <Button icon={<ReloadOutlined />} onClick={handleResetFilters} size="middle">
                   Đặt lại bộ lọc
                 </Button>
@@ -768,7 +667,7 @@ export const TransactionHistoryPage: React.FC = () => {
             <span className="text-xs text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800/60 px-2.5 py-1 rounded-lg hidden md:inline-flex items-center gap-1.5 font-medium">
               💡 <span>Nhấp vào dòng để xem chi tiết phiếu</span>
             </span>
-            <span className="text-xs text-gray-400 hidden sm:inline">Tổng {filteredTransactions.length} giao dịch</span>
+            <span className="text-xs text-gray-400 hidden sm:inline">Tổng {totalCount} giao dịch</span>
             <ExportExcelButton onExport={handleExportExcel} />
           </div>
         }
@@ -777,12 +676,12 @@ export const TransactionHistoryPage: React.FC = () => {
       >
         {/* Mobile View: Dạng Card Chạm Lướt Kiểu App Hiện Đại */}
         <div className="block sm:hidden space-y-2.5">
-          {filteredTransactions.length === 0 ? (
+          {items.length === 0 && !loading ? (
             <div className="text-center py-10 text-gray-400 text-xs">
               Không tìm thấy giao dịch nào phù hợp
             </div>
           ) : (
-            pagedTransactions.map((tx) => (
+            items.map((tx) => (
               <div
                 key={tx.id}
                 onClick={() => handleOpenDetail(tx)}
@@ -870,14 +769,14 @@ export const TransactionHistoryPage: React.FC = () => {
           )}
 
           {/* Phân trang Mobile */}
-          {filteredTransactions.length > pagination.pageSize && (
+          {totalCount > pageSize && (
             <div className="flex justify-center pt-2">
               <Pagination
                 size="small"
-                current={pagination.current}
-                pageSize={pagination.pageSize}
-                total={filteredTransactions.length}
-                onChange={(page, pageSize) => setPagination({ current: page, pageSize })}
+                current={pageNumber}
+                pageSize={pageSize}
+                total={totalCount}
+                onChange={(page, newSize) => setFilter({ pageNumber: page, pageSize: newSize })}
                 showSizeChanger={false}
               />
             </div>
@@ -887,9 +786,10 @@ export const TransactionHistoryPage: React.FC = () => {
         {/* Desktop / Tablet View: Bảng chi tiết đầy đủ cột */}
         <div className="hidden sm:block">
           <Table
-            dataSource={filteredTransactions}
+            dataSource={items}
             columns={columns}
             rowKey="id"
+            loading={loading}
             onRow={(record: UnifiedTransactionItem) => ({
               onClick: () => handleOpenDetail(record),
               className: `cursor-pointer transition-colors ${
@@ -899,11 +799,12 @@ export const TransactionHistoryPage: React.FC = () => {
               }`,
             })}
             pagination={{
-              current: pagination.current,
-              pageSize: pagination.pageSize,
+              current: pageNumber,
+              pageSize: pageSize,
+              total: totalCount,
               showSizeChanger: true,
               pageSizeOptions: ['10', '20', '50'],
-              onChange: (page, pageSize) => setPagination({ current: page, pageSize }),
+              onChange: (page, newSize) => setFilter({ pageNumber: page, pageSize: newSize }),
             }}
             scroll={{ x: 'max-content' }}
           />

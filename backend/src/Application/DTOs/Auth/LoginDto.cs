@@ -24,5 +24,11 @@ public class UserInfoDto
 public class LoginResponseDto
 {
     public string Token { get; set; } = string.Empty;
+    public string? RefreshToken { get; set; }
     public UserInfoDto User { get; set; } = new();
+}
+
+public class RefreshTokenRequestDto
+{
+    public string? RefreshToken { get; set; }
 }

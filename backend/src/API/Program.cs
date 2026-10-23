@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using SeafoodWarehouseManagement.API.BackgroundServices;
 using SeafoodWarehouseManagement.API.Hubs;
 using SeafoodWarehouseManagement.API.Middleware;
 using SeafoodWarehouseManagement.API.Services;
@@ -24,6 +25,9 @@ builder.Services.AddScoped<INotificationService, SignalRNotificationService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+
+// Đăng ký Background Service chạy tác vụ ngầm định kỳ
+builder.Services.AddHostedService<WarehouseCheckBackgroundService>();
 
 // 1. Cấu hình Chuẩn JWT Authentication & Verification
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "SeafoodWarehouseSecureJwtSigningSecretKey_2026_UltraProtected_Min256Bits";
@@ -69,26 +73,40 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 2. Cấu hình Rate Limiting (Chống Brute-force và DDoS)
+// 2. Cấu hình Rate Limiting (Chống Brute-force và DDoS theo từng IP Client độc lập)
 var isDevOrTest = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddFixedWindowLimiter("api-limiter", opt =>
-    {
-        opt.PermitLimit = isDevOrTest ? 20000 : 120; // Nới lỏng khi dev / chạy E2E tests
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = isDevOrTest ? 1000 : 20;
-    });
 
-    options.AddFixedWindowLimiter("auth-limiter", opt =>
+    static string GetClientIp(HttpContext httpContext)
     {
-        opt.PermitLimit = isDevOrTest ? 5000 : 15; // Nới lỏng login khi dev / chạy E2E tests
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = isDevOrTest ? 500 : 2;
-    });
+        return httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+               ?? httpContext.Connection.RemoteIpAddress?.ToString()
+               ?? "anonymous";
+    }
+
+    options.AddPolicy("api-limiter", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: GetClientIp(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = isDevOrTest ? 20000 : 120, // 120 req/phút trên mỗi IP
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = isDevOrTest ? 1000 : 20
+            }));
+
+    options.AddPolicy("auth-limiter", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: GetClientIp(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = isDevOrTest ? 5000 : 15, // 15 lần login/phút trên mỗi IP
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = isDevOrTest ? 500 : 2
+            }));
 });
 
 // Cấu hình CORS chặt chẽ: chỉ cho phép Vercel và local development

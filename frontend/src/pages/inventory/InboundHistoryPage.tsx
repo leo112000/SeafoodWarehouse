@@ -9,6 +9,8 @@ import { formatCurrency, formatWeight, formatDate, formatDateTime } from '@/util
 import { InvoiceModal } from '@/components/invoice/InvoiceModal';
 import type { InvoicePrintData } from '@/types';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useTabStore } from '@/stores/useTabStore';
+import { signalRService } from '@/services/signalrService';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
@@ -46,10 +48,42 @@ const toInvoiceData = (receipt: InboundReceipt, staffName: string): InvoicePrint
 export const InboundHistoryPage: React.FC = () => {
   const { receipts, fetchReceipts } = useInboundStore();
   const user = useAuthStore((state) => state.user);
+  const activeKey = useTabStore((state) => state.activeKey);
+  const isFirstMountRef = React.useRef(true);
 
   React.useEffect(() => {
-    fetchReceipts();
+    const isHistoryTab = activeKey === '/inventory/history' || activeKey === '/inventory/inbound-history';
+    if (isHistoryTab || isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      fetchReceipts();
+    }
+  }, [activeKey, fetchReceipts]);
+
+  // Lắng nghe SignalR real-time khi có phiếu nhập mới hoặc hủy phiếu
+  React.useEffect(() => {
+    const unsubStock = signalRService.onStockUpdated(() => {
+      fetchReceipts();
+    });
+    const unsubNotif = signalRService.onNotification(() => {
+      fetchReceipts();
+    });
+    return () => {
+      unsubStock();
+      unsubNotif();
+    };
   }, [fetchReceipts]);
+
+  // Focus cửa sổ trình duyệt
+  React.useEffect(() => {
+    const handleFocus = () => {
+      const isHistoryTab = activeKey === '/inventory/history' || activeKey === '/inventory/inbound-history';
+      if (isHistoryTab) {
+        fetchReceipts();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [activeKey, fetchReceipts]);
 
   const [selectedReceipt, setSelectedReceipt] = useState<InboundReceipt | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -144,7 +178,7 @@ export const InboundHistoryPage: React.FC = () => {
       key: 'supplier',
       render: (text: string) => <span className="font-semibold text-gray-800 dark:text-gray-100">{text}</span>,
     },
-     {
+    {
       title: 'Ngày nhập kho',
       dataIndex: 'inboundDate',
       key: 'inboundDate',
@@ -244,7 +278,6 @@ export const InboundHistoryPage: React.FC = () => {
       ),
     },
   ];
-
   return (
     <div>
       <div className="mb-2">

@@ -610,8 +610,24 @@ public class ApplicationDbContextInitialiser
                 @"CREATE INDEX IF NOT EXISTS ""ix_invtrans_tenant_createdat"" ON ""InventoryTransactions"" (""TenantId"", ""CreatedAt"" DESC);",
                 @"CREATE INDEX IF NOT EXISTS ""ix_invitems_warehouse_lotbatch"" ON ""InventoryItems"" (""WarehouseId"", ""LotBatchId"");",
                 @"CREATE INDEX IF NOT EXISTS ""ix_outbound_tenant_createdat"" ON ""OutboundReceipts"" (""TenantId"", ""CreatedAt"" DESC);",
-                @"CREATE INDEX IF NOT EXISTS ""ix_auditlogs_tenant_createdat"" ON ""AuditLogs"" (""TenantId"", ""CreatedAt"" DESC);",
-                @"CREATE INDEX IF NOT EXISTS ""ix_usernotif_user_state"" ON ""UserNotifications"" (""UserId"", ""State"");"
+                @"CREATE INDEX IF NOT EXISTS ""ix_usernotif_user_state"" ON ""UserNotifications"" (""UserId"", ""State"");",
+                @"CREATE TABLE IF NOT EXISTS ""RefreshTokens"" (
+                    ""Id"" SERIAL PRIMARY KEY,
+                    ""UserId"" INT NOT NULL,
+                    ""Token"" VARCHAR(500) NOT NULL,
+                    ""JwtId"" VARCHAR(100) NOT NULL,
+                    ""ExpiresAt"" TIMESTAMP WITH TIME ZONE NOT NULL,
+                    ""RevokedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""ReplacedByToken"" VARCHAR(500) NULL,
+                    ""CreatedByIp"" VARCHAR(100) NULL,
+                    ""RevokedByIp"" VARCHAR(100) NULL,
+                    ""TenantId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NULL,
+                    ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                );",
+                @"CREATE INDEX IF NOT EXISTS ""ix_refreshtokens_token"" ON ""RefreshTokens"" (""Token"");",
+                @"CREATE INDEX IF NOT EXISTS ""ix_refreshtokens_userid"" ON ""RefreshTokens"" (""UserId"");"
             };
 
             foreach (var stmt in pgDdlStatements)
@@ -861,7 +877,32 @@ public class ApplicationDbContextInitialiser
               CREATE NONCLUSTERED INDEX [IX_AuditLogs_Tenant_CreatedAt] ON [AuditLogs] ([TenantId], [CreatedAt] DESC);",
 
             @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_UserNotifications_User_State' AND object_id = OBJECT_ID('UserNotifications'))
-              CREATE NONCLUSTERED INDEX [IX_UserNotifications_User_State] ON [UserNotifications] ([UserId], [State]);"
+              CREATE NONCLUSTERED INDEX [IX_UserNotifications_User_State] ON [UserNotifications] ([UserId], [State]);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'RefreshTokens')
+              BEGIN
+                  CREATE TABLE [RefreshTokens] (
+                      [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                      [UserId] INT NOT NULL,
+                      [Token] NVARCHAR(500) NOT NULL,
+                      [JwtId] NVARCHAR(100) NOT NULL,
+                      [ExpiresAt] DATETIME2 NOT NULL,
+                      [RevokedAt] DATETIME2 NULL,
+                      [ReplacedByToken] NVARCHAR(500) NULL,
+                      [CreatedByIp] NVARCHAR(100) NULL,
+                      [RevokedByIp] NVARCHAR(100) NULL,
+                      [TenantId] INT NULL,
+                      [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                      [UpdatedAt] DATETIME2 NULL,
+                      [IsDeleted] BIT NOT NULL DEFAULT 0
+                  );
+              END",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_RefreshTokens_Token' AND object_id = OBJECT_ID('RefreshTokens'))
+              CREATE NONCLUSTERED INDEX [IX_RefreshTokens_Token] ON [RefreshTokens] ([Token]);",
+
+            @"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_RefreshTokens_UserId' AND object_id = OBJECT_ID('RefreshTokens'))
+              CREATE NONCLUSTERED INDEX [IX_RefreshTokens_UserId] ON [RefreshTokens] ([UserId]);"
         };
 
         foreach (var statement in ddlStatements)
