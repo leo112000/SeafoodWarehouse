@@ -44,7 +44,21 @@ public class BigDataPerformanceTests : IAsyncLifetime
         // Đảm bảo Database và Schema đã được tạo trên SQL Server (bắt buộc cho môi trường CI Runner mới)
         await _context.Database.EnsureCreatedAsync();
 
-        // Lấy hoặc tạo Product và Warehouse phục vụ test
+        // 1. Lấy hoặc tạo Category phục vụ test (bắt buộc vì Product có FK_Products_Categories_CategoryId)
+        var category = await _context.Categories.FirstOrDefaultAsync(c => !c.IsDeleted);
+        if (category == null)
+        {
+            category = new Category
+            {
+                Code = "TEST-CAT-BIGDATA",
+                Name = "Danh Mục Test BigData",
+                Description = "Dành riêng cho kiểm thử hiệu năng"
+            };
+            _context.Categories.Add(category);
+            await _context.SaveChangesAsync();
+        }
+
+        // 2. Lấy hoặc tạo Product và Warehouse phục vụ test
         var product = await _context.Products.FirstOrDefaultAsync(p => !p.IsDeleted);
         if (product == null)
         {
@@ -53,6 +67,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
                 Code = "TEST-SP-BIGDATA",
                 Name = "Cá Ngừ Đại Dương Test BigData",
                 Unit = "kg",
+                CategoryId = category.Id,
                 MinimumStock = 10,
                 MaximumStock = 10000,
                 ReferencePrice = 350000
