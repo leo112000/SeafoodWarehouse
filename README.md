@@ -9,11 +9,21 @@
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-Cache-DC382D?logo=redis&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?logo=supabase&logoColor=white)
+![Render](https://img.shields.io/badge/Render-Backend-46E3B7?logo=render&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-Frontend-000000?logo=vercel&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-E2E_Tested-2EAD33?logo=playwright&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
+
+---
+
+## 🌐 Live Demo & Cloud Deployment
+
+Hệ thống đã được triển khai và hoạt động thực tế trên Cloud:
+* 🖥️ **Frontend SPA**: [seafood-warehouse.vercel.app](https://seafood-warehouse.vercel.app) *(Triển khai trên **Vercel**)*
+* 🔌 **Backend Web API**: Triển khai trên **Render** *(Dockerized .NET 10 Web Service)*
+* 🗄️ **Database**: **Supabase** *(Managed PostgreSQL 16 Cloud, SSL, Auto DDL Init)*
 
 ---
 
