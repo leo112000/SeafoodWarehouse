@@ -186,11 +186,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (refreshToken) {
       localStorage.setItem('refreshToken', refreshToken);
     }
-    set((state) => ({
+    set({
       token,
       ...(refreshToken ? { refreshToken } : {}),
       isAuthenticated: true,
-    }));
+    });
   },
   updateProfile: (profile) => set((state) => {
     if (!state.user) return state;

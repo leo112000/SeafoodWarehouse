@@ -4,6 +4,7 @@
   "private": true,
   "description": "Seafood Warehouse Management System",
   "scripts": {
+    "build": "npm --prefix frontend run build",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
