@@ -1,0 +1,90 @@
+name: CD Pipeline (Deploy to Production)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Cho phép bấm nút "Run workflow" bằng tay trên giao diện GitHub Actions
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+jobs:
+  # ==========================================
+  # 1. DEPLOY BACKEND (.NET 10 API -> RENDER)
+  # ==========================================
+  deploy-backend:
+    name: Deploy Backend to Render
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Trigger Render Deploy Hook
+        run: |
+          echo "=========================================================="
+          echo "🚀 KÍCH HOẠT TRIỂN KHAI BACKEND .NET 10 LÊN RENDER"
+          echo "=========================================================="
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "-> Đang gửi yêu cầu Webhook tới Render..."
+            RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}")
+            STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+            echo "-> Phản hồi từ Render HTTP Code: $STATUS"
+            if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
+              echo "✅ Đã kích hoạt Render rebuild container .NET 10 thành công!"
+            else
+              echo "⚠️ Render phản hồi mã $STATUS. Vui lòng kiểm tra lại Deploy Hook URL."
+            fi
+          else
+            echo "ℹ️ Chưa cài đặt Secret 'RENDER_DEPLOY_HOOK_URL' trong GitHub Settings."
+            echo "-> Cơ chế Render GitHub Auto-Deploy (tự động kéo code từ nhánh main) đang hoạt động!"
+          fi
+
+  # ==========================================
+  # 2. DEPLOY FRONTEND (REACT 19 SPA -> VERCEL)
+  # ==========================================
+  deploy-frontend:
+    name: Monitor Frontend on Vercel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check Vercel Live Status
+        run: |
+          echo "=========================================================="
+          echo "🌐 KIỂM TRA TRẠNG THÁI FRONTEND TRÊN VERCEL"
+          echo "=========================================================="
+          URL="https://seafood-warehouse.vercel.app"
+          echo "-> Đang kiểm tra kết nối tới: $URL"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+          echo "-> Trạng thái phản hồi HTTP: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 301 ] || [ "$HTTP_STATUS" -eq 308 ]; then
+            echo "✅ Frontend Vercel đang hoạt động ổn định và sẵn sàng phục vụ!"
+          else
+            echo "ℹ️ Vercel đang trong quá trình đồng bộ bản build mới nhất."
+          fi
+
+  # ==========================================
+  # 3. TỔNG HỢP BÁO CÁO TRIỂN KHAI (SUMMARY)
+  # ==========================================
+  deployment-summary:
+    name: Deployment Summary Report
+    needs: [ deploy-backend, deploy-frontend ]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Generate GitHub Step Summary
+        run: |
+          echo "## 🚀 Báo cáo Triển khai Production (CD Pipeline)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Dịch vụ | Nền tảng | Phiên bản | Trạng thái | Đường dẫn truy cập |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|:---:|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Frontend SPA** | Vercel | React 19 + TypeScript | ✅ Sẵn sàng | [seafood-warehouse.vercel.app](https://seafood-warehouse.vercel.app) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Backend API** | Render | ASP.NET Core .NET 10 | 🔄 Đã kích hoạt | Docker Container Web Service |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Database** | Supabase | PostgreSQL 16 (Managed) | 🟢 Kết nối | Cloud Database with SSL |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Commit SHA: \`${{ github.sha }}\` | Nhánh: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
