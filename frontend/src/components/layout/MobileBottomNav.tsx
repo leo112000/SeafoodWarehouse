@@ -331,29 +331,223 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           - Bình thường: Thanh dính cố định ở footer, tràn 100% width, có chữ mô tả bên dưới icon ("Trang chủ", "Tồn kho",...). Vuốt xuống ẩn, vuốt lên hiện.
           - Khi mở navbar (Drawer): Co lại thành thanh dock dọc nằm bên phải màn hình để không che khuất navbar.
       */}
+      {/* 1. THANH ĐIỀU HƯỚNG NGANG DƯỚI ĐÁY (Hiển thị khi Drawer đóng) */}
       <nav
-        className={`md:hidden fixed z-[9999] select-none transition-all duration-300 ease-in-out ${isDrawerOpen
-          ? 'right-3 inset-x-auto bottom-8 flex flex-col items-end translate-y-0 opacity-100 scale-100 pointer-events-auto'
-          : `inset-x-0 bottom-0 w-full bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_25px_rgba(0,0,0,0.5)] ${isVisible
-            ? 'translate-y-0 opacity-100 pointer-events-auto'
-            : 'translate-y-full opacity-0 pointer-events-none'
-          }`
+        className={`md:hidden fixed inset-x-0 bottom-0 z-[9998] select-none w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800/80 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_25px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out ${!isDrawerOpen && isVisible
+          ? 'translate-y-0 opacity-100 pointer-events-auto'
+          : 'translate-y-full opacity-0 pointer-events-none'
           }`}
         style={{
-          paddingBottom: isDrawerOpen ? '0px' : 'max(calc(env(safe-area-inset-bottom, 0px) - 16px), 8px)',
-          paddingLeft: isDrawerOpen ? '0px' : 'env(safe-area-inset-left, 0px)',
-          paddingRight: isDrawerOpen ? '0px' : 'env(safe-area-inset-right, 0px)',
+          paddingBottom: 'max(calc(env(safe-area-inset-bottom, 0px) - 16px), 8px)',
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
+          willChange: 'transform, opacity',
+        }}
+      >
+        <div className="grid grid-cols-5 w-full items-center px-1 pt-2 pb-1.5" style={{ boxSizing: 'border-box' }}>
+          {/* 1. Trang chủ */}
+          <button
+            type="button"
+            onClick={() => {
+              setTradePopoverOpen(false);
+              setReportsPopoverOpen(false);
+              setAppsModalOpen(false);
+              navigate('/');
+            }}
+            title="Trang chủ"
+            aria-label="Trang chủ"
+            className="flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer"
+          >
+            <div
+              className={`flex items-center justify-center transition-colors ${isHomeActive && !appsModalOpen
+                ? 'text-sky-600 dark:text-sky-400'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+            >
+              <DashboardOutlined className="text-[20px]" />
+            </div>
+            <span
+              className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${isHomeActive && !appsModalOpen
+                ? 'text-sky-600 dark:text-sky-400 font-bold'
+                : 'text-slate-600 dark:text-slate-300 font-semibold'
+                }`}
+            >
+              Trang chủ
+            </span>
+          </button>
+
+          {/* 2. Tồn kho */}
+          <button
+            type="button"
+            onClick={() => {
+              setTradePopoverOpen(false);
+              setReportsPopoverOpen(false);
+              setAppsModalOpen(false);
+              navigate('/inventory');
+            }}
+            title="Tồn kho"
+            aria-label="Tồn kho"
+            className="flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer"
+          >
+            <div
+              className={`flex items-center justify-center transition-colors ${isInventoryActive && !appsModalOpen
+                ? 'text-sky-600 dark:text-sky-400'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+            >
+              <DatabaseOutlined className="text-[20px]" />
+            </div>
+            <span
+              className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${isInventoryActive && !appsModalOpen
+                ? 'text-sky-600 dark:text-sky-400 font-bold'
+                : 'text-slate-600 dark:text-slate-300 font-semibold'
+                }`}
+            >
+              Tồn kho
+            </span>
+          </button>
+
+          {/* 3. Tác nghiệp (Nhập / Xuất) */}
+          <Popover
+            content={tradeMenuContent}
+            trigger="click"
+            placement="top"
+            open={!isDrawerOpen && tradePopoverOpen}
+            onOpenChange={(open) => {
+              setTradePopoverOpen(open);
+              if (open) {
+                setReportsPopoverOpen(false);
+                setAppsModalOpen(false);
+              }
+            }}
+            styles={{
+              container: {
+                borderRadius: 20,
+                padding: 6,
+                boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
+              },
+            }}
+          >
+            <button
+              type="button"
+              title="Tác nghiệp Nhập/Xuất"
+              aria-label="Tác nghiệp"
+              className="w-full flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer"
+            >
+              <div
+                className={`flex items-center justify-center transition-colors ${isTradeActive && !appsModalOpen
+                  ? 'text-sky-600 dark:text-sky-400'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+              >
+                <SwapOutlined className="text-[20px]" />
+              </div>
+              <span
+                className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${isTradeActive && !appsModalOpen
+                  ? 'text-sky-600 dark:text-sky-400 font-bold'
+                  : 'text-slate-600 dark:text-slate-300 font-semibold'
+                  }`}
+              >
+                Tác nghiệp
+              </span>
+            </button>
+          </Popover>
+
+          {/* 4. Báo cáo */}
+          <Popover
+            content={reportsMenuContent}
+            trigger="click"
+            placement="top"
+            open={!isDrawerOpen && reportsPopoverOpen}
+            onOpenChange={(open) => {
+              setReportsPopoverOpen(open);
+              if (open) {
+                setTradePopoverOpen(false);
+                setAppsModalOpen(false);
+              }
+            }}
+            styles={{
+              container: {
+                borderRadius: 20,
+                padding: 6,
+                boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
+              },
+            }}
+          >
+            <button
+              type="button"
+              title="Báo cáo & Thống kê"
+              aria-label="Báo cáo"
+              className="w-full flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer"
+            >
+              <div
+                className={`flex items-center justify-center transition-colors ${isReportsActive && !appsModalOpen
+                  ? 'text-sky-600 dark:text-sky-400'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+              >
+                <BarChartOutlined className="text-[20px]" />
+              </div>
+              <span
+                className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${isReportsActive && !appsModalOpen
+                  ? 'text-sky-600 dark:text-sky-400 font-bold'
+                  : 'text-slate-600 dark:text-slate-300 font-semibold'
+                  }`}
+              >
+                Báo cáo
+              </span>
+            </button>
+          </Popover>
+
+          {/* 5. Tất cả chức năng */}
+          <button
+            type="button"
+            onClick={() => {
+              setTradePopoverOpen(false);
+              setReportsPopoverOpen(false);
+              setAppsModalOpen(!appsModalOpen);
+            }}
+            title="Tất cả chức năng"
+            aria-label="Tất cả chức năng"
+            className="flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer"
+          >
+            <div
+              className={`flex items-center justify-center transition-colors ${appsModalOpen || isOtherActive
+                ? 'text-sky-600 dark:text-sky-400'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+            >
+              <AppstoreOutlined className="text-[20px]" />
+            </div>
+            <span
+              className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${appsModalOpen || isOtherActive
+                ? 'text-sky-600 dark:text-sky-400 font-bold'
+                : 'text-slate-600 dark:text-slate-300 font-semibold'
+                }`}
+            >
+              Tất cả
+            </span>
+          </button>
+        </div>
+      </nav>
+
+      {/* 2. THANH DOCK NHANH BÊN PHẢI (Hiển thị mượt mà khi mở Drawer / Navbar) */}
+      <aside
+        aria-label="Thanh điều hướng nhanh"
+        className={`md:hidden fixed right-3 bottom-8 z-[9999] select-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isDrawerOpen
+          ? 'translate-x-0 opacity-100 scale-100 pointer-events-auto'
+          : 'translate-x-12 opacity-0 scale-90 pointer-events-none'
+          }`}
+        style={{
           willChange: 'transform, opacity',
         }}
       >
         <div
-          className={`transition-all duration-300 ${isDrawerOpen
-            ? `flex flex-col py-2.5 px-1.5 gap-2 w-[54px] rounded-full border backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.28)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] ring-1 ${isDark
-              ? 'bg-slate-900/95 border-slate-700/80 text-gray-400 ring-white/5'
-              : 'bg-white/96 border-slate-200/90 text-gray-500 shadow-slate-900/12 ring-black/[0.04]'
-            }`
-            : 'grid grid-cols-5 w-full items-center px-1 pt-2 pb-1.5'
+          className={`flex flex-col items-center justify-center py-2.5 px-1.5 gap-2.5 w-[52px] rounded-full border backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.28)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] ring-1 ${isDark
+            ? 'bg-slate-900/95 border-slate-700/80 text-gray-400 ring-white/5'
+            : 'bg-white/96 border-slate-200/90 text-gray-500 shadow-slate-900/12 ring-black/[0.04]'
             }`}
+          style={{ boxSizing: 'border-box' }}
         >
           {/* 1. Trang chủ */}
           <button
@@ -367,29 +561,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             }}
             title="Trang chủ"
             aria-label="Trang chủ"
-            className={
-              isDrawerOpen
-                ? `w-10 h-10 rounded-full flex items-center justify-center border-0 outline-none transition-all duration-250 active:scale-90 ${isHomeActive && !appsModalOpen
-                  ? 'bg-gradient-to-tr from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/40 scale-105'
-                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
-                }`
-                : 'flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer'
-            }
+            className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center border-0 outline-none transition-all duration-200 active:scale-90 cursor-pointer ${isHomeActive && !appsModalOpen
+              ? 'bg-gradient-to-tr from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/40 scale-105'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
+              }`}
           >
-            <div className={`flex items-center justify-center transition-colors ${!isDrawerOpen && (isHomeActive && !appsModalOpen
-              ? 'text-sky-600 dark:text-sky-400'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200')
-              }`}>
-              <DashboardOutlined className={isDrawerOpen ? 'text-xl' : 'text-[20px]'} />
-            </div>
-            {!isDrawerOpen && (
-              <span className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${isHomeActive && !appsModalOpen
-                ? 'text-sky-600 dark:text-sky-400 font-bold'
-                : 'text-slate-600 dark:text-slate-300 font-semibold'
-                }`}>
-                Trang chủ
-              </span>
-            )}
+            <DashboardOutlined className="text-xl" />
           </button>
 
           {/* 2. Tồn kho */}
@@ -404,37 +581,20 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             }}
             title="Tồn kho"
             aria-label="Tồn kho"
-            className={
-              isDrawerOpen
-                ? `w-10 h-10 rounded-full flex items-center justify-center border-0 outline-none transition-all duration-250 active:scale-90 ${isInventoryActive && !appsModalOpen
-                  ? 'bg-gradient-to-tr from-teal-400 to-emerald-600 text-white shadow-md shadow-emerald-500/40 scale-105'
-                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
-                }`
-                : 'flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer'
-            }
+            className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center border-0 outline-none transition-all duration-200 active:scale-90 cursor-pointer ${isInventoryActive && !appsModalOpen
+              ? 'bg-gradient-to-tr from-teal-400 to-emerald-600 text-white shadow-md shadow-emerald-500/40 scale-105'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
+              }`}
           >
-            <div className={`flex items-center justify-center transition-colors ${!isDrawerOpen && (isInventoryActive && !appsModalOpen
-              ? 'text-sky-600 dark:text-sky-400'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200')
-              }`}>
-              <DatabaseOutlined className={isDrawerOpen ? 'text-xl' : 'text-[20px]'} />
-            </div>
-            {!isDrawerOpen && (
-              <span className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${isInventoryActive && !appsModalOpen
-                ? 'text-sky-600 dark:text-sky-400 font-bold'
-                : 'text-slate-600 dark:text-slate-300 font-semibold'
-                }`}>
-                Tồn kho
-              </span>
-            )}
+            <DatabaseOutlined className="text-xl" />
           </button>
 
           {/* 3. Tác nghiệp (Nhập / Xuất) */}
           <Popover
             content={tradeMenuContent}
             trigger="click"
-            placement={isDrawerOpen ? 'left' : 'top'}
-            open={tradePopoverOpen}
+            placement="left"
+            open={isDrawerOpen && tradePopoverOpen}
             onOpenChange={(open) => {
               setTradePopoverOpen(open);
               if (open) {
@@ -447,36 +607,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 borderRadius: 20,
                 padding: 6,
                 boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
-              }
+              },
             }}
           >
             <button
               type="button"
               title="Tác nghiệp Nhập/Xuất"
               aria-label="Tác nghiệp"
-              className={
-                isDrawerOpen
-                  ? `w-10 h-10 rounded-full flex items-center justify-center border-0 outline-none transition-all duration-250 active:scale-90 ${isTradeActive && !appsModalOpen
-                    ? 'bg-gradient-to-tr from-amber-400 to-orange-500 text-white shadow-md shadow-orange-500/40 scale-105'
-                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
-                  }`
-                  : 'w-full flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer'
-              }
+              className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center border-0 outline-none transition-all duration-200 active:scale-90 cursor-pointer ${isTradeActive && !appsModalOpen
+                ? 'bg-gradient-to-tr from-amber-400 to-orange-500 text-white shadow-md shadow-orange-500/40 scale-105'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
+                }`}
             >
-              <div className={`flex items-center justify-center transition-colors ${!isDrawerOpen && (isTradeActive && !appsModalOpen
-                ? 'text-sky-600 dark:text-sky-400'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200')
-                }`}>
-                <SwapOutlined className={isDrawerOpen ? 'text-xl' : 'text-[20px]'} />
-              </div>
-              {!isDrawerOpen && (
-                <span className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${isTradeActive && !appsModalOpen
-                  ? 'text-sky-600 dark:text-sky-400 font-bold'
-                  : 'text-slate-600 dark:text-slate-300 font-semibold'
-                  }`}>
-                  Tác nghiệp
-                </span>
-              )}
+              <SwapOutlined className="text-xl" />
             </button>
           </Popover>
 
@@ -484,8 +627,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <Popover
             content={reportsMenuContent}
             trigger="click"
-            placement={isDrawerOpen ? 'left' : 'top'}
-            open={reportsPopoverOpen}
+            placement="left"
+            open={isDrawerOpen && reportsPopoverOpen}
             onOpenChange={(open) => {
               setReportsPopoverOpen(open);
               if (open) {
@@ -498,36 +641,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 borderRadius: 20,
                 padding: 6,
                 boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
-              }
+              },
             }}
           >
             <button
               type="button"
               title="Báo cáo & Thống kê"
               aria-label="Báo cáo"
-              className={
-                isDrawerOpen
-                  ? `w-10 h-10 rounded-full flex items-center justify-center border-0 outline-none transition-all duration-250 active:scale-90 ${isReportsActive && !appsModalOpen
-                    ? 'bg-gradient-to-tr from-violet-500 to-purple-600 text-white shadow-md shadow-purple-500/40 scale-105'
-                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
-                  }`
-                  : 'w-full flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer'
-              }
+              className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center border-0 outline-none transition-all duration-200 active:scale-90 cursor-pointer ${isReportsActive && !appsModalOpen
+                ? 'bg-gradient-to-tr from-violet-500 to-purple-600 text-white shadow-md shadow-purple-500/40 scale-105'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
+                }`}
             >
-              <div className={`flex items-center justify-center transition-colors ${!isDrawerOpen && (isReportsActive && !appsModalOpen
-                ? 'text-sky-600 dark:text-sky-400'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200')
-                }`}>
-                <BarChartOutlined className={isDrawerOpen ? 'text-xl' : 'text-[20px]'} />
-              </div>
-              {!isDrawerOpen && (
-                <span className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${isReportsActive && !appsModalOpen
-                  ? 'text-sky-600 dark:text-sky-400 font-bold'
-                  : 'text-slate-600 dark:text-slate-300 font-semibold'
-                  }`}>
-                  Báo cáo
-                </span>
-              )}
+              <BarChartOutlined className="text-xl" />
             </button>
           </Popover>
 
@@ -545,33 +671,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             }}
             title="Tất cả chức năng"
             aria-label="Tất cả chức năng"
-            className={
-              isDrawerOpen
-                ? `w-10 h-10 rounded-full flex items-center justify-center border-0 outline-none transition-all duration-250 active:scale-90 ${appsModalOpen || isOtherActive
-                  ? 'bg-gradient-to-tr from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-500/40 scale-105'
-                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
-                }`
-                : 'flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg border-0 outline-none bg-transparent transition-all active:scale-95 cursor-pointer'
-            }
+            className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center border-0 outline-none transition-all duration-200 active:scale-90 cursor-pointer ${appsModalOpen || isOtherActive
+              ? 'bg-gradient-to-tr from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-500/40 scale-105'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/60 dark:hover:bg-slate-800/60'
+              }`}
           >
-            <div className={`flex items-center justify-center transition-colors ${!isDrawerOpen && (appsModalOpen || isOtherActive
-              ? 'text-sky-600 dark:text-sky-400'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200')
-              }`}>
-              <AppstoreOutlined className={isDrawerOpen ? 'text-xl' : 'text-[20px]'} />
-            </div>
-            {!isDrawerOpen && (
-              <span className={`text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${appsModalOpen || isOtherActive
-                ? 'text-sky-600 dark:text-sky-400 font-bold'
-                : 'text-slate-600 dark:text-slate-300 font-semibold'
-                }`}>
-                Tất cả
-              </span>
-            )}
+            <AppstoreOutlined className="text-xl" />
           </button>
         </div>
-      </nav>
+      </aside>
 
+      {/* Modal Lưới Ứng Dụng Đầy Đủ (App Launcher Grid Modal tròn trịa) */}
       {/* Modal Lưới Ứng Dụng Đầy Đủ (App Launcher Grid Modal tròn trịa) */}
       <Modal
         open={appsModalOpen}
@@ -580,15 +690,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         closable={false}
         centered
         width="min(420px, calc(100vw - 24px))"
+        rootClassName="app-launcher-clean-modal"
         styles={{
-          body: {
-            borderRadius: 28,
-            padding: '20px 16px 24px',
-            background: isDark ? '#0f172a' : '#ffffff',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.25)',
-            border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
-            overflow: 'hidden',
-          },
+          mask: { backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' },
+          body: { padding: 0 },
         }}
       >
         <div className="space-y-4">
@@ -606,7 +711,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <button
               type="button"
               onClick={() => setAppsModalOpen(false)}
-              className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer border-0 outline-none"
             >
               <CloseOutlined className="text-xs" />
             </button>
@@ -625,7 +730,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                     onCloseDrawer?.();
                     navigate(mod.path);
                   }}
-                  className={`flex items-center gap-3 p-2.5 rounded-2xl text-left transition-all active:scale-95 border ${isActive
+                  className={`flex items-center gap-3 p-2.5 rounded-2xl text-left transition-all active:scale-95 border cursor-pointer ${isActive
                     ? 'bg-sky-50/80 dark:bg-sky-950/60 border-sky-300 dark:border-sky-800 shadow-sm'
                     : 'bg-gray-50/80 dark:bg-slate-850 border-gray-100 dark:border-slate-800 hover:border-sky-200'
                     }`}
@@ -656,7 +761,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 setAppsModalOpen(false);
                 onOpenMenu();
               }}
-              className="w-full py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-center gap-2 transition-colors"
+              className="w-full py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-center gap-2 transition-colors cursor-pointer border-0 outline-none"
             >
               <span>Xem Menu chi tiết (Drawer)</span>
               <span>→</span>

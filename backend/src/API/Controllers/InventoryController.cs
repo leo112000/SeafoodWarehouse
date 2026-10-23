@@ -27,10 +27,11 @@ public class InventoryController : BaseApiController
         [FromQuery] int pageSize = 10,
         [FromQuery] int? warehouseId = null,
         [FromQuery] int? productId = null,
+        [FromQuery] string? search = null,
         CancellationToken cancellationToken = default)
     {
         var pagination = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
-        var result = await _inventoryService.GetInventoryAsync(pagination, warehouseId, productId, cancellationToken);
+        var result = await _inventoryService.GetInventoryAsync(pagination, warehouseId, productId, search, cancellationToken);
         return Ok(result);
     }
 
@@ -46,6 +47,18 @@ public class InventoryController : BaseApiController
     {
         var pagination = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
         var result = await _inventoryService.GetTransactionsAsync(pagination, warehouseId, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Lấy lịch sử giao dịch tổng hợp (nhập/xuất) có phân trang từ Server Database
+    /// </summary>
+    [HttpGet("transactions-history")]
+    public async Task<ActionResult<PagedResult<TransactionHistoryItemDto>>> GetTransactionHistory(
+        [FromQuery] TransactionHistoryQueryParams query,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _inventoryService.GetTransactionHistoryPagedAsync(query, cancellationToken);
         return Ok(result);
     }
 

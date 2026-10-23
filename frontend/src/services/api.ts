@@ -9,9 +9,26 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 let isRedirecting = false;
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
 
 export const resetUnauthorizedCooldown = () => {
   isRedirecting = false;
@@ -34,10 +51,12 @@ export const handleUnauthorized = () => {
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+
     if (token) {
-      if (isTokenExpired(token)) {
+      if (isTokenExpired(token) && !refreshToken) {
         handleUnauthorized();
-        return Promise.reject(new axios.Cancel('Token đã hết hạn hoặc quá hạn 7 ngày. Vui lòng đăng nhập lại.'));
+        return Promise.reject(new axios.Cancel('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'));
       }
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -212,7 +231,68 @@ api.interceptors.response.use(
         technicalDetails
       );
     } else if (status === 401) {
-      handleUnauthorized();
+      const isAuthEndpoint = config.url?.includes('/auth/login') ||
+                             config.url?.includes('/auth/refresh-token') ||
+                             config.url?.includes('/auth/is-tenant-available');
+
+      const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+
+      // Nếu lỗi từ chính endpoint xác thực, hoặc không có refresh token, hoặc request đã từng retry
+      if (isAuthEndpoint || !refreshToken || config._retry) {
+        handleUnauthorized();
+      } else {
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((newToken) => {
+              if (config.headers) {
+                config.headers.Authorization = `Bearer ${newToken}`;
+              }
+              return api(config);
+            })
+            .catch((err) => Promise.reject(err));
+        }
+
+        config._retry = true;
+        isRefreshing = true;
+
+        return new Promise((resolve, reject) => {
+          axios
+            .post(
+              `${api.defaults.baseURL}/auth/refresh-token`,
+              { refreshToken },
+              {
+                headers: { 'Content-Type': 'application/json' },
+                withCredentials: true,
+              }
+            )
+            .then((res) => {
+              const resultData = res.data?.data || res.data;
+              const newAccessToken = resultData?.token;
+              const newRefreshToken = resultData?.refreshToken;
+
+              if (newAccessToken) {
+                useAuthStore.getState().setAccessToken(newAccessToken, newRefreshToken);
+                if (config.headers) {
+                  config.headers.Authorization = `Bearer ${newAccessToken}`;
+                }
+                processQueue(null, newAccessToken);
+                resolve(api(config));
+              } else {
+                throw new Error('Không nhận được Access Token mới từ máy chủ');
+              }
+            })
+            .catch((refreshErr) => {
+              processQueue(refreshErr, null);
+              handleUnauthorized();
+              reject(refreshErr);
+            })
+            .finally(() => {
+              isRefreshing = false;
+            });
+        });
+      }
     } else if (status === 403) {
       // 403 Forbidden - Văng modal ABP thông báo từ chối truy cập
       useServerStatusStore.getState().showBusinessError(

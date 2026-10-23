@@ -15,11 +15,13 @@ export interface UserInfo {
 
 interface AuthState {
   token: string | null;
+  refreshToken: string | null;
   user: UserInfo | null;
   tenantName: string | null;
   tenantId: number | null;
   isAuthenticated: boolean;
-  login: (token: string, user: UserInfo, tenantName?: string, tenantId?: number | null) => void;
+  login: (token: string, user: UserInfo, tenantName?: string, tenantId?: number | null, refreshToken?: string | null) => void;
+  setAccessToken: (token: string, refreshToken?: string | null) => void;
   updateProfile: (profile: Pick<UserInfo, 'name' | 'phone'>) => void;
   logout: () => void;
 }
@@ -88,6 +90,7 @@ export const isTokenExpired = (token: string | null): boolean => {
 export const clearAuthStorage = () => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.removeItem('tenantName');
     localStorage.removeItem('tenantId');
@@ -98,13 +101,16 @@ export const clearAuthStorage = () => {
 
 const initAuthState = () => {
   if (typeof window === 'undefined') {
-    return { token: null, user: null, tenantName: null, tenantId: null, isAuthenticated: false };
+    return { token: null, refreshToken: null, user: null, tenantName: null, tenantId: null, isAuthenticated: false };
   }
 
   const token = localStorage.getItem('token');
-  if (!token || isTokenExpired(token)) {
+  const refreshToken = localStorage.getItem('refreshToken');
+
+  // Nếu không có cả token lẫn refresh token, hoặc token hết hạn mà không có refresh token để khôi phục
+  if (!token || (isTokenExpired(token) && !refreshToken)) {
     clearAuthStorage();
-    return { token: null, user: null, tenantName: null, tenantId: null, isAuthenticated: false };
+    return { token: null, refreshToken: null, user: null, tenantName: null, tenantId: null, isAuthenticated: false };
   }
 
   let user: UserInfo | null = null;
@@ -123,6 +129,7 @@ const initAuthState = () => {
 
   return {
     token,
+    refreshToken,
     user,
     tenantName,
     tenantId,
@@ -134,14 +141,21 @@ const initialAuth = initAuthState();
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: initialAuth.token,
+  refreshToken: initialAuth.refreshToken,
   user: initialAuth.user,
   tenantName: initialAuth.tenantName,
   tenantId: initialAuth.tenantId,
   isAuthenticated: initialAuth.isAuthenticated,
-  login: (token, user, tenantName, tenantId) => {
+  login: (token, user, tenantName, tenantId, refreshToken) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     localStorage.setItem('loginTime', Date.now().toString());
+
+    if (refreshToken) {
+      localStorage.setItem('refreshToken', refreshToken);
+    } else {
+      localStorage.removeItem('refreshToken');
+    }
     
     const finalTenantName = tenantName || user.tenantCode || user.tenantName || null;
     const finalTenantId = tenantId !== undefined ? tenantId : (user.tenantId || null);
@@ -160,9 +174,21 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     set({
       token,
+      refreshToken: refreshToken || null,
       user,
       tenantName: finalTenantName,
       tenantId: finalTenantId,
+      isAuthenticated: true,
+    });
+  },
+  setAccessToken: (token, refreshToken) => {
+    localStorage.setItem('token', token);
+    if (refreshToken) {
+      localStorage.setItem('refreshToken', refreshToken);
+    }
+    set({
+      token,
+      ...(refreshToken ? { refreshToken } : {}),
       isAuthenticated: true,
     });
   },
@@ -176,6 +202,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     clearAuthStorage();
     set({
       token: null,
+      refreshToken: null,
       user: null,
       tenantName: null,
       tenantId: null,
@@ -183,4 +210,5 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 }));
+
 

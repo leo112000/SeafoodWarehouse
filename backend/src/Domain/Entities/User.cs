@@ -11,4 +11,5 @@ public class User : BaseEntity, IMustHaveTenant
     public string Status { get; set; } = "ACTIVE";
     public int? TenantId { get; set; }
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

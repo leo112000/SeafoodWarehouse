@@ -31,6 +31,7 @@ export interface LoginParams {
 
 export interface LoginResult {
   token: string;
+  refreshToken?: string;
   user: UserInfo;
 }
 
@@ -68,6 +69,7 @@ export const authService = {
       throw error;
     }
   },
+
   async impersonateTenant(tenantId: number): Promise<LoginResult> {
     try {
       const response = await api.post(`/auth/impersonate-tenant/${tenantId}`);
@@ -85,4 +87,14 @@ export const authService = {
       throw error;
     }
   },
+
+  async logout(): Promise<void> {
+    try {
+      const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+      await api.post('/auth/revoke', { refreshToken });
+    } catch {
+      // Bỏ qua lỗi mạng khi logout, vẫn dọn dẹp client
+    }
+  },
 };
+

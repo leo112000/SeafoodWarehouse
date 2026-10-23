@@ -41,7 +41,24 @@ public class BigDataPerformanceTests : IAsyncLifetime
 
         _context = new ApplicationDbContext(options);
 
-        // Lấy hoặc tạo Product và Warehouse phục vụ test
+        // Đảm bảo Database và Schema đã được tạo trên SQL Server (bắt buộc cho môi trường CI Runner mới)
+        await _context.Database.EnsureCreatedAsync();
+
+        // 1. Lấy hoặc tạo Category phục vụ test (bắt buộc vì Product có FK_Products_Categories_CategoryId)
+        var category = await _context.Categories.FirstOrDefaultAsync(c => !c.IsDeleted);
+        if (category == null)
+        {
+            category = new Category
+            {
+                Code = "TEST-CAT-BIGDATA",
+                Name = "Danh Mục Test BigData",
+                Description = "Dành riêng cho kiểm thử hiệu năng"
+            };
+            _context.Categories.Add(category);
+            await _context.SaveChangesAsync();
+        }
+
+        // 2. Lấy hoặc tạo Product và Warehouse phục vụ test
         var product = await _context.Products.FirstOrDefaultAsync(p => !p.IsDeleted);
         if (product == null)
         {
@@ -50,6 +67,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
                 Code = "TEST-SP-BIGDATA",
                 Name = "Cá Ngừ Đại Dương Test BigData",
                 Unit = "kg",
+                CategoryId = category.Id,
                 MinimumStock = 10,
                 MaximumStock = 10000,
                 ReferencePrice = 350000
@@ -108,6 +126,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
             tableLots.Columns.Add("TareWeight", typeof(decimal));
             tableLots.Columns.Add("PackagingCode", typeof(string));
             tableLots.Columns.Add("PackagingQty", typeof(int));
+            tableLots.Columns.Add("Status", typeof(string));
             tableLots.Columns.Add("TenantId", typeof(int));
             tableLots.Columns.Add("CreatedAt", typeof(DateTime));
             tableLots.Columns.Add("IsDeleted", typeof(bool));
@@ -137,6 +156,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
                     2.5m,
                     "SOT-XANH",
                     10,
+                    hasStock ? "IN_STOCK" : "DEPLETED",
                     DBNull.Value,
                     prodDate,
                     false
@@ -185,6 +205,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
             tableTx.Columns.Add("TransactionDate", typeof(DateTime));
             tableTx.Columns.Add("CreatedBy", typeof(string));
             tableTx.Columns.Add("Note", typeof(string));
+            tableTx.Columns.Add("Status", typeof(string));
             tableTx.Columns.Add("TenantId", typeof(int));
             tableTx.Columns.Add("CreatedAt", typeof(DateTime));
             tableTx.Columns.Add("IsDeleted", typeof(bool));
@@ -218,6 +239,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
                     txDate,
                     "Benchmarker",
                     "Giao dịch tự động kiểm thử BigData",
+                    "ACTIVE",
                     DBNull.Value,
                     txDate,
                     false

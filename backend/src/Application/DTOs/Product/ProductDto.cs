@@ -1,3 +1,5 @@
+using SeafoodWarehouseManagement.Domain.Entities;
+
 namespace SeafoodWarehouseManagement.Application.DTOs.Product;
 
 public class ProductDto

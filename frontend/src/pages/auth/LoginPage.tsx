@@ -103,7 +103,8 @@ export const LoginPage: React.FC = () => {
         response.token,
         response.user,
         userTenantCode,
-        userTenantId
+        userTenantId,
+        response.refreshToken
       );
 
       if (userTenantCode) {

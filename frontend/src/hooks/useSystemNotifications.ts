@@ -3,6 +3,10 @@ import { notification as antdNotification } from 'antd';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { signalRService, type RealtimeNotification } from '@/services/signalrService';
 import { notificationService, type UserNotificationItem } from '@/services/notificationService';
+import { useInventoryStore } from '@/stores/useInventoryStore';
+import { useInboundStore } from '@/stores/useInboundStore';
+import { useOutboundStore } from '@/stores/useOutboundStore';
+import { useTransactionHistoryStore } from '@/stores/useTransactionHistoryStore';
 import dayjs from 'dayjs';
 
 export interface SystemNotification {
@@ -87,10 +91,20 @@ export const useSystemNotifications = () => {
 
       // 2. Refresh lại danh sách từ Database để lấy ID thực và trạng thái chuẩn
       fetchDbNotifications();
+
+      // 3. Tự động đồng bộ các Store dữ liệu khi có giao dịch nhập/xuất kho
+      useInventoryStore.getState().fetchInventory();
+      useInboundStore.getState().fetchReceipts();
+      useOutboundStore.getState().fetchTransactions();
+      useTransactionHistoryStore.getState().fetchTransactions();
     });
 
     const unsubscribeStock = signalRService.onStockUpdated(() => {
       fetchDbNotifications();
+      useInventoryStore.getState().fetchInventory();
+      useInboundStore.getState().fetchReceipts();
+      useOutboundStore.getState().fetchTransactions();
+      useTransactionHistoryStore.getState().fetchTransactions();
     });
 
     return () => {

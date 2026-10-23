@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { transactionService, type OutboundReceiptPayload } from '@/services/transactionService';
 import type { TransactionStatus } from '@/constants';
+import { useInventoryStore } from './useInventoryStore';
 
 export interface OutboundBatch {
   batchCode: string;
@@ -66,6 +67,7 @@ export const useOutboundStore = create<OutboundState>()(
       try {
         await transactionService.createOutbound(tx as OutboundReceiptPayload);
         await get().fetchTransactions();
+        useInventoryStore.getState().fetchInventory();
       } catch {
         set((state) => ({ transactions: [tx, ...state.transactions] }));
       }
@@ -73,6 +75,7 @@ export const useOutboundStore = create<OutboundState>()(
     cancelTransaction: async (id, reason) => {
       const res = await transactionService.cancelOutbound(id, reason);
       await get().fetchTransactions();
+      useInventoryStore.getState().fetchInventory();
       return res;
     },
     setTransactions: (txs) => set({ transactions: txs }),

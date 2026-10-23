@@ -43,7 +43,7 @@ export const TenantsPage: React.FC = () => {
       setImpersonatingId(tenant.id);
       const result = await authService.impersonateTenant(tenant.id);
 
-      login(result.token, result.user, tenant.code, tenant.id);
+      login(result.token, result.user, tenant.code, tenant.id, result.refreshToken);
       await setActiveTenantByCode(tenant.code);
 
       message.success(`Đã chuyển và đăng nhập vào tài khoản Admin của ${tenant.name}!`);

@@ -29,6 +29,8 @@ import { TRANSACTION_STATUS, TRANSACTION_TYPE, type TransactionType } from '@/co
 import { formatCurrency, formatWeight, formatDateTime } from '@/utils/format';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import type { ExcelExportColumn } from '@/utils/exportUtils';
+import { useTabStore } from '@/stores/useTabStore';
+import { signalRService } from '@/services/signalrService';
 
 const { Text } = Typography;
 
@@ -39,6 +41,8 @@ export const DashboardPage: React.FC = () => {
   const [drawerTx, setDrawerTx] = React.useState<RecentTransaction | null>(null);
   const [drawerVisible, setDrawerVisible] = React.useState(false);
   const [chartMetric, setChartMetric] = React.useState<'KG' | 'VND'>('KG');
+  const activeKey = useTabStore((state) => state.activeKey);
+  const isFirstMountRef = React.useRef(true);
 
   const fetchData = React.useCallback(async () => {
     setLoading(true);
@@ -54,9 +58,41 @@ export const DashboardPage: React.FC = () => {
     }
   }, []);
 
+  // Tự động refetch ngay khi chuyển tab về Dashboard ('/' hoặc '/dashboard')
   React.useEffect(() => {
-    fetchData();
-    // Auto-refresh mỗi 30 giây
+    if (activeKey === '/' || activeKey === '/dashboard' || isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      fetchData();
+    }
+  }, [activeKey, fetchData]);
+
+  // Lắng nghe sự kiện SignalR real-time (tạo/hủy nhập kho, xuất kho, thông báo mới)
+  React.useEffect(() => {
+    const unsubStock = signalRService.onStockUpdated(() => {
+      fetchData();
+    });
+    const unsubNotif = signalRService.onNotification(() => {
+      fetchData();
+    });
+    return () => {
+      unsubStock();
+      unsubNotif();
+    };
+  }, [fetchData]);
+
+  // Tự động refetch khi người dùng quay lại cửa sổ trình duyệt
+  React.useEffect(() => {
+    const handleFocus = () => {
+      if (activeKey === '/' || activeKey === '/dashboard') {
+        fetchData();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [activeKey, fetchData]);
+
+  // Auto-refresh mỗi 30 giây nền
+  React.useEffect(() => {
     const interval = setInterval(fetchData, 30_000);
     return () => clearInterval(interval);
   }, [fetchData]);

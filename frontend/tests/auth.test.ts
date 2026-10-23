@@ -141,8 +141,9 @@ describe('Token Expiration and Auth Handling', () => {
   });
 
   describe('Storage and State Cleanup', () => {
-    it('clears all auth items from localStorage on logout', () => {
+    it('clears all auth items including refreshToken from localStorage on logout', () => {
       localStorage.setItem('token', 'mock_token');
+      localStorage.setItem('refreshToken', 'mock_refresh_token');
       localStorage.setItem('user', JSON.stringify({ id: '1', name: 'Admin', email: 'admin@test.com', roles: ['Admin'] }));
       localStorage.setItem('tenantName', 'BIENDONG');
       localStorage.setItem('tenantId', '10');
@@ -151,29 +152,43 @@ describe('Token Expiration and Auth Handling', () => {
       clearAuthStorage();
 
       expect(localStorage.getItem('token')).toBeNull();
+      expect(localStorage.getItem('refreshToken')).toBeNull();
       expect(localStorage.getItem('user')).toBeNull();
       expect(localStorage.getItem('tenantName')).toBeNull();
       expect(localStorage.getItem('tenantId')).toBeNull();
       expect(localStorage.getItem('loginTime')).toBeNull();
     });
 
-    it('updates zustand state and clears storage when calling logout', () => {
+    it('updates zustand state and saves refreshToken when calling login', () => {
       useAuthStore.getState().login(
         'test_token',
         { id: '1', name: 'User 1', email: 'test@example.com', roles: ['Manager'] },
         'DEFAULT',
-        1
+        1,
+        'refresh_token_xyz'
       );
 
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useAuthStore.getState().token).toBe('test_token');
+      expect(useAuthStore.getState().refreshToken).toBe('refresh_token_xyz');
       expect(localStorage.getItem('token')).toBe('test_token');
+      expect(localStorage.getItem('refreshToken')).toBe('refresh_token_xyz');
+
+      // Test setAccessToken
+      useAuthStore.getState().setAccessToken('new_access_token', 'new_refresh_token_123');
+      expect(useAuthStore.getState().token).toBe('new_access_token');
+      expect(useAuthStore.getState().refreshToken).toBe('new_refresh_token_123');
+      expect(localStorage.getItem('token')).toBe('new_access_token');
+      expect(localStorage.getItem('refreshToken')).toBe('new_refresh_token_123');
 
       useAuthStore.getState().logout();
 
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
       expect(useAuthStore.getState().token).toBeNull();
+      expect(useAuthStore.getState().refreshToken).toBeNull();
       expect(useAuthStore.getState().user).toBeNull();
       expect(localStorage.getItem('token')).toBeNull();
+      expect(localStorage.getItem('refreshToken')).toBeNull();
     });
   });
 
@@ -183,7 +198,8 @@ describe('Token Expiration and Auth Handling', () => {
         'test_token_401',
         { id: '2', name: 'Staff', email: 'staff@example.com', roles: ['Staff'] },
         'BRANCH1',
-        2
+        2,
+        'refresh_token_401'
       );
 
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
@@ -192,11 +208,12 @@ describe('Token Expiration and Auth Handling', () => {
 
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
       expect(localStorage.getItem('token')).toBeNull();
+      expect(localStorage.getItem('refreshToken')).toBeNull();
       expect(localStorage.getItem('user')).toBeNull();
       expect((globalThis as any).window.location.href).toBe('/login');
     });
 
-    it('automatically logs out and redirects to /login when receiving 401 Unauthorized from backend', async () => {
+    it('automatically logs out and redirects to /login when receiving 401 Unauthorized without refreshToken', async () => {
       const now = Math.floor(Date.now() / 1000);
       const validToken = createMockJwt({
         sub: '10',
@@ -204,6 +221,8 @@ describe('Token Expiration and Auth Handling', () => {
       });
 
       localStorage.setItem('token', validToken);
+      // refreshToken is explicitly null
+      localStorage.removeItem('refreshToken');
       useAuthStore.getState().login(
         validToken,
         { id: '10', name: 'Valid User', email: 'user@test.com', roles: [] }
@@ -217,10 +236,11 @@ describe('Token Expiration and Auth Handling', () => {
           status: 401,
           data: { message: 'Unauthorized' },
         },
+        config: {
+          url: '/api/inventory',
+        },
       };
 
-      // In axios, interceptors.response handlers can be triggered
-      // Find the response error handler in api.interceptors.response.handlers
       const responseHandlers: any = (api.interceptors.response as any).handlers;
       const errorHandler = responseHandlers[responseHandlers.length - 1]?.rejected;
 
@@ -232,6 +252,7 @@ describe('Token Expiration and Auth Handling', () => {
 
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
       expect(localStorage.getItem('token')).toBeNull();
+      expect(localStorage.getItem('refreshToken')).toBeNull();
       expect((globalThis as any).window.location.href).toBe('/login');
     });
   });

@@ -57,6 +57,7 @@ public static class DependencyInjection
         }
 
         services.AddSingleton<ICacheService, SeafoodWarehouseManagement.Infrastructure.Services.DistributedCacheService>();
+        services.AddScoped<IFileStorageService, SeafoodWarehouseManagement.Infrastructure.Services.LocalFileStorageService>();
 
         return services;
     }

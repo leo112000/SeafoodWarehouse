@@ -1,3 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using SeafoodWarehouseManagement.Application.Common.Interfaces;
 using SeafoodWarehouseManagement.Application.Common.Models;
 using SeafoodWarehouseManagement.Application.DTOs.Inventory;
 using SeafoodWarehouseManagement.Application.Services.Interfaces;
@@ -13,30 +18,39 @@ namespace SeafoodWarehouseManagement.Application.Services;
 public class InventoryService : IInventoryService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IApplicationDbContext _context;
 
-    public InventoryService(IUnitOfWork unitOfWork)
+    public InventoryService(IUnitOfWork unitOfWork, IApplicationDbContext context)
     {
         _unitOfWork = unitOfWork;
+        _context = context;
     }
 
     /// <summary>
     /// Lấy danh sách tồn kho có phân trang, có thể lọc theo kho hoặc sản phẩm
     /// </summary>
-    public async Task<PagedResult<InventoryItemDto>> GetInventoryAsync(PaginationParams pagination, int? warehouseId = null, int? productId = null, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<InventoryItemDto>> GetInventoryAsync(PaginationParams pagination, int? warehouseId = null, int? productId = null, string? search = null, CancellationToken cancellationToken = default)
     {
         var repository = _unitOfWork.Repository<InventoryItem>();
+        var cleanSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim().ToLower();
+
         var (items, totalCount) = await repository.GetPagedAsync(
             pagination.PageNumber,
             pagination.PageSize,
             predicate: i => (!warehouseId.HasValue || i.WarehouseId == warehouseId.Value) &&
-                            (!productId.HasValue || i.LotBatch.ProductId == productId.Value),
+                            (!productId.HasValue || (i.LotBatch != null && i.LotBatch.ProductId == productId.Value)) &&
+                            i.Quantity > 0 &&
+                            (cleanSearch == null ||
+                             (i.LotBatch != null && (i.LotBatch.BatchCode.ToLower().Contains(cleanSearch) || (i.LotBatch.SupplierName != null && i.LotBatch.SupplierName.ToLower().Contains(cleanSearch)))) ||
+                             (i.LotBatch != null && i.LotBatch.Product != null && (i.LotBatch.Product.Name.ToLower().Contains(cleanSearch) || i.LotBatch.Product.Code.ToLower().Contains(cleanSearch)))),
             orderBy: q => q.OrderByDescending(i => i.Id),
             cancellationToken: cancellationToken,
             includes: new System.Linq.Expressions.Expression<Func<InventoryItem, object>>[]
             {
                 i => i.Warehouse,
                 i => i.LotBatch,
-                i => i.LotBatch.Product
+                i => i.LotBatch.Product,
+                i => i.LotBatch.Product.Category
             }
         );
 
@@ -48,15 +62,20 @@ public class InventoryService : IInventoryService
                 WarehouseName = i.Warehouse?.Name ?? string.Empty,
                 LotBatchId = i.LotBatchId,
                 BatchCode = i.LotBatch?.BatchCode ?? string.Empty,
+                ProductId = i.LotBatch?.ProductId ?? (i.LotBatch?.Product?.Id ?? 0),
                 ProductName = i.LotBatch?.Product?.Name ?? string.Empty,
+                ProductCode = i.LotBatch?.Product?.Code ?? string.Empty,
+                CategoryName = i.LotBatch?.Product?.Category?.Name ?? string.Empty,
                 StorageBin = i.StorageBin,
                 Quantity = i.Quantity,
                 Unit = i.LotBatch?.Product?.Unit ?? "kg",
+                UnitPrice = i.LotBatch?.UnitPrice > 0 ? i.LotBatch.UnitPrice : (i.LotBatch?.Product?.ReferencePrice ?? 0),
+                ProductionDate = i.LotBatch?.ProductionDate,
                 ExpirationDate = i.LotBatch?.ExpirationDate ?? DateTime.MinValue,
-                Grade = i.LotBatch?.Grade ?? QualityGrade.GradeA
+                Grade = i.LotBatch?.Grade ?? QualityGrade.GradeA,
+                SupplierName = i.LotBatch?.SupplierName ?? string.Empty,
             })
             .ToList();
-
 
         return PagedResult<InventoryItemDto>.Create(result, totalCount, pagination.PageNumber, pagination.PageSize);
     }
@@ -105,6 +124,249 @@ public class InventoryService : IInventoryService
             .ToList();
 
         return PagedResult<InventoryTransactionDto>.Create(result, totalCount, pagination.PageNumber, pagination.PageSize);
+    }
+
+    /// <summary>
+    /// Lấy lịch sử giao dịch tổng hợp (nhập/xuất) có phân trang từ CSDL Server
+    /// </summary>
+    public async Task<PagedResult<TransactionHistoryItemDto>> GetTransactionHistoryPagedAsync(
+        TransactionHistoryQueryParams query,
+        CancellationToken cancellationToken = default)
+    {
+        var cleanSearch = string.IsNullOrWhiteSpace(query.Search) ? null : query.Search.Trim().ToLower();
+        var typeFilter = query.Type?.ToUpper() ?? "ALL";
+        var statusFilter = query.Status?.ToUpper() ?? "ALL";
+
+        var txQuery = _context.InventoryTransactions
+            .Where(t => !t.IsDeleted);
+
+        // Lọc Type: Nhập kho (Import) hoặc Xuất kho (Export)
+        if (typeFilter == "INBOUND")
+        {
+            txQuery = txQuery.Where(t => t.Type == TransactionType.Import);
+        }
+        else if (typeFilter == "OUTBOUND")
+        {
+            txQuery = txQuery.Where(t => t.Type == TransactionType.Export);
+        }
+
+        // Lọc Status: ACTIVE hoặc CANCELLED
+        if (statusFilter == "ACTIVE")
+        {
+            txQuery = txQuery.Where(t => t.Status != "CANCELLED");
+        }
+        else if (statusFilter == "CANCELLED")
+        {
+            txQuery = txQuery.Where(t => t.Status == "CANCELLED");
+        }
+
+        // Lọc theo khoảng ngày
+        if (query.FromDate.HasValue)
+        {
+            var fromUtc = DateTime.SpecifyKind(query.FromDate.Value.Date, DateTimeKind.Utc);
+            txQuery = txQuery.Where(t => t.TransactionDate >= fromUtc);
+        }
+        if (query.ToDate.HasValue)
+        {
+            var toUtc = DateTime.SpecifyKind(query.ToDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+            txQuery = txQuery.Where(t => t.TransactionDate < toUtc);
+        }
+
+        // Lọc theo từ khóa tìm kiếm (Mã phiếu, Đối tác, Tên hải sản, Mã lô)
+        if (!string.IsNullOrEmpty(cleanSearch))
+        {
+            txQuery = txQuery.Where(t =>
+                t.ReferenceNumber.ToLower().Contains(cleanSearch) ||
+                (t.Note != null && t.Note.ToLower().Contains(cleanSearch)) ||
+                (t.LotBatch != null && (
+                    t.LotBatch.BatchCode.ToLower().Contains(cleanSearch) ||
+                    (t.LotBatch.SupplierName != null && t.LotBatch.SupplierName.ToLower().Contains(cleanSearch)) ||
+                    (t.LotBatch.Product != null && (
+                        t.LotBatch.Product.Name.ToLower().Contains(cleanSearch) ||
+                        t.LotBatch.Product.Code.ToLower().Contains(cleanSearch)
+                    ))
+                ))
+            );
+        }
+
+        // Group by ReferenceNumber để đếm tổng số phiếu và lấy ngày mới nhất
+        var groupQuery = txQuery
+            .GroupBy(t => t.ReferenceNumber)
+            .Select(g => new
+            {
+                ReferenceNumber = g.Key,
+                MaxDate = g.Max(t => t.TransactionDate)
+            });
+
+        var totalCount = await groupQuery.CountAsync(cancellationToken);
+
+        // Phân trang bằng Skip/Take trên mã phiếu
+        var pagedRefNos = await groupQuery
+            .OrderByDescending(g => g.MaxDate)
+            .Skip((query.PageNumber - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(g => g.ReferenceNumber)
+            .ToListAsync(cancellationToken);
+
+        if (pagedRefNos.Count == 0)
+        {
+            return PagedResult<TransactionHistoryItemDto>.Create(
+                new List<TransactionHistoryItemDto>(),
+                totalCount,
+                query.PageNumber,
+                query.PageSize);
+        }
+
+        // Tải chi tiết các giao dịch của các ReferenceNumber thuộc trang này
+        var pageTransactions = await _context.InventoryTransactions
+            .Where(t => pagedRefNos.Contains(t.ReferenceNumber) && !t.IsDeleted)
+            .Include(t => t.LotBatch).ThenInclude(l => l.Product)
+            .Include(t => t.SourceWarehouse)
+            .OrderByDescending(t => t.TransactionDate)
+            .ToListAsync(cancellationToken);
+
+        // Tải các phiếu xuất từ OutboundReceipts tương ứng nếu có
+        var outboundReceipts = await _context.OutboundReceipts
+            .Where(r => pagedRefNos.Contains(r.ReferenceNumber) && !r.IsDeleted)
+            .Include(r => r.Supplies.Where(s => !s.IsDeleted))
+            .ToDictionaryAsync(r => r.ReferenceNumber, r => r, cancellationToken);
+
+        // Kiểm tra an toàn: Có lô hàng nhập nào đã phát sinh xuất bán chưa
+        var batchIds = pageTransactions.Where(t => t.LotBatchId > 0 && t.Type == TransactionType.Import).Select(t => t.LotBatchId).Distinct().ToList();
+        var exportTxs = await _context.InventoryTransactions
+            .Where(t => !t.IsDeleted && t.Status != "CANCELLED" && t.Type == TransactionType.Export && batchIds.Contains(t.LotBatchId))
+            .Select(t => new { t.LotBatchId, t.ReferenceNumber })
+            .ToListAsync(cancellationToken);
+
+        var exportsByBatch = exportTxs
+            .GroupBy(e => e.LotBatchId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.ReferenceNumber).Distinct().ToList());
+
+        var groupedByRef = pageTransactions.GroupBy(t => t.ReferenceNumber).ToDictionary(g => g.Key, g => g.ToList());
+        var itemsList = new List<TransactionHistoryItemDto>();
+
+        foreach (var refNo in pagedRefNos)
+        {
+            if (!groupedByRef.TryGetValue(refNo, out var txList) || txList.Count == 0) continue;
+
+            var first = txList.First();
+            bool isOutbound = first.Type == TransactionType.Export;
+
+            var receiptBatchIds = txList.Where(x => x.LotBatchId > 0).Select(x => x.LotBatchId).Distinct();
+            var relatedExportRefs = receiptBatchIds
+                .Where(bId => exportsByBatch.ContainsKey(bId))
+                .SelectMany(bId => exportsByBatch[bId])
+                .Distinct()
+                .ToList();
+
+            bool hasExports = relatedExportRefs.Count > 0;
+            bool isCancelled = txList.All(t => t.Status == "CANCELLED");
+
+            string partnerName = "";
+            string partnerType = isOutbound ? "CUSTOMER" : "SUPPLIER";
+            string storageLocation = first.SourceWarehouse?.Name ?? "Kho Hải Sản Chính";
+
+            if (isOutbound)
+            {
+                if (outboundReceipts.TryGetValue(refNo, out var r))
+                {
+                    partnerName = r.CustomerName;
+                }
+                else
+                {
+                    partnerName = first.Note?.Replace("Khách hàng: ", "") ?? "Khách lẻ";
+                }
+            }
+            else
+            {
+                partnerName = first.LotBatch?.SupplierName ?? (first.Note?.Replace("Nhà cung cấp: ", "") ?? "Vựa hải sản");
+            }
+
+            var detailItems = txList.Select(tx =>
+            {
+                var netW = tx.Quantity;
+                var tareW = tx.TareWeight;
+                var grossW = tx.GrossWeight > 0 ? tx.GrossWeight : (netW + tareW);
+                var unitPrice = tx.UnitPrice > 0 ? tx.UnitPrice : (tx.LotBatch != null && tx.LotBatch.UnitPrice > 0 ? tx.LotBatch.UnitPrice : 250000m);
+                var totalPrice = tx.TotalAmount > 0 ? tx.TotalAmount : (netW * unitPrice);
+
+                return new TransactionHistoryDetailItemDto
+                {
+                    BatchCode = tx.LotBatch?.BatchCode ?? $"LÔ-{tx.LotBatchId}",
+                    SeafoodName = tx.LotBatch?.Product?.Name ?? "Hải sản",
+                    StorageCondition = tx.LotBatch?.Product?.StorageType switch
+                    {
+                        "ALIVE" => "Tươi sống",
+                        "FRESH" => "Ướp đá",
+                        _ => "Cấp đông"
+                    },
+                    GrossWeight = grossW,
+                    TareWeight = tareW,
+                    NetWeight = netW,
+                    ExpiryDate = tx.LotBatch?.ExpirationDate.ToString("yyyy-MM-dd"),
+                    UnitPrice = unitPrice,
+                    TotalPrice = totalPrice
+                };
+            }).ToList();
+
+            var suppliesList = new List<TransactionSupplyItemDto>();
+            decimal subTotal = 0;
+            decimal totalAmount = 0;
+            decimal suppliesTotal = 0;
+            decimal discountAmount = 0;
+            string discountReason = "";
+
+            if (isOutbound && outboundReceipts.TryGetValue(refNo, out var outboundReceipt))
+            {
+                totalAmount = outboundReceipt.TotalAmount;
+                subTotal = outboundReceipt.SubTotal;
+                suppliesTotal = outboundReceipt.SuppliesTotal;
+                discountAmount = outboundReceipt.DiscountAmount;
+                discountReason = outboundReceipt.DiscountReason ?? "";
+                suppliesList = outboundReceipt.Supplies.Select(s => new TransactionSupplyItemDto
+                {
+                    Name = s.Name,
+                    PackagingCode = s.PackagingCode,
+                    Unit = s.Unit,
+                    Quantity = s.Quantity,
+                    UnitPrice = s.UnitPrice,
+                    TotalAmount = s.TotalAmount
+                }).ToList();
+            }
+            else
+            {
+                subTotal = detailItems.Sum(x => x.TotalPrice);
+                totalAmount = subTotal;
+            }
+
+            itemsList.Add(new TransactionHistoryItemDto
+            {
+                Id = refNo,
+                Type = isOutbound ? "OUTBOUND" : "INBOUND",
+                Status = isCancelled ? "CANCELLED" : "ACTIVE",
+                CancelledAt = first.CancelledAt?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                CancelledBy = first.CancelledBy,
+                CancelReason = first.CancelReason,
+                HasExports = hasExports,
+                CanCancel = !hasExports && !isCancelled,
+                ExportRefNos = relatedExportRefs,
+                Date = first.TransactionDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                PartnerName = partnerName,
+                PartnerType = partnerType,
+                StorageLocation = storageLocation,
+                TotalWeightKg = detailItems.Sum(x => x.NetWeight),
+                TotalAmount = totalAmount,
+                SubTotal = subTotal,
+                SuppliesTotal = suppliesTotal,
+                DiscountAmount = discountAmount,
+                DiscountReason = discountReason,
+                CreatedBy = first.CreatedBy ?? "Thủ kho",
+                Items = detailItems,
+                Supplies = suppliesList
+            });
+        }
+
+        return PagedResult<TransactionHistoryItemDto>.Create(itemsList, totalCount, query.PageNumber, query.PageSize);
     }
 
     /// <summary>

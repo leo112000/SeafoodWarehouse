@@ -27,6 +27,8 @@ import { reportService } from '@/services/reportService';
 import { formatCurrency, formatWeight } from '@/utils/format';
 import { exportReportToExcel } from '@/utils/excelExporter';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+import { useTabStore } from '@/stores/useTabStore';
+import { signalRService } from '@/services/signalrService';
 
 dayjs.extend(isoWeek);
 
@@ -210,25 +212,58 @@ export const ReportsPage: React.FC = () => {
   const [customRange, setCustomRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
   const [data, setData] = useState<ReportData>(EMPTY_REPORT_DATA);
+  const activeKey = useTabStore((state) => state.activeKey);
+  const isFirstMountRef = React.useRef(true);
 
-  React.useEffect(() => {
-    let isMounted = true;
+  const fetchReportData = useCallback(() => {
     reportService
       .getReportData(mode)
       .then((res) => {
-        if (isMounted && res) {
+        if (res) {
           setData(res);
         }
       })
       .catch(() => {
-        if (isMounted) {
-          setData(EMPTY_REPORT_DATA);
-        }
+        setData(EMPTY_REPORT_DATA);
       });
-    return () => {
-      isMounted = false;
-    };
   }, [mode]);
+
+  // Refetch khi mode thay đổi hoặc lần đầu mount
+  React.useEffect(() => {
+    fetchReportData();
+  }, [fetchReportData]);
+
+  // Tự động refetch ngay khi chuyển tab về Thống kê (/reports, /reports/summary, /reports/inventory)
+  React.useEffect(() => {
+    const isReportsTab = activeKey === '/reports' || activeKey === '/reports/summary' || activeKey === '/reports/inventory';
+    if (isReportsTab) {
+      if (isFirstMountRef.current) {
+        isFirstMountRef.current = false;
+      } else {
+        fetchReportData();
+      }
+    }
+  }, [activeKey, fetchReportData]);
+
+  // Lắng nghe SignalR real-time stock updates (tạo/hủy nhập kho, xuất kho)
+  React.useEffect(() => {
+    const unsub = signalRService.onStockUpdated(() => {
+      fetchReportData();
+    });
+    return () => unsub();
+  }, [fetchReportData]);
+
+  // Tự động refetch khi người dùng focus lại cửa sổ trình duyệt
+  React.useEffect(() => {
+    const handleFocus = () => {
+      const isReportsTab = activeKey === '/reports' || activeKey === '/reports/summary' || activeKey === '/reports/inventory';
+      if (isReportsTab) {
+        fetchReportData();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [activeKey, fetchReportData]);
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
     setMode(e.target.value as ReportMode);
