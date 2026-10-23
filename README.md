@@ -6,6 +6,7 @@
 ---
 
 [![CI Pipeline](https://github.com/leo112000/SeafoodWarehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/leo112000/SeafoodWarehouse/actions)
+[![CD Pipeline](https://github.com/leo112000/SeafoodWarehouse/actions/workflows/cd.yml/badge.svg)](https://github.com/leo112000/SeafoodWarehouse/actions)
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)
