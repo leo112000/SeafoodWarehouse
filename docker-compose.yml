@@ -7,14 +7,14 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-SeafoodWarehouseDb}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-Password123!}
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?Vui long cung cap DB_PASSWORD qua file .env hoac bien moi truong}"
     ports:
       # Khóa cổng 5432: chỉ cho phép máy nội bộ (localhost) kết nối, chặn kẻ lạ từ Wi-Fi/Internet
       - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-SeafoodWarehouseDb}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-SeafoodWarehouseDb}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -32,8 +32,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5000
-      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=${DB_NAME:-SeafoodWarehouseDb};Username=${DB_USER:-postgres};Password=${DB_PASSWORD:-Password123!}
-      - Jwt__SecretKey=${JWT_SECRET_KEY:-SeafoodWarehouseSecureJwtSigningSecretKey_2026_UltraProtected_Min256Bits}
+      - "ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=${DB_NAME:-SeafoodWarehouseDb};Username=${DB_USER:-postgres};Password=${DB_PASSWORD:?Vui long cung cap DB_PASSWORD qua file .env hoac bien moi truong}"
+      - "Jwt__SecretKey=${JWT_SECRET_KEY:?Vui long cung cap JWT_SECRET_KEY qua file .env hoac bien moi truong}"
     ports:
       # Chỉ mở cổng 5000 cho localhost để test API/Scalar nội bộ
       - "127.0.0.1:5000:5000"
