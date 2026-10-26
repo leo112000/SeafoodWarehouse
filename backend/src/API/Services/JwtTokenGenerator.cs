@@ -33,7 +33,11 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
     public (string AccessToken, string Jti) GenerateAccessTokenWithJti(User user, List<string> roles, Tenant? tenant)
     {
-        var secretKey = _configuration["Jwt:SecretKey"] ?? "SeafoodWarehouseSecureJwtSigningSecretKey_2026_UltraProtected_Min256Bits";
+        var secretKey = _configuration["Jwt:SecretKey"];
+        if (string.IsNullOrWhiteSpace(secretKey) || Encoding.UTF8.GetByteCount(secretKey) < 32)
+        {
+            throw new InvalidOperationException("CRITICAL SECURITY ERROR: 'Jwt:SecretKey' chưa được cấu hình hoặc độ dài chưa đủ 256 bits (32 bytes).");
+        }
         var issuer = _configuration["Jwt:Issuer"] ?? "SeafoodWarehouseAPI";
         var audience = _configuration["Jwt:Audience"] ?? "SeafoodWarehouseClient";
 
