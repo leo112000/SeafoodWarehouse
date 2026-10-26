@@ -30,7 +30,11 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddHostedService<WarehouseCheckBackgroundService>();
 
 // 1. Cấu hình Chuẩn JWT Authentication & Verification
-var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "SeafoodWarehouseSecureJwtSigningSecretKey_2026_UltraProtected_Min256Bits";
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
+if (string.IsNullOrWhiteSpace(jwtSecretKey) || Encoding.UTF8.GetByteCount(jwtSecretKey) < 32)
+{
+    throw new InvalidOperationException("CRITICAL SECURITY ERROR: 'Jwt:SecretKey' chưa được cấu hình hoặc độ dài chưa đủ 256 bits (32 bytes). Vui lòng thiết lập biến môi trường 'Jwt__SecretKey'.");
+}
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SeafoodWarehouseAPI";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SeafoodWarehouseClient";
 
