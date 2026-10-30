@@ -402,11 +402,9 @@ public class BigDataPerformanceTests : IAsyncLifetime
 
         var categoryService = new CategoryService(unitOfWork, cacheService, currentTenantMock);
 
-        var pagination = new PaginationParams { PageNumber = 1, PageSize = 20 };
-
         // 1. Lần 1: Cache Miss -> Đọc trực tiếp từ Database
         var swMiss = Stopwatch.StartNew();
-        var res1 = await categoryService.GetAllAsync(pagination);
+        var res1 = await categoryService.GetAllAsync();
         swMiss.Stop();
         double timeMiss = swMiss.Elapsed.TotalMilliseconds;
 
@@ -416,7 +414,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
         for (int i = 0; i < iterations; i++)
         {
             var swHit = Stopwatch.StartNew();
-            var resHit = await categoryService.GetAllAsync(pagination);
+            var resHit = await categoryService.GetAllAsync();
             swHit.Stop();
             hitTimes.Add(swHit.Elapsed.TotalMilliseconds);
         }
@@ -453,7 +451,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
         {
             var initUow = new UnitOfWork(initContext);
             var initService = new WarehouseService(initUow, cacheService, currentTenantMock);
-            await initService.GetAllAsync(new PaginationParams { PageNumber = 1, PageSize = 10 });
+            await initService.GetAllAsync();
         }
 
         int totalRequests = 500;
@@ -472,7 +470,7 @@ public class BigDataPerformanceTests : IAsyncLifetime
             var scopeUow = new UnitOfWork(scopeContext);
             var scopeService = new WarehouseService(scopeUow, cacheService, currentTenantMock);
 
-            var result = await scopeService.GetAllAsync(new PaginationParams { PageNumber = 1, PageSize = 10 }, null, ct);
+            var result = await scopeService.GetAllAsync(null, ct);
             if (result != null)
             {
                 Interlocked.Increment(ref successCount);

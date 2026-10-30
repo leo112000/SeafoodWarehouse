@@ -4,20 +4,18 @@ import type { Category } from '@/types/seafood';
 export const categoryService = {
   async getAll(): Promise<Category[]> {
     try {
-      const response = await api.get('/categories', {
-        params: { pageNumber: 1, pageSize: 100 },
-      });
-      if (response.data && response.data.items) {
-        return response.data.items.map((item: any) => ({
-          id: String(item.id),
-          code: item.code,
-          name: item.name,
-          description: item.description || '',
-          productCount: item.productCount ?? 0,
-          createdAt: item.createdAt ?? new Date().toISOString(),
-        }));
-      }
-      return [];
+      const response = await api.get('/categories');
+      const rawList = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.items || response.data?.data || []);
+      return rawList.map((item: any) => ({
+        id: String(item.id),
+        code: item.code,
+        name: item.name,
+        description: item.description || '',
+        productCount: item.productCount ?? 0,
+        createdAt: item.createdAt ?? new Date().toISOString(),
+      }));
     } catch {
       return [];
     }

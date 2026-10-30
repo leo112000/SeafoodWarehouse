@@ -21,21 +21,21 @@ export const warehouseService = {
   async getAll(): Promise<WarehouseItem[]> {
     try {
       const response = await api.get('/warehouses');
-      if (response.data && response.data.items) {
-        return response.data.items.map((w: any) => ({
-          id: String(w.id),
-          code: w.code,
-          name: w.name,
-          location: w.address || w.location || 'Khu A',
-          capacityKg: w.capacityKg || w.totalCapacityKg || 10000,
-          currentStockKg: w.currentStockKg || w.usedCapacityKg || 0,
-          temperatureCelsius: w.temperatureCelsius ?? -18,
-          status: w.status || 'OPERATIONAL',
-          storageType: w.storageType || 'FROZEN',
-          description: w.description || '',
-        }));
-      }
-      return [];
+      const rawList = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.items || response.data?.data || []);
+      return rawList.map((w: any) => ({
+        id: String(w.id),
+        code: w.code,
+        name: w.name,
+        location: w.address || w.location || 'Khu A',
+        capacityKg: w.capacityKg || w.totalCapacityKg || 10000,
+        currentStockKg: w.currentStockKg || w.usedCapacityKg || 0,
+        temperatureCelsius: w.temperatureCelsius ?? -18,
+        status: w.status || 'OPERATIONAL',
+        storageType: w.storageType || 'FROZEN',
+        description: w.description || '',
+      }));
     } catch {
       return [];
     }

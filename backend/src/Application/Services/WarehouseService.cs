@@ -27,31 +27,21 @@ public class WarehouseService : IWarehouseService
     private string GetCachePrefix() => $"warehouses:{(_currentTenant.Id.HasValue ? $"t{_currentTenant.Id.Value}" : "host")}:";
 
     /// <summary>
-    /// Lấy danh sách kho có phân trang, có thể lọc theo loại kho (Cached)
+    /// Lấy danh sách kho, có thể lọc theo loại kho (Cached toàn bộ kho)
     /// </summary>
-    public async Task<PagedResult<WarehouseDto>> GetAllAsync(PaginationParams pagination, StorageType? type = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<WarehouseDto>> GetAllAsync(StorageType? type = null, CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"{GetCachePrefix()}all_p{pagination.PageNumber}_s{pagination.PageSize}_t{(int?)type}";
+        var cacheKey = $"{GetCachePrefix()}all";
 
-        return await _cacheService.GetOrCreateAsync(cacheKey, async ct =>
+        var allWarehouses = await _cacheService.GetOrCreateAsync(cacheKey, async ct =>
         {
             var repository = _unitOfWork.Repository<Warehouse>();
-            var warehouses = await repository.GetAllAsync(cancellationToken);
+            var warehouses = await repository.GetAllAsync(ct);
 
-            // Lọc theo loại kho nếu có
-            var filtered = warehouses.Where(w => !w.IsDeleted);
-            if (type.HasValue)
-            {
-                filtered = filtered.Where(w => w.Type == type.Value);
-            }
-
-            var warehouseList = filtered.ToList();
-            var totalCount = warehouseList.Count;
-            var items = warehouseList
+            return warehouses
+                .Where(w => !w.IsDeleted)
                 .OrderByDescending(w => w.CreatedAt)
                 .ThenByDescending(w => w.Id)
-                .Skip((pagination.PageNumber - 1) * pagination.PageSize)
-                .Take(pagination.PageSize)
                 .Select(w => new WarehouseDto
                 {
                     Id = w.Id,
@@ -66,40 +56,24 @@ public class WarehouseService : IWarehouseService
                     CreatedAt = w.CreatedAt
                 })
                 .ToList();
-
-            return PagedResult<WarehouseDto>.Create(items, totalCount, pagination.PageNumber, pagination.PageSize);
         }, TimeSpan.FromMinutes(15), cancellationToken);
+
+        // Lọc theo loại kho trên RAM nếu có
+        if (type.HasValue)
+        {
+            return allWarehouses.Where(w => w.Type == type.Value).ToList();
+        }
+
+        return allWarehouses;
     }
 
     /// <summary>
-    /// Lấy kho theo Id (Cached)
+    /// Lấy kho theo Id (Tận dụng cache danh sách GetAllAsync, tìm kiếm trên RAM)
     /// </summary>
     public async Task<WarehouseDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"{GetCachePrefix()}id_{id}";
-
-        return await _cacheService.GetOrCreateAsync(cacheKey, async ct =>
-        {
-            var repository = _unitOfWork.Repository<Warehouse>();
-            var warehouse = await repository.GetByIdAsync(id, cancellationToken);
-
-            if (warehouse == null || warehouse.IsDeleted)
-                return null;
-
-            return new WarehouseDto
-            {
-                Id = warehouse.Id,
-                Code = warehouse.Code,
-                Name = warehouse.Name,
-                Location = warehouse.Location,
-                Type = warehouse.Type,
-                TargetTemperature = warehouse.TargetTemperature,
-                MaxCapacityTon = warehouse.MaxCapacityTon,
-                IsActive = warehouse.IsActive,
-                Description = warehouse.Description,
-                CreatedAt = warehouse.CreatedAt
-            };
-        }, TimeSpan.FromMinutes(15), cancellationToken);
+        var allWarehouses = await GetAllAsync(cancellationToken: cancellationToken);
+        return allWarehouses.FirstOrDefault(w => w.Id == id);
     }
 
     /// <summary>
@@ -151,7 +125,7 @@ public class WarehouseService : IWarehouseService
 
         await repository.AddAsync(warehouse, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _cacheService.RemoveByPrefixAsync(GetCachePrefix(), cancellationToken);
+        await _cacheService.RemoveAsync($"{GetCachePrefix()}all", cancellationToken);
 
         return Result<WarehouseDto>.Success(new WarehouseDto
         {
@@ -206,7 +180,7 @@ public class WarehouseService : IWarehouseService
 
         repository.Update(warehouse);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _cacheService.RemoveByPrefixAsync(GetCachePrefix(), cancellationToken);
+        await _cacheService.RemoveAsync($"{GetCachePrefix()}all", cancellationToken);
 
         return Result<WarehouseDto>.Success(new WarehouseDto
         {
@@ -245,7 +219,7 @@ public class WarehouseService : IWarehouseService
 
         repository.Delete(warehouse);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _cacheService.RemoveByPrefixAsync(GetCachePrefix(), cancellationToken);
+        await _cacheService.RemoveAsync($"{GetCachePrefix()}all", cancellationToken);
 
         return Result.Success("Xóa kho thành công.");
     }

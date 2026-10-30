@@ -17,11 +17,19 @@ public class AuthController : BaseApiController
 {
     private readonly IApplicationDbContext _context;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly ITokenBlacklistService _tokenBlacklistService;
+    private readonly IPermissionCacheService _permissionCacheService;
 
-    public AuthController(IApplicationDbContext context, IJwtTokenGenerator jwtTokenGenerator)
+    public AuthController(
+        IApplicationDbContext context,
+        IJwtTokenGenerator jwtTokenGenerator,
+        ITokenBlacklistService tokenBlacklistService,
+        IPermissionCacheService permissionCacheService)
     {
         _context = context;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _tokenBlacklistService = tokenBlacklistService;
+        _permissionCacheService = permissionCacheService;
     }
 
     /// <summary>
@@ -164,6 +172,8 @@ public class AuthController : BaseApiController
 
         SetRefreshTokenCookie(refreshTokenString, expiresAt);
 
+        var permissions = await _permissionCacheService.GetUserPermissionsAsync(adminUser.Id, tenant.Id, cancellationToken);
+
         return Ok(Result<LoginResponseDto>.Success(new LoginResponseDto
         {
             Token = token,
@@ -174,6 +184,7 @@ public class AuthController : BaseApiController
                 Name = adminUser.FullName,
                 Email = adminUser.Email,
                 Roles = roles,
+                Permissions = permissions,
                 Phone = adminUser.Phone,
                 Status = adminUser.Status,
                 TenantId = tenant.Id,
@@ -268,6 +279,8 @@ public class AuthController : BaseApiController
 
             SetRefreshTokenCookie(refreshTokenString, expiresAt);
 
+            var permissions = await _permissionCacheService.GetUserPermissionsAsync(user.Id, user.TenantId, cancellationToken);
+
             return Ok(Result<LoginResponseDto>.Success(new LoginResponseDto
             {
                 Token = token,
@@ -278,6 +291,7 @@ public class AuthController : BaseApiController
                     Name = user.FullName,
                     Email = user.Email,
                     Roles = roles,
+                    Permissions = permissions,
                     Phone = user.Phone,
                     Status = user.Status,
                     TenantId = user.TenantId,
@@ -382,6 +396,8 @@ public class AuthController : BaseApiController
 
         SetRefreshTokenCookie(newRefreshTokenString, expiresAt);
 
+        var permissions = await _permissionCacheService.GetUserPermissionsAsync(user.Id, user.TenantId, cancellationToken);
+
         return Ok(Result<LoginResponseDto>.Success(new LoginResponseDto
         {
             Token = newAccessToken,
@@ -392,6 +408,7 @@ public class AuthController : BaseApiController
                 Name = user.FullName,
                 Email = user.Email,
                 Roles = roles,
+                Permissions = permissions,
                 Phone = user.Phone,
                 Status = user.Status,
                 TenantId = user.TenantId,
@@ -402,11 +419,40 @@ public class AuthController : BaseApiController
     }
 
     /// <summary>
-    /// Thu hồi Refresh Token khi đăng xuất an toàn (Revoke Token)
+    /// Thu hồi Access Token (vào Redis Token Blacklist) và Refresh Token khi đăng xuất an toàn (Revoke / Logout)
     /// </summary>
     [HttpPost("revoke")]
+    [HttpPost("logout")]
     public async Task<ActionResult<Result<bool>>> RevokeToken([FromBody] RefreshTokenRequestDto? request, CancellationToken cancellationToken = default)
     {
+        // 1. Đưa Access Token hiện tại vào Redis Token Blacklist dựa theo JTI
+        var authHeader = Request.Headers.Authorization.FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            var rawJwt = authHeader["Bearer ".Length..].Trim();
+            try
+            {
+                var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                if (handler.CanReadToken(rawJwt))
+                {
+                    var jwtToken = handler.ReadJwtToken(rawJwt);
+                    var jti = jwtToken.Id;
+                    var exp = jwtToken.ValidTo;
+                    var remaining = exp - DateTime.UtcNow;
+
+                    if (!string.IsNullOrWhiteSpace(jti) && remaining > TimeSpan.Zero)
+                    {
+                        await _tokenBlacklistService.BlacklistTokenAsync(jti, remaining, cancellationToken);
+                    }
+                }
+            }
+            catch
+            {
+                // Bỏ qua nếu token parse lỗi
+            }
+        }
+
+        // 2. Thu hồi Refresh Token trong DB
         var rawToken = request?.RefreshToken?.Trim() ?? Request.Cookies["refreshToken"]?.Trim();
         if (!string.IsNullOrWhiteSpace(rawToken))
         {

@@ -28,24 +28,21 @@ public class CategoryService : ICategoryService
     private string GetCachePrefix() => $"categories:{(_currentTenant.Id.HasValue ? $"t{_currentTenant.Id.Value}" : "host")}:";
 
     /// <summary>
-    /// Lấy danh sách danh mục có phân trang (Cached)
+    /// Lấy toàn bộ danh sách danh mục (Cached)
     /// </summary>
-    public async Task<PagedResult<CategoryDto>> GetAllAsync(PaginationParams pagination, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CategoryDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"{GetCachePrefix()}all_p{pagination.PageNumber}_s{pagination.PageSize}";
+        var cacheKey = $"{GetCachePrefix()}all";
 
         return await _cacheService.GetOrCreateAsync(cacheKey, async ct =>
         {
             var repository = _unitOfWork.Repository<Category>();
-            var (categories, totalCount) = await repository.GetPagedAsync(
-                pagination.PageNumber,
-                pagination.PageSize,
-                orderBy: q => q.OrderByDescending(c => c.CreatedAt).ThenByDescending(c => c.Id),
-                cancellationToken: ct,
-                includes: c => c.Products
-            );
+            var categories = await repository.GetAllWithIncludesAsync(c => c.Products);
 
-            var items = categories
+            return categories
+                .Where(c => !c.IsDeleted)
+                .OrderByDescending(c => c.CreatedAt)
+                .ThenByDescending(c => c.Id)
                 .Select(c => new CategoryDto
                 {
                     Id = c.Id,
@@ -56,37 +53,16 @@ public class CategoryService : ICategoryService
                     CreatedAt = c.CreatedAt
                 })
                 .ToList();
-
-            return PagedResult<CategoryDto>.Create(items, totalCount, pagination.PageNumber, pagination.PageSize);
         }, TimeSpan.FromMinutes(15), cancellationToken);
-
     }
 
     /// <summary>
-    /// Lấy danh mục theo Id (Cached)
+    /// Lấy danh mục theo Id (Tận dụng cache danh sách GetAllAsync, tìm kiếm trên RAM)
     /// </summary>
     public async Task<CategoryDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"{GetCachePrefix()}id_{id}";
-
-        return await _cacheService.GetOrCreateAsync(cacheKey, async ct =>
-        {
-            var repository = _unitOfWork.Repository<Category>();
-            var category = await repository.GetByIdWithIncludesAsync(id, c => c.Products);
-
-            if (category == null || category.IsDeleted)
-                return null;
-
-            return new CategoryDto
-            {
-                Id = category.Id,
-                Code = category.Code,
-                Name = category.Name,
-                Description = category.Description,
-                ProductCount = category.Products?.Count(p => !p.IsDeleted) ?? 0,
-                CreatedAt = category.CreatedAt
-            };
-        }, TimeSpan.FromMinutes(15), cancellationToken);
+        var allCategories = await GetAllAsync(cancellationToken);
+        return allCategories.FirstOrDefault(c => c.Id == id);
     }
 
     /// <summary>
@@ -128,7 +104,7 @@ public class CategoryService : ICategoryService
 
         await repository.AddAsync(category, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _cacheService.RemoveByPrefixAsync(GetCachePrefix(), cancellationToken);
+        await _cacheService.RemoveAsync($"{GetCachePrefix()}all", cancellationToken);
 
         return Result<CategoryDto>.Success(new CategoryDto
         {
@@ -170,7 +146,7 @@ public class CategoryService : ICategoryService
 
         repository.Update(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _cacheService.RemoveByPrefixAsync(GetCachePrefix(), cancellationToken);
+        await _cacheService.RemoveAsync($"{GetCachePrefix()}all", cancellationToken);
 
         return Result<CategoryDto>.Success(new CategoryDto
         {
@@ -205,7 +181,7 @@ public class CategoryService : ICategoryService
 
         repository.Delete(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _cacheService.RemoveByPrefixAsync(GetCachePrefix(), cancellationToken);
+        await _cacheService.RemoveAsync($"{GetCachePrefix()}all", cancellationToken);
 
         return Result.Success("Xóa danh mục thành công.");
     }

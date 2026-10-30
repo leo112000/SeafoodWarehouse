@@ -19,16 +19,12 @@ public class CategoriesController : BaseApiController
     }
 
     /// <summary>
-    /// Lấy danh sách danh mục (có phân trang)
+    /// Lấy toàn bộ danh mục sản phẩm (Có Cache)
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<PagedResult<CategoryDto>>> GetAll(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        CancellationToken cancellationToken = default)
+    public async Task<ActionResult<IReadOnlyList<CategoryDto>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var pagination = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
-        var result = await _categoryService.GetAllAsync(pagination, cancellationToken);
+        var result = await _categoryService.GetAllAsync(cancellationToken);
         return Ok(result);
     }
 

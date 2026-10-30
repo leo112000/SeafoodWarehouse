@@ -14,6 +14,7 @@ public class UserInfoDto
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = new();
+    public List<string> Permissions { get; set; } = new();
     public string? Phone { get; set; }
     public string Status { get; set; } = "Active";
     public int? TenantId { get; set; }

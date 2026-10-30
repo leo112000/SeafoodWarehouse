@@ -58,6 +58,8 @@ public static class DependencyInjection
 
         services.AddSingleton<ICacheService, SeafoodWarehouseManagement.Infrastructure.Services.DistributedCacheService>();
         services.AddScoped<IFileStorageService, SeafoodWarehouseManagement.Infrastructure.Services.LocalFileStorageService>();
+        services.AddScoped<ITokenBlacklistService, SeafoodWarehouseManagement.Infrastructure.Services.TokenBlacklistService>();
+        services.AddScoped<IPermissionCacheService, SeafoodWarehouseManagement.Infrastructure.Services.PermissionCacheService>();
 
         return services;
     }

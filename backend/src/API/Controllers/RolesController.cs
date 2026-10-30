@@ -29,10 +29,17 @@ public class CreateRoleRequestDto
 public class RolesController : BaseApiController
 {
     private readonly IApplicationDbContext _context;
+    private readonly IPermissionCacheService _permissionCacheService;
+    private readonly ICurrentTenant _currentTenant;
 
-    public RolesController(IApplicationDbContext context)
+    public RolesController(
+        IApplicationDbContext context,
+        IPermissionCacheService permissionCacheService,
+        ICurrentTenant currentTenant)
     {
         _context = context;
+        _permissionCacheService = permissionCacheService;
+        _currentTenant = currentTenant;
     }
 
     /// <summary>
@@ -96,6 +103,7 @@ public class RolesController : BaseApiController
 
         _context.Roles.Add(role);
         await _context.SaveChangesAsync(cancellationToken);
+        await _permissionCacheService.InvalidateTenantPermissionsAsync(_currentTenant.Id, cancellationToken);
 
         var dto = new RoleDto
         {
@@ -144,6 +152,7 @@ public class RolesController : BaseApiController
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+        await _permissionCacheService.InvalidateTenantPermissionsAsync(_currentTenant.Id, cancellationToken);
 
         var dto = new RoleDto
         {
@@ -176,6 +185,7 @@ public class RolesController : BaseApiController
 
         role.IsDeleted = true;
         await _context.SaveChangesAsync(cancellationToken);
+        await _permissionCacheService.InvalidateTenantPermissionsAsync(_currentTenant.Id, cancellationToken);
 
         return Ok(Result<bool>.Success(true));
     }

@@ -59,7 +59,7 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 
-    // Cho phép SignalR trích xuất Token từ query string access_token
+    // Cho phép SignalR trích xuất Token từ query string access_token và kiểm tra Redis Token Blacklist
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -71,11 +71,24 @@ builder.Services.AddAuthentication(options =>
                 context.Token = accessToken;
             }
             return Task.CompletedTask;
+        },
+        OnTokenValidated = async context =>
+        {
+            var blacklistService = context.HttpContext.RequestServices.GetRequiredService<ITokenBlacklistService>();
+            var jti = context.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value
+                   ?? context.Principal?.FindFirst("jti")?.Value;
+
+            if (!string.IsNullOrEmpty(jti) && await blacklistService.IsBlacklistedAsync(jti))
+            {
+                context.Fail("Token đã bị thu hồi hoặc phiên đăng nhập đã đăng xuất.");
+            }
         }
     };
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, SeafoodWarehouseManagement.API.Security.PermissionPolicyProvider>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, SeafoodWarehouseManagement.API.Security.PermissionAuthorizationHandler>();
 
 // 2. Cấu hình Rate Limiting (Chống Brute-force và DDoS theo từng IP Client độc lập)
 var isDevOrTest = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");

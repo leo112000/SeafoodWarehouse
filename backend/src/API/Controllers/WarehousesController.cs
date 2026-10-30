@@ -20,17 +20,14 @@ public class WarehousesController : BaseApiController
     }
 
     /// <summary>
-    /// Lấy danh sách kho (có phân trang, lọc theo loại kho)
+    /// Lấy danh sách kho (có thể lọc theo loại kho, Có Cache)
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<PagedResult<WarehouseDto>>> GetAll(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
+    public async Task<ActionResult<IReadOnlyList<WarehouseDto>>> GetAll(
         [FromQuery] StorageType? type = null,
         CancellationToken cancellationToken = default)
     {
-        var pagination = new PaginationParams { PageNumber = pageNumber, PageSize = pageSize };
-        var result = await _warehouseService.GetAllAsync(pagination, type, cancellationToken);
+        var result = await _warehouseService.GetAllAsync(type, cancellationToken);
         return Ok(result);
     }
 
